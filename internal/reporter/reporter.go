@@ -175,7 +175,15 @@ func WriteFile(path string, report model.Report) error {
 	if err != nil {
 		return fmt.Errorf("marshaling report: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		return fmt.Errorf("writing report: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("renaming report: %w", err)
+	}
+	return nil
 }
 
 func contactName(c model.ParsedContact) string {

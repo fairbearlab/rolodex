@@ -95,10 +95,16 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 		} else {
 			// Cluster has review-tier pairs, unscored cross-pairs, or mixed tiers.
 			// Put all contacts in review for human decision.
+			clusterID := ClusterID(contacts, members)
 			for _, idx := range members {
+				c := contacts[idx].Parsed
+				if c.Extra == nil {
+					c.Extra = make(map[string][]string)
+				}
+				c.Extra["X-ROLODEX-CLUSTER"] = []string{clusterID}
 				result.Review = append(result.Review, model.MergedContact{
-					Contact:    contacts[idx].Parsed,
-					Sources:    []model.Source{contacts[idx].Parsed.Source},
+					Contact:    c,
+					Sources:    []model.Source{c.Source},
 					Score:      minScore,
 					MergedFrom: members,
 					ReviewFlag: true,
@@ -171,6 +177,10 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 	// Union multi-value fields from all contacts
 	emailSet := make(map[string]model.Email)
 	phoneSet := make(map[string]model.Phone)
+	addrSeen := make(map[string]bool)
+	for _, a := range base.Addresses {
+		addrSeen[addrContentKey(a)] = true
+	}
 
 	// Add base emails/phones first (iCloud labels win for dupes)
 	for _, e := range base.Emails {
@@ -179,7 +189,9 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 	}
 	for _, p := range base.Phones {
 		key := normalize.Phone(p.Number)
-		phoneSet[key] = p
+		if key != "" {
+			phoneSet[key] = p
+		}
 	}
 
 	// Union from other contacts
@@ -196,8 +208,10 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		}
 		for _, p := range c.Phones {
 			key := normalize.Phone(p.Number)
-			if _, exists := phoneSet[key]; !exists {
-				phoneSet[key] = p
+			if key != "" {
+				if _, exists := phoneSet[key]; !exists {
+					phoneSet[key] = p
+				}
 			}
 		}
 
@@ -234,15 +248,13 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 			base.PhotoType = c.PhotoType
 		}
 
-		// Union addresses by type
-		addrTypes := make(map[string]bool)
-		for _, a := range base.Addresses {
-			addrTypes[a.Type] = true
-		}
+		// Union addresses by content (not type — two HOME addresses with different
+		// physical locations should both be kept)
 		for _, a := range c.Addresses {
-			if !addrTypes[a.Type] {
+			key := addrContentKey(a)
+			if !addrSeen[key] {
 				base.Addresses = append(base.Addresses, a)
-				addrTypes[a.Type] = true
+				addrSeen[key] = true
 			}
 		}
 
@@ -279,4 +291,10 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		Score:      score,
 		MergedFrom: indices,
 	}
+}
+
+func addrContentKey(a model.Address) string {
+	return strings.ToLower(strings.Join([]string{
+		a.Street, a.City, a.Region, a.PostCode, a.Country,
+	}, "|"))
 }

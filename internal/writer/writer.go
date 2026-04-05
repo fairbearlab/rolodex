@@ -13,15 +13,38 @@ import (
 	"github.com/fairbearlab/rolodex/internal/model"
 )
 
-// WriteFile writes merged contacts to a .vcf file.
+// WriteFile writes merged contacts to a .vcf file atomically.
+// Writes to a temp file first, then renames to prevent partial output on crash.
 func WriteFile(path string, contacts []model.MergedContact) error {
-	f, err := os.Create(path)
+	tmpPath := path + ".tmp"
+	f, err := os.Create(tmpPath)
 	if err != nil {
-		return fmt.Errorf("creating %s: %w", path, err)
+		return fmt.Errorf("creating %s: %w", tmpPath, err)
 	}
-	defer f.Close()
 
-	return Write(f, contacts)
+	if err := Write(f, contacts); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("writing contacts: %w", err)
+	}
+
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("syncing %s: %w", tmpPath, err)
+	}
+
+	if err := f.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("closing %s: %w", tmpPath, err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("renaming %s to %s: %w", tmpPath, path, err)
+	}
+
+	return nil
 }
 
 // Write writes merged contacts as vCard 3.0 to a writer.

@@ -62,6 +62,16 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 		clusterContacts := reviewContacts[reviewIdx : reviewIdx+clusterSize]
 		reviewIdx += clusterSize
 
+		// Validate cluster ID if present in review.vcf contacts
+		for _, c := range clusterContacts {
+			if ids, ok := c.Extra["X-ROLODEX-CLUSTER"]; ok && len(ids) > 0 {
+				if ids[0] != rd.ClusterID {
+					return fmt.Errorf("cluster ID mismatch: review.vcf contact has cluster %s but report expects %s (review.vcf may have been reordered)",
+						ids[0], rd.ClusterID)
+				}
+			}
+		}
+
 		switch rd.Decision {
 		case "merge":
 			// Actually merge the cluster into a single contact
@@ -171,12 +181,19 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 	// Union multi-value fields
 	emailSet := make(map[string]model.Email)
 	phoneSet := make(map[string]model.Phone)
+	addrSeen := make(map[string]bool)
+	for _, a := range base.Addresses {
+		addrSeen[addrContentKey(a)] = true
+	}
 
 	for _, e := range base.Emails {
 		emailSet[normalize.Email(e.Address)] = e
 	}
 	for _, p := range base.Phones {
-		phoneSet[normalize.Phone(p.Number)] = p
+		key := normalize.Phone(p.Number)
+		if key != "" {
+			phoneSet[key] = p
+		}
 	}
 
 	for i, c := range contacts {
@@ -191,8 +208,10 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		}
 		for _, p := range c.Phones {
 			key := normalize.Phone(p.Number)
-			if _, exists := phoneSet[key]; !exists {
-				phoneSet[key] = p
+			if key != "" {
+				if _, exists := phoneSet[key]; !exists {
+					phoneSet[key] = p
+				}
 			}
 		}
 
@@ -229,15 +248,12 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 			base.PhotoType = c.PhotoType
 		}
 
-		// Union addresses by type
-		addrTypes := make(map[string]bool)
-		for _, a := range base.Addresses {
-			addrTypes[a.Type] = true
-		}
+		// Union addresses by content
 		for _, a := range c.Addresses {
-			if !addrTypes[a.Type] {
+			key := addrContentKey(a)
+			if !addrSeen[key] {
 				base.Addresses = append(base.Addresses, a)
-				addrTypes[a.Type] = true
+				addrSeen[key] = true
 			}
 		}
 
@@ -256,6 +272,7 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 	// so it should not carry stale review/score tags in the output.
 	delete(base.Extra, "X-ROLODEX-REVIEW")
 	delete(base.Extra, "X-ROLODEX-SCORE")
+	delete(base.Extra, "X-ROLODEX-CLUSTER")
 
 	// Rebuild email/phone slices with deterministic ordering
 	base.Emails = make([]model.Email, 0, len(emailSet))
@@ -277,4 +294,10 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		Contact: base,
 		Sources: allSources,
 	}
+}
+
+func addrContentKey(a model.Address) string {
+	return strings.ToLower(strings.Join([]string{
+		a.Street, a.City, a.Region, a.PostCode, a.Country,
+	}, "|"))
 }
