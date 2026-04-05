@@ -1,10 +1,15 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
+
+//go:embed version.txt
+var version string
 
 func main() {
 	if len(os.Args) < 2 {
@@ -24,7 +29,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "version":
-		fmt.Println("rolodex v0.1.0.0")
+		fmt.Printf("rolodex v%s\n", strings.TrimSpace(version))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		printUsage()

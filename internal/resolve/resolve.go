@@ -140,11 +140,16 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 
 	// Find iCloud contact as priority base
 	baseIdx := 0
+	found := false
 	for i, c := range contacts {
+		if found {
+			break
+		}
 		sources := extractProvenance(c)
 		for _, s := range sources {
 			if s == model.SourceICloud {
 				baseIdx = i
+				found = true
 				break
 			}
 		}

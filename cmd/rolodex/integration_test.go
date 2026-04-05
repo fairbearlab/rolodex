@@ -62,7 +62,9 @@ func TestEmptyInput(t *testing.T) {
 
 	// Create an empty vcf file
 	emptyPath := filepath.Join(tmpDir, "empty.vcf")
-	os.WriteFile(emptyPath, []byte(""), 0644)
+	if err := os.WriteFile(emptyPath, []byte(""), 0644); err != nil {
+		t.Fatalf("failed to create empty vcf file: %v", err)
+	}
 
 	outPath := filepath.Join(tmpDir, "merged.vcf")
 	reviewPath := filepath.Join(tmpDir, "review.vcf")

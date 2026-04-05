@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/fairbearlab/rolodex/internal/merger"
@@ -41,6 +42,19 @@ func Generate(
 	report.Summary.AutoMerged = autoMergedCount
 	report.Summary.DistinctCount = distinctCount
 	// ReviewCount is set after building report.Review (counts clusters, not contacts)
+
+	// Build a lookup from cluster indices to the actual merged contact,
+	// so ResultName reflects passthrough-fill logic applied by the merger.
+	mergedByKey := make(map[string]model.MergedContact)
+	for _, mc := range result.Merged {
+		if len(mc.MergedFrom) > 1 {
+			sorted := make([]int, len(mc.MergedFrom))
+			copy(sorted, mc.MergedFrom)
+			sort.Ints(sorted)
+			key := fmt.Sprintf("%v", sorted)
+			mergedByKey[key] = mc
+		}
+	}
 
 	// Build merge decisions
 	for _, cluster := range result.Clusters {
@@ -110,20 +124,31 @@ func Generate(
 			})
 		} else {
 			conflicts := findConflicts(contacts, cluster.Indices)
-			// Use iCloud-priority base selection, matching merger logic
-			resultIdx := cluster.Indices[0]
-			for _, idx := range cluster.Indices {
-				if contacts[idx].Parsed.Source == model.SourceICloud {
-					resultIdx = idx
-					break
+			// Derive ResultName from the actual merged contact (which has
+			// passthrough-fill applied), falling back to iCloud-priority selection.
+			sorted := make([]int, len(cluster.Indices))
+			copy(sorted, cluster.Indices)
+			sort.Ints(sorted)
+			key := fmt.Sprintf("%v", sorted)
+			resultName := ""
+			if mc, ok := mergedByKey[key]; ok {
+				resultName = contactName(mc.Contact)
+			} else {
+				resultIdx := cluster.Indices[0]
+				for _, idx := range cluster.Indices {
+					if contacts[idx].Parsed.Source == model.SourceICloud {
+						resultIdx = idx
+						break
+					}
 				}
+				resultName = contactName(contacts[resultIdx].Parsed)
 			}
 			report.Merged = append(report.Merged, model.MergeDecision{
 				ClusterID:  clusterID,
 				Score:      bestScore,
 				Contacts:   refs,
 				Conflicts:  conflicts,
-				ResultName: contactName(contacts[resultIdx].Parsed),
+				ResultName: resultName,
 			})
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	vcard "github.com/emersion/go-vcard"
@@ -127,9 +128,14 @@ func contactToCard(mc model.MergedContact) vcard.Card {
 		card.Add(vcard.FieldPhoto, field)
 	}
 
-	// Extra fields (passthrough)
-	for key, vals := range c.Extra {
-		for _, v := range vals {
+	// Extra fields (passthrough) — sort keys for deterministic output
+	extraKeys := make([]string, 0, len(c.Extra))
+	for key := range c.Extra {
+		extraKeys = append(extraKeys, key)
+	}
+	sort.Strings(extraKeys)
+	for _, key := range extraKeys {
+		for _, v := range c.Extra[key] {
 			card.Add(key, &vcard.Field{Value: v})
 		}
 	}
