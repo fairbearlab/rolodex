@@ -1,0 +1,40 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Smith;Robert;;;
+FN:Robert Smith
+EMAIL;TYPE=HOME:bob@gmail.com
+TEL;TYPE=CELL:+1 (555) 123-4567
+ORG:Acme Corp
+TITLE:Engineer
+BDAY:1985-03-15
+ADR;TYPE=HOME:;;123 Main St;Springfield;IL;62701;US
+NOTE:Old college friend
+URL:https://bobsmith.com
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Johnson;Alice;;;
+FN:Alice Johnson
+EMAIL;TYPE=WORK:alice@company.com
+TEL;TYPE=CELL:(555) 987-6543
+ORG:BigCo
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Williams;Charlie;;;
+FN:Charlie Williams
+EMAIL;TYPE=HOME:charlie@example.com
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Chen;Wei;;;
+FN:Wei Chen
+EMAIL;TYPE=WORK:wei@startup.io
+TEL;TYPE=CELL:555-111-2222
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Garcia;Maria;;;
+FN:Maria Garcia
+TEL;TYPE=HOME:555-333-4444
+END:VCARD

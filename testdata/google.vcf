@@ -1,0 +1,43 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Smith;Bob;;;
+FN:Bob Smith
+EMAIL;TYPE=HOME:bob@gmail.com
+EMAIL;TYPE=WORK:robert.smith@acme.com
+TEL;TYPE=CELL:15551234567
+ORG:Acme Corp
+TITLE:Senior Engineer
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Johnson;Alice;;;
+FN:Alice Johnson
+EMAIL;TYPE=WORK:alice@company.com
+EMAIL;TYPE=HOME:alice.j@gmail.com
+TEL;TYPE=CELL:5559876543
+ORG:BigCo
+TITLE:Product Manager
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Brown;David;;;
+FN:David Brown
+EMAIL;TYPE=HOME:dave@example.com
+TEL;TYPE=CELL:555-222-3333
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Chen;Wei;;;
+FN:Wei Chen
+EMAIL;TYPE=WORK:wei@startup.io
+TEL;TYPE=CELL:555-111-2222
+ORG:StartupCo
+TITLE:CTO
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Garcia;Maria;;;
+FN:Maria Garcia
+TEL;TYPE=CELL:555-333-4444
+EMAIL;TYPE=HOME:maria.g@gmail.com
+END:VCARD

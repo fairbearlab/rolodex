@@ -1,5 +1,5 @@
 # Binaries
-rolodex
+/rolodex
 *.exe
 dist/
 
