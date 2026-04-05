@@ -207,7 +207,11 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		}
 		if base.FamilyName == "" && c.FamilyName != "" {
 			base.FamilyName = c.FamilyName
+		}
+		if base.GivenName == "" && c.GivenName != "" {
 			base.GivenName = c.GivenName
+		}
+		if base.MiddleName == "" && c.MiddleName != "" {
 			base.MiddleName = c.MiddleName
 		}
 		if base.Org == "" && c.Org != "" {

@@ -83,6 +83,14 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 		}
 	}
 
+	// Validate that all review contacts were accounted for — if the report
+	// has fewer clusters than review.vcf, the unreferenced contacts would be
+	// silently dropped.
+	if reviewIdx < len(reviewContacts) {
+		return fmt.Errorf("review.vcf has %d contacts but report only references %d — %d contacts would be lost",
+			len(reviewContacts), reviewIdx, len(reviewContacts)-reviewIdx)
+	}
+
 	if mergeCount > 0 {
 		fmt.Printf("Merged %d review clusters\n", mergeCount)
 	}
@@ -189,7 +197,11 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		}
 		if base.FamilyName == "" && c.FamilyName != "" {
 			base.FamilyName = c.FamilyName
+		}
+		if base.GivenName == "" && c.GivenName != "" {
 			base.GivenName = c.GivenName
+		}
+		if base.MiddleName == "" && c.MiddleName != "" {
 			base.MiddleName = c.MiddleName
 		}
 		if base.Org == "" && c.Org != "" {
@@ -234,6 +246,11 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 			}
 		}
 	}
+
+	// Drop review-only extension fields — the user resolved this cluster,
+	// so it should not carry stale review/score tags in the output.
+	delete(base.Extra, "X-ROLODEX-REVIEW")
+	delete(base.Extra, "X-ROLODEX-SCORE")
 
 	// Rebuild email/phone slices with deterministic ordering
 	base.Emails = make([]model.Email, 0, len(emailSet))
