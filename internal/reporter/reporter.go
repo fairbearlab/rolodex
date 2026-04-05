@@ -1,0 +1,194 @@
+package reporter
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/fairbearlabs/rolodex/internal/merger"
+	"github.com/fairbearlabs/rolodex/internal/model"
+)
+
+// Generate creates a JSON report from the merge result.
+func Generate(
+	contacts []model.NormalizedContact,
+	result merger.Result,
+	icloudCount, googleCount int,
+	warnings []model.Warning,
+) model.Report {
+	report := model.Report{
+		Summary: model.ReportSummary{
+			ICloudTotal:   icloudCount,
+			GoogleTotal:   googleCount,
+			WarningCount:  len(warnings),
+		},
+		Warnings: warnings,
+	}
+
+	// Count auto-merged vs review vs distinct
+	autoMergedCount := 0
+	reviewCount := 0
+	distinctCount := 0
+
+	for _, mc := range result.Merged {
+		if len(mc.MergedFrom) > 1 {
+			autoMergedCount++
+		} else {
+			distinctCount++
+		}
+	}
+	reviewCount = len(result.Review)
+
+	report.Summary.AutoMerged = autoMergedCount
+	report.Summary.ReviewCount = reviewCount
+	report.Summary.DistinctCount = distinctCount
+
+	// Build merge decisions
+	for _, cluster := range result.Clusters {
+		if len(cluster.Indices) <= 1 {
+			continue
+		}
+
+		// Find the best score in the cluster
+		bestScore := 0.0
+		for _, p := range cluster.Pairs {
+			if p.Score > bestScore {
+				bestScore = p.Score
+			}
+		}
+
+		clusterID := merger.ClusterID(contacts, cluster.Indices)
+
+		// Check if this cluster is auto_merge or review
+		isReview := false
+		for _, p := range cluster.Pairs {
+			if p.Tier == model.TierReview {
+				isReview = true
+				break
+			}
+		}
+
+		refs := make([]model.ContactRef, len(cluster.Indices))
+		for i, idx := range cluster.Indices {
+			refs[i] = model.ContactRef{
+				Source: contacts[idx].Parsed.Source,
+				Name:   contactName(contacts[idx].Parsed),
+				Index:  idx,
+			}
+		}
+
+		if isReview {
+			ambiguity := describeAmbiguity(contacts, cluster)
+			report.Review = append(report.Review, model.ReviewDecision{
+				ClusterID: clusterID,
+				Score:     bestScore,
+				Contacts:  refs,
+				Ambiguity: ambiguity,
+				Decision:  "pending",
+			})
+		} else {
+			conflicts := findConflicts(contacts, cluster.Indices)
+			report.Merged = append(report.Merged, model.MergeDecision{
+				ClusterID:  clusterID,
+				Score:      bestScore,
+				Contacts:   refs,
+				Conflicts:  conflicts,
+				ResultName: contactName(contacts[cluster.Indices[0]].Parsed),
+			})
+		}
+	}
+
+	// Distinct entries
+	for _, mc := range result.Merged {
+		if len(mc.MergedFrom) == 1 {
+			report.Distinct = append(report.Distinct, model.DistinctEntry{
+				Source: mc.Sources[0],
+				Name:   contactName(mc.Contact),
+			})
+		}
+	}
+
+	return report
+}
+
+// WriteFile writes the report as JSON.
+func WriteFile(path string, report model.Report) error {
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling report: %w", err)
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func contactName(c model.ParsedContact) string {
+	if c.FormattedName != "" {
+		return c.FormattedName
+	}
+	name := strings.TrimSpace(c.GivenName + " " + c.FamilyName)
+	if name != "" {
+		return name
+	}
+	if len(c.Emails) > 0 {
+		return c.Emails[0].Address
+	}
+	if len(c.Phones) > 0 {
+		return c.Phones[0].Number
+	}
+	return "(unknown)"
+}
+
+func describeAmbiguity(contacts []model.NormalizedContact, cluster model.Cluster) string {
+	if len(cluster.Pairs) == 0 {
+		return "contacts grouped by transitive connection but no direct pair scored"
+	}
+	var descriptions []string
+	for _, p := range cluster.Pairs {
+		nameA := contactName(contacts[p.A].Parsed)
+		nameB := contactName(contacts[p.B].Parsed)
+		descriptions = append(descriptions,
+			fmt.Sprintf("%q and %q scored %.2f (tier: %s)", nameA, nameB, p.Score, p.Tier))
+	}
+	return strings.Join(descriptions, "; ")
+}
+
+func findConflicts(contacts []model.NormalizedContact, indices []int) []model.Conflict {
+	if len(indices) < 2 {
+		return nil
+	}
+
+	var conflicts []model.Conflict
+	// Compare first iCloud contact with first non-iCloud
+	var icloud, other *model.ParsedContact
+	for _, idx := range indices {
+		c := &contacts[idx].Parsed
+		if c.Source == model.SourceICloud && icloud == nil {
+			icloud = c
+		} else if c.Source != model.SourceICloud && other == nil {
+			other = c
+		}
+	}
+
+	if icloud == nil || other == nil {
+		return nil
+	}
+
+	check := func(field, a, b string) {
+		if a != b && a != "" && b != "" {
+			conflicts = append(conflicts, model.Conflict{
+				Field:       field,
+				ICloudValue: a,
+				GoogleValue: b,
+				Winner:      "icloud",
+			})
+		}
+	}
+
+	check("FN", icloud.FormattedName, other.FormattedName)
+	check("ORG", icloud.Org, other.Org)
+	check("TITLE", icloud.Title, other.Title)
+	check("BDAY", icloud.Birthday, other.Birthday)
+	check("NOTE", icloud.Note, other.Note)
+
+	return conflicts
+}
