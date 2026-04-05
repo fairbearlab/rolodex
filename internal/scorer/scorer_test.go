@@ -3,7 +3,7 @@ package scorer
 import (
 	"testing"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 func makeContact(given, family string, emails []string, phones []string, org string) model.NormalizedContact {

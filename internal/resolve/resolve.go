@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
-	"github.com/fairbearlabs/rolodex/internal/parser"
-	"github.com/fairbearlabs/rolodex/internal/writer"
+	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/parser"
+	"github.com/fairbearlab/rolodex/internal/writer"
 )
 
 // Run reads an edited report.json, applies decisions to review.vcf contacts,
@@ -24,13 +25,13 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 	}
 
 	// Read merged.vcf
-	mergedContacts, _, err := parser.ParseFile(mergedPath, model.SourceICloud)
+	mergedContacts, _, err := parser.ParseFile(mergedPath, "merged")
 	if err != nil {
 		return fmt.Errorf("reading merged contacts: %w", err)
 	}
 
 	// Read review.vcf
-	reviewContacts, _, err := parser.ParseFile(reviewPath, model.SourceICloud)
+	reviewContacts, _, err := parser.ParseFile(reviewPath, "review")
 	if err != nil {
 		return fmt.Errorf("reading review contacts: %w", err)
 	}
@@ -44,20 +45,32 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 		})
 	}
 
-	// Apply review decisions
-	// Build a map of review cluster decisions
-	decisions := make(map[string]string) // cluster_id -> decision
+	// Build set of contact names that the user decided to merge
+	mergeNames := make(map[string]bool)
+	skipCount := 0
 	for _, rd := range report.Review {
-		decisions[rd.ClusterID] = rd.Decision
+		if rd.Decision == "merge" {
+			for _, ref := range rd.Contacts {
+				mergeNames[normalizeRefName(ref.Name)] = true
+			}
+		}
 	}
 
-	// For each review contact, check if it should be included
+	// Include review contacts whose name matches a "merge" decision
 	for _, c := range reviewContacts {
-		// Check the X-ROLODEX-REVIEW field
-		output = append(output, model.MergedContact{
-			Contact: c,
-			Sources: []model.Source{c.Source},
-		})
+		name := normalizeRefName(contactName(c))
+		if mergeNames[name] {
+			output = append(output, model.MergedContact{
+				Contact: c,
+				Sources: []model.Source{c.Source},
+			})
+		} else {
+			skipCount++
+		}
+	}
+
+	if skipCount > 0 {
+		fmt.Printf("Skipped %d review contacts (decision: skip/pending)\n", skipCount)
 	}
 
 	// Write output
@@ -67,4 +80,22 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 
 	fmt.Printf("Resolved %d contacts → %s\n", len(output), outPath)
 	return nil
+}
+
+func contactName(c model.ParsedContact) string {
+	if c.FormattedName != "" {
+		return c.FormattedName
+	}
+	name := strings.TrimSpace(c.GivenName + " " + c.FamilyName)
+	if name != "" {
+		return name
+	}
+	if len(c.Emails) > 0 {
+		return c.Emails[0].Address
+	}
+	return ""
+}
+
+func normalizeRefName(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
 }

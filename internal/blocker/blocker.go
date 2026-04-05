@@ -3,7 +3,7 @@ package blocker
 import (
 	"strings"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 const maxLastNameBlockSize = 50

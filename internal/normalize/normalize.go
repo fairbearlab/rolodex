@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 var (

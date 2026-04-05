@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 func TestParseBasicContact(t *testing.T) {

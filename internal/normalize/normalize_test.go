@@ -3,7 +3,7 @@ package normalize
 import (
 	"testing"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 func TestNormalizeName(t *testing.T) {

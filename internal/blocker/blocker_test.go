@@ -3,7 +3,7 @@ package blocker
 import (
 	"testing"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 func TestBlockByEmail(t *testing.T) {

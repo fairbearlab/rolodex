@@ -10,7 +10,7 @@ import (
 
 	vcard "github.com/emersion/go-vcard"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 // ParseFile reads a .vcf file and returns parsed contacts.
@@ -60,14 +60,7 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 
 	// Structured name (N field)
 	if names := card[vcard.FieldName]; len(names) > 0 {
-		n := names[0]
-		c.FamilyName = n.Value
-		if len(n.Params) > 0 || strings.Contains(n.Value, ";") {
-			// go-vcard returns structured name components
-		}
 		// The N field has components: family;given;middle;prefix;suffix
-		// go-vcard splits on ; and puts them in the Value field
-		// We need to handle this properly
 		parts := splitN(names[0])
 		c.FamilyName = parts[0]
 		c.GivenName = parts[1]

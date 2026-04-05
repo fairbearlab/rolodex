@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fairbearlabs/rolodex/internal/merger"
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/merger"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 // Generate creates a JSON report from the merge result.

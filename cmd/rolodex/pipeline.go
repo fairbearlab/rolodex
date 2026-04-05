@@ -3,15 +3,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/fairbearlabs/rolodex/internal/blocker"
-	"github.com/fairbearlabs/rolodex/internal/merger"
-	"github.com/fairbearlabs/rolodex/internal/model"
-	"github.com/fairbearlabs/rolodex/internal/normalize"
-	"github.com/fairbearlabs/rolodex/internal/parser"
-	"github.com/fairbearlabs/rolodex/internal/reporter"
-	resolveCmd "github.com/fairbearlabs/rolodex/internal/resolve"
-	"github.com/fairbearlabs/rolodex/internal/scorer"
-	"github.com/fairbearlabs/rolodex/internal/writer"
+	"github.com/fairbearlab/rolodex/internal/blocker"
+	"github.com/fairbearlab/rolodex/internal/merger"
+	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
+	"github.com/fairbearlab/rolodex/internal/parser"
+	"github.com/fairbearlab/rolodex/internal/reporter"
+	resolveCmd "github.com/fairbearlab/rolodex/internal/resolve"
+	"github.com/fairbearlab/rolodex/internal/scorer"
+	"github.com/fairbearlab/rolodex/internal/writer"
 )
 
 func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error {

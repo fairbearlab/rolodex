@@ -3,10 +3,11 @@ package merger
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
 	"strings"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
-	"github.com/fairbearlabs/rolodex/internal/normalize"
+	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 // Result holds the output of the merge stage.
@@ -35,13 +36,19 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 		pairMap[[2]int{a, b}] = p
 	}
 
-	// Get clusters
+	// Get clusters with deterministic ordering
 	groups := uf.clusters()
+	roots := make([]int, 0, len(groups))
+	for root := range groups {
+		roots = append(roots, root)
+	}
+	sort.Ints(roots)
 
 	var result Result
 	merged := make(map[int]bool)
 
-	for _, members := range groups {
+	for _, root := range roots {
+		members := groups[root]
 		if len(members) == 1 {
 			continue // no merge candidate, handled below as distinct
 		}
@@ -49,7 +56,6 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 		// Collect all pairs in this cluster
 		cluster := model.Cluster{Indices: members}
 		allAutoMerge := true
-		anyReview := false
 		minScore := 1.0
 
 		for i := 0; i < len(members); i++ {
@@ -64,7 +70,6 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 						minScore = p.Score
 					}
 					if p.Tier == model.TierReview {
-						anyReview = true
 						allAutoMerge = false
 					} else if p.Tier == model.TierDistinct {
 						allAutoMerge = false
@@ -87,8 +92,9 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 			// Merge all contacts in the cluster
 			mc := mergeCluster(contacts, members, minScore)
 			result.Merged = append(result.Merged, mc)
-		} else if anyReview {
-			// Put all contacts in review
+		} else {
+			// Cluster has review-tier pairs, unscored cross-pairs, or mixed tiers.
+			// Put all contacts in review for human decision.
 			for _, idx := range members {
 				result.Review = append(result.Review, model.MergedContact{
 					Contact:    contacts[idx].Parsed,
@@ -118,8 +124,12 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 
 // ClusterID generates a stable content-hash ID for a cluster.
 func ClusterID(contacts []model.NormalizedContact, indices []int) string {
+	// Sort indices for deterministic hash regardless of union-find traversal order
+	sorted := make([]int, len(indices))
+	copy(sorted, indices)
+	sort.Ints(sorted)
 	var parts []string
-	for _, idx := range indices {
+	for _, idx := range sorted {
 		c := contacts[idx].Parsed
 		parts = append(parts, fmt.Sprintf("%s:%s:%s",
 			c.Source, c.FamilyName, c.GivenName))
@@ -243,15 +253,21 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		}
 	}
 
-	// Rebuild email/phone slices
+	// Rebuild email/phone slices with deterministic ordering
 	base.Emails = make([]model.Email, 0, len(emailSet))
 	for _, e := range emailSet {
 		base.Emails = append(base.Emails, e)
 	}
+	sort.Slice(base.Emails, func(i, j int) bool {
+		return base.Emails[i].Address < base.Emails[j].Address
+	})
 	base.Phones = make([]model.Phone, 0, len(phoneSet))
 	for _, p := range phoneSet {
 		base.Phones = append(base.Phones, p)
 	}
+	sort.Slice(base.Phones, func(i, j int) bool {
+		return base.Phones[i].Number < base.Phones[j].Number
+	})
 
 	return model.MergedContact{
 		Contact:    base,

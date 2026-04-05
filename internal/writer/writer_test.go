@@ -7,7 +7,7 @@ import (
 
 	vcard "github.com/emersion/go-vcard"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 func TestWriteBasicContact(t *testing.T) {

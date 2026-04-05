@@ -5,7 +5,7 @@ import (
 
 	"github.com/xrash/smetrics"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 const (
@@ -156,8 +156,8 @@ func sharedPhone(a, b model.NormalizedContact) bool {
 }
 
 func sharedOrg(a, b model.NormalizedContact) bool {
-	orgA := a.Parsed.Org
-	orgB := b.Parsed.Org
+	orgA := strings.ToLower(strings.TrimSpace(a.Parsed.Org))
+	orgB := strings.ToLower(strings.TrimSpace(b.Parsed.Org))
 	return orgA != "" && orgB != "" && orgA == orgB
 }
 

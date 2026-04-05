@@ -9,7 +9,7 @@ import (
 
 	vcard "github.com/emersion/go-vcard"
 
-	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/model"
 )
 
 // WriteFile writes merged contacts to a .vcf file.

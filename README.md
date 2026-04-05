@@ -5,10 +5,10 @@ A CLI tool that merges and deduplicates vCard (.vcf) files. Fix your contacts at
 ## Install
 
 ```
-go install github.com/fairbearlabs/rolodex/cmd/rolodex@latest
+go install github.com/fairbearlab/rolodex/cmd/rolodex@latest
 ```
 
-Or download a binary from [Releases](https://github.com/fairbearlabs/rolodex/releases).
+Or download a binary from [Releases](https://github.com/fairbearlab/rolodex/releases).
 
 ## Usage
 
