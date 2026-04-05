@@ -1,0 +1,262 @@
+package merger
+
+import (
+	"crypto/sha256"
+	"fmt"
+	"strings"
+
+	"github.com/fairbearlabs/rolodex/internal/model"
+	"github.com/fairbearlabs/rolodex/internal/normalize"
+)
+
+// Result holds the output of the merge stage.
+type Result struct {
+	Merged  []model.MergedContact // auto-merged, confident
+	Review  []model.MergedContact // review-tier, needs human eyes
+	Clusters []model.Cluster       // cluster info for reporting
+}
+
+// Merge takes normalized contacts and scored pairs, clusters them via union-find,
+// validates all pairs within each cluster, and produces merged output.
+func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result {
+	n := len(contacts)
+	uf := newUnionFind(n)
+
+	// Build pair lookup by indices
+	pairMap := make(map[[2]int]model.ScoredPair)
+	for _, p := range pairs {
+		a, b := p.A, p.B
+		if a > b {
+			a, b = b, a
+		}
+		if p.Tier != model.TierDistinct {
+			uf.union(a, b)
+		}
+		pairMap[[2]int{a, b}] = p
+	}
+
+	// Get clusters
+	groups := uf.clusters()
+
+	var result Result
+	merged := make(map[int]bool)
+
+	for _, members := range groups {
+		if len(members) == 1 {
+			continue // no merge candidate, handled below as distinct
+		}
+
+		// Collect all pairs in this cluster
+		cluster := model.Cluster{Indices: members}
+		allAutoMerge := true
+		anyReview := false
+		minScore := 1.0
+
+		for i := 0; i < len(members); i++ {
+			for j := i + 1; j < len(members); j++ {
+				a, b := members[i], members[j]
+				if a > b {
+					a, b = b, a
+				}
+				if p, ok := pairMap[[2]int{a, b}]; ok {
+					cluster.Pairs = append(cluster.Pairs, p)
+					if p.Score < minScore {
+						minScore = p.Score
+					}
+					if p.Tier == model.TierReview {
+						anyReview = true
+						allAutoMerge = false
+					} else if p.Tier == model.TierDistinct {
+						allAutoMerge = false
+					}
+				} else {
+					// Pair wasn't scored (not blocked together) — treat as distinct.
+					// This invalidates the cluster for auto-merge.
+					allAutoMerge = false
+				}
+			}
+		}
+
+		result.Clusters = append(result.Clusters, cluster)
+
+		for _, idx := range members {
+			merged[idx] = true
+		}
+
+		if allAutoMerge {
+			// Merge all contacts in the cluster
+			mc := mergeCluster(contacts, members, minScore)
+			result.Merged = append(result.Merged, mc)
+		} else if anyReview {
+			// Put all contacts in review
+			for _, idx := range members {
+				result.Review = append(result.Review, model.MergedContact{
+					Contact:    contacts[idx].Parsed,
+					Sources:    []model.Source{contacts[idx].Parsed.Source},
+					Score:      minScore,
+					MergedFrom: members,
+					ReviewFlag: true,
+				})
+			}
+		}
+	}
+
+	// Add distinct contacts (not part of any merge/review cluster)
+	for i, c := range contacts {
+		if !merged[i] {
+			result.Merged = append(result.Merged, model.MergedContact{
+				Contact:    c.Parsed,
+				Sources:    []model.Source{c.Parsed.Source},
+				Score:      0,
+				MergedFrom: []int{i},
+			})
+		}
+	}
+
+	return result
+}
+
+// ClusterID generates a stable content-hash ID for a cluster.
+func ClusterID(contacts []model.NormalizedContact, indices []int) string {
+	var parts []string
+	for _, idx := range indices {
+		c := contacts[idx].Parsed
+		parts = append(parts, fmt.Sprintf("%s:%s:%s",
+			c.Source, c.FamilyName, c.GivenName))
+	}
+	h := sha256.Sum256([]byte(strings.Join(parts, "|")))
+	return fmt.Sprintf("%x", h[:8])
+}
+
+// mergeCluster merges all contacts in a cluster with iCloud priority.
+func mergeCluster(contacts []model.NormalizedContact, indices []int, score float64) model.MergedContact {
+	// Find iCloud contact (priority source) and others
+	var icloudIdx int = -1
+	for _, idx := range indices {
+		if contacts[idx].Parsed.Source == model.SourceICloud {
+			icloudIdx = idx
+			break
+		}
+	}
+
+	// Start with priority source, or first contact if no iCloud
+	var base model.ParsedContact
+	if icloudIdx >= 0 {
+		base = contacts[icloudIdx].Parsed
+	} else {
+		base = contacts[indices[0]].Parsed
+	}
+
+	// Collect all sources
+	var sources []model.Source
+	sourceSet := make(map[model.Source]bool)
+	for _, idx := range indices {
+		s := contacts[idx].Parsed.Source
+		if !sourceSet[s] {
+			sourceSet[s] = true
+			sources = append(sources, s)
+		}
+	}
+
+	// Union multi-value fields from all contacts
+	emailSet := make(map[string]model.Email)
+	phoneSet := make(map[string]model.Phone)
+
+	// Add base emails/phones first (iCloud labels win for dupes)
+	for _, e := range base.Emails {
+		key := normalize.Email(e.Address)
+		emailSet[key] = e
+	}
+	for _, p := range base.Phones {
+		key := normalize.Phone(p.Number)
+		phoneSet[key] = p
+	}
+
+	// Union from other contacts
+	for _, idx := range indices {
+		c := contacts[idx].Parsed
+		if c.Source == base.Source && idx == icloudIdx {
+			continue
+		}
+		for _, e := range c.Emails {
+			key := normalize.Email(e.Address)
+			if _, exists := emailSet[key]; !exists {
+				emailSet[key] = e
+			}
+		}
+		for _, p := range c.Phones {
+			key := normalize.Phone(p.Number)
+			if _, exists := phoneSet[key]; !exists {
+				phoneSet[key] = p
+			}
+		}
+
+		// Passthrough: fill empty single-value fields from non-priority source
+		if base.FormattedName == "" && c.FormattedName != "" {
+			base.FormattedName = c.FormattedName
+		}
+		if base.FamilyName == "" && c.FamilyName != "" {
+			base.FamilyName = c.FamilyName
+			base.GivenName = c.GivenName
+			base.MiddleName = c.MiddleName
+		}
+		if base.Org == "" && c.Org != "" {
+			base.Org = c.Org
+		}
+		if base.Title == "" && c.Title != "" {
+			base.Title = c.Title
+		}
+		if base.Birthday == "" && c.Birthday != "" {
+			base.Birthday = c.Birthday
+		}
+		if base.Note == "" && c.Note != "" {
+			base.Note = c.Note
+		}
+		if base.URL == "" && c.URL != "" {
+			base.URL = c.URL
+		}
+		if len(base.Photo) == 0 && len(c.Photo) > 0 {
+			base.Photo = c.Photo
+			base.PhotoType = c.PhotoType
+		}
+
+		// Union addresses by type
+		addrTypes := make(map[string]bool)
+		for _, a := range base.Addresses {
+			addrTypes[a.Type] = true
+		}
+		for _, a := range c.Addresses {
+			if !addrTypes[a.Type] {
+				base.Addresses = append(base.Addresses, a)
+				addrTypes[a.Type] = true
+			}
+		}
+
+		// Union extra fields
+		if base.Extra == nil {
+			base.Extra = make(map[string][]string)
+		}
+		for k, vals := range c.Extra {
+			if _, exists := base.Extra[k]; !exists {
+				base.Extra[k] = vals
+			}
+		}
+	}
+
+	// Rebuild email/phone slices
+	base.Emails = make([]model.Email, 0, len(emailSet))
+	for _, e := range emailSet {
+		base.Emails = append(base.Emails, e)
+	}
+	base.Phones = make([]model.Phone, 0, len(phoneSet))
+	for _, p := range phoneSet {
+		base.Phones = append(base.Phones, p)
+	}
+
+	return model.MergedContact{
+		Contact:    base,
+		Sources:    sources,
+		Score:      score,
+		MergedFrom: indices,
+	}
+}
