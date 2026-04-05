@@ -26,9 +26,8 @@ func Generate(
 		Warnings: warnings,
 	}
 
-	// Count auto-merged vs review vs distinct
+	// Count auto-merged vs distinct from merge results
 	autoMergedCount := 0
-	reviewCount := 0
 	distinctCount := 0
 
 	for _, mc := range result.Merged {
@@ -38,11 +37,10 @@ func Generate(
 			distinctCount++
 		}
 	}
-	reviewCount = len(result.Review)
 
 	report.Summary.AutoMerged = autoMergedCount
-	report.Summary.ReviewCount = reviewCount
 	report.Summary.DistinctCount = distinctCount
+	// ReviewCount is set after building report.Review (counts clusters, not contacts)
 
 	// Build merge decisions
 	for _, cluster := range result.Clusters {
@@ -60,14 +58,37 @@ func Generate(
 
 		clusterID := merger.ClusterID(contacts, cluster.Indices)
 
-		// Check if this cluster is auto_merge or review
-		isReview := false
-		for _, p := range cluster.Pairs {
-			if p.Tier == model.TierReview {
-				isReview = true
-				break
+		// Check if this cluster is auto_merge or review.
+		// Must replicate the merger's logic: a cluster is review if any pair
+		// is TierReview, TierDistinct, or if any cross-pair is unscored.
+		allAutoMerge := true
+		for i := 0; i < len(cluster.Indices); i++ {
+			for j := i + 1; j < len(cluster.Indices); j++ {
+				a, b := cluster.Indices[i], cluster.Indices[j]
+				if a > b {
+					a, b = b, a
+				}
+				found := false
+				for _, p := range cluster.Pairs {
+					pa, pb := p.A, p.B
+					if pa > pb {
+						pa, pb = pb, pa
+					}
+					if pa == a && pb == b {
+						found = true
+						if p.Tier == model.TierReview || p.Tier == model.TierDistinct {
+							allAutoMerge = false
+						}
+						break
+					}
+				}
+				if !found {
+					// Unscored cross-pair
+					allAutoMerge = false
+				}
 			}
 		}
+		isReview := !allAutoMerge
 
 		refs := make([]model.ContactRef, len(cluster.Indices))
 		for i, idx := range cluster.Indices {
@@ -89,15 +110,26 @@ func Generate(
 			})
 		} else {
 			conflicts := findConflicts(contacts, cluster.Indices)
+			// Use iCloud-priority base selection, matching merger logic
+			resultIdx := cluster.Indices[0]
+			for _, idx := range cluster.Indices {
+				if contacts[idx].Parsed.Source == model.SourceICloud {
+					resultIdx = idx
+					break
+				}
+			}
 			report.Merged = append(report.Merged, model.MergeDecision{
 				ClusterID:  clusterID,
 				Score:      bestScore,
 				Contacts:   refs,
 				Conflicts:  conflicts,
-				ResultName: contactName(contacts[cluster.Indices[0]].Parsed),
+				ResultName: contactName(contacts[resultIdx].Parsed),
 			})
 		}
 	}
+
+	// Set ReviewCount to number of review clusters (not individual contacts)
+	report.Summary.ReviewCount = len(report.Review)
 
 	// Distinct entries
 	for _, mc := range result.Merged {

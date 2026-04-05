@@ -1,6 +1,7 @@
 package blocker
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/fairbearlab/rolodex/internal/model"
@@ -53,11 +54,17 @@ func Block(contacts []model.NormalizedContact) [][2]int {
 		}
 	}
 
-	// Convert set to slice
+	// Convert set to slice with deterministic ordering
 	pairs := make([][2]int, 0, len(pairSet))
 	for p := range pairSet {
 		pairs = append(pairs, p)
 	}
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i][0] != pairs[j][0] {
+			return pairs[i][0] < pairs[j][0]
+		}
+		return pairs[i][1] < pairs[j][1]
+	})
 	return pairs
 }
 
