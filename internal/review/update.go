@@ -94,16 +94,12 @@ func (m ReviewModel) decide(choice string) (tea.Model, tea.Cmd) {
 
 	// Log calibration entry
 	if m.CalLog != nil {
-		viewStr := "compact"
-		if decision.ViewMode == ViewDetailed {
-			viewStr = "detailed"
-		}
 		_ = m.CalLog.Append(calibration.Entry{
 			ClusterID:      c.ClusterID,
 			Decision:       choice,
 			Score:          c.Decision.Score,
 			Features:       c.Features,
-			ViewMode:       viewStr,
+			ViewMode:       decision.ViewMode.String(),
 			DecisionTimeMs: elapsed,
 			Timestamp:      time.Now(),
 		})
@@ -158,7 +154,7 @@ func (m ReviewModel) undo() (tea.Model, tea.Cmd) {
 			Decision:       "undo",
 			Score:          c.Decision.Score,
 			Features:       c.Features,
-			ViewMode:       "compact",
+			ViewMode:       last.ViewMode.String(),
 			DecisionTimeMs: 0,
 			Timestamp:      time.Now(),
 		})

@@ -47,7 +47,6 @@ func (m ReviewModel) View() string {
 
 	c := m.CurrentCluster()
 	if c == nil {
-		m.Done = true
 		return renderSummaryView(m)
 	}
 

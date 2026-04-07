@@ -19,6 +19,14 @@ const (
 	ViewDetailed
 )
 
+// String returns the view mode as a string for calibration logging.
+func (v ViewMode) String() string {
+	if v == ViewDetailed {
+		return "detailed"
+	}
+	return "compact"
+}
+
 // ReviewCluster holds everything needed to render and decide on one review-tier cluster.
 type ReviewCluster struct {
 	ClusterID string

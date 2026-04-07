@@ -83,16 +83,12 @@ func calEntriesFromDecisions(m ReviewModel) []calibration.Entry {
 	var entries []calibration.Entry
 	for _, d := range m.Decisions {
 		c := m.Clusters[d.ClusterIndex]
-		viewStr := "compact"
-		if d.ViewMode == ViewDetailed {
-			viewStr = "detailed"
-		}
 		entries = append(entries, calibration.Entry{
 			ClusterID:      c.ClusterID,
 			Decision:       d.Choice,
 			Score:          c.Decision.Score,
 			Features:       c.Features,
-			ViewMode:       viewStr,
+			ViewMode:       d.ViewMode.String(),
 			DecisionTimeMs: d.DecisionMs,
 			Timestamp:      d.Timestamp,
 		})

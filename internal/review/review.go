@@ -88,7 +88,6 @@ func writeReport(path string, report any) error {
 	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		return fmt.Errorf("writing report: %w", err)
 	}
-	os.Remove(path)
 	if err := os.Rename(tmpPath, path); err != nil {
 		os.Remove(tmpPath)
 		return fmt.Errorf("renaming report: %w", err)
