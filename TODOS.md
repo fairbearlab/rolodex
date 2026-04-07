@@ -14,17 +14,17 @@
 **Priority:** P1
 **Depends on:** Scorer implementation
 
-### Interactive CLI resolve command
+### Interactive CLI resolve command (IN PROGRESS — Phase 2)
 
-**What:** `rolodex review --report report.json` walks through each review-tier pair interactively, showing contacts side by side with merge/skip prompts.
+**What:** `rolodex review --report report.json --review review.vcf` walks through each review-tier pair interactively via BubbleTea TUI, with adaptive pacing, undo stack, and calibration logging.
 
 **Why:** The report-driven resolve (edit JSON, run resolve) works but requires hand-editing JSON. An interactive walkthrough is much better UX for reviewing 10-50 flagged pairs.
 
-**Context:** Phase 1 ships the report-driven resolve command. Both workflows write decisions to the same report.json format, so the outputs are identical. The interactive command is a UX layer on top of the same resolve logic. May require a TUI library or at minimum formatted terminal output + stdin prompts.
+**Context:** Design reviewed by /plan-eng-review on 2026-04-07. Key decisions: simplified CLI (--report + --review only), shared loader extracted from resolve, separate internal/calibration/ package, replay-based calibration analysis, stable sort with cluster_id tie-breaker. Full test plan: 35 tests + fuzz. See design doc: adamboulware-main-design-20260406-220455.md.
 
 **Effort:** M
-**Priority:** P2
-**Depends on:** resolve command (Phase 1)
+**Priority:** P1 (active)
+**Depends on:** resolve command (Phase 1) ✓
 
 ### Per-field provenance tracking
 
@@ -37,5 +37,31 @@
 **Effort:** M
 **Priority:** P3
 **Depends on:** Merge stage must be stable first
+
+## Review UX
+
+### Re-merge detection
+
+**What:** Add a guard to the merge command that detects an existing report.json with non-pending decisions before overwriting.
+
+**Why:** Silent loss of review progress is the worst failure mode in the Phase 2 flow. If the user runs `rolodex merge` again while a review session is in progress, report.json gets overwritten and all decisions are lost with no warning.
+
+**Context:** Both review and resolve commands depend on report.json. The simplest guard: merge checks if report.json exists, parses it, and if any ReviewDecision has decision != "pending", prompts "Report has N reviewed decisions. Overwrite? [y/N]". A `--force` flag bypasses the prompt.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Phase 2 shipped
+
+### Threshold override flags on merge command
+
+**What:** Add `--auto-merge-threshold` and `--review-threshold` flags to `rolodex merge` to override the hardcoded 0.85/0.60 thresholds.
+
+**Why:** Phase 2's calibration suggestions tell the user "your effective threshold should be X" but there's no way to act on it. These flags close the feedback loop.
+
+**Context:** ThresholdAutoMerge=0.85 and ThresholdReview=0.60 are constants in model/contact.go:96-98. Flags would override them per-run. The calibration end-of-session summary already generates the suggested values.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Phase 2 shipped (calibration data exists)
 
 ## Completed
