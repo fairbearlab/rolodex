@@ -28,6 +28,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
+	case "review":
+		if err := runReview(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	case "version":
 		fmt.Printf("rolodex v%s\n", strings.TrimSpace(version))
 	default:
@@ -42,6 +47,7 @@ func printUsage() {
 
 Commands:
   merge    Merge and deduplicate vCard files
+  review   Interactively review uncertain matches
   resolve  Apply review decisions from an edited report
   version  Print version
 
@@ -65,6 +71,22 @@ func runMerge(args []string) error {
 	}
 
 	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath)
+}
+
+func runReview(args []string) error {
+	fs := flag.NewFlagSet("review", flag.ExitOnError)
+	reportPath := fs.String("report", "", "path to report.json")
+	reviewPath := fs.String("review", "", "path to review.vcf")
+	calibrationPath := fs.String("calibration", "", "output path for calibration log (default: alongside report.json)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if *reportPath == "" || *reviewPath == "" {
+		return fmt.Errorf("--report and --review flags are required")
+	}
+
+	return reviewInteractive(*reportPath, *reviewPath, *calibrationPath)
 }
 
 func runResolve(args []string) error {
