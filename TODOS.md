@@ -14,18 +14,6 @@
 **Priority:** P1
 **Depends on:** Scorer implementation
 
-### Interactive CLI resolve command (IN PROGRESS — Phase 2)
-
-**What:** `rolodex review --report report.json --review review.vcf` walks through each review-tier pair interactively via BubbleTea TUI, with adaptive pacing, undo stack, and calibration logging.
-
-**Why:** The report-driven resolve (edit JSON, run resolve) works but requires hand-editing JSON. An interactive walkthrough is much better UX for reviewing 10-50 flagged pairs.
-
-**Context:** Design reviewed by /plan-eng-review on 2026-04-07. Key decisions: simplified CLI (--report + --review only), shared loader extracted from resolve, separate internal/calibration/ package, replay-based calibration analysis, stable sort with cluster_id tie-breaker. Full test plan: 35 tests + fuzz. See design doc: adamboulware-main-design-20260406-220455.md.
-
-**Effort:** M
-**Priority:** P1 (active)
-**Depends on:** resolve command (Phase 1) ✓
-
 ### Per-field provenance tracking
 
 **What:** For merged contacts, track which source each field came from. Example: in report.json, `"name": {"value": "Bob Smith", "source": "icloud"}, "emails": [{"value": "bob@gmail.com", "source": "google"}]`.
@@ -65,3 +53,8 @@
 **Depends on:** Phase 2 shipped (calibration data exists)
 
 ## Completed
+
+### Interactive CLI review command
+
+**What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
+**Completed:** v0.2.0.0 (2026-04-07)
