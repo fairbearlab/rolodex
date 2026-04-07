@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fairbearlab/rolodex/internal/blocker"
 	"github.com/fairbearlab/rolodex/internal/merger"
@@ -71,12 +72,15 @@ func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error
 		return fmt.Errorf("writing merged output: %w", err)
 	}
 
-	// Stage 7: Write review.vcf
+	// Stage 7: Write review.vcf (always write to avoid stale files from prior runs)
 	if len(result.Review) > 0 {
 		fmt.Printf("Writing %d review contacts → %s\n", len(result.Review), reviewPath)
 		if err := writer.WriteFile(reviewPath, result.Review); err != nil {
 			return fmt.Errorf("writing review output: %w", err)
 		}
+	} else {
+		// Remove any stale review.vcf from a previous run
+		os.Remove(reviewPath)
 	}
 
 	// Stage 8: Report

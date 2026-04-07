@@ -39,6 +39,8 @@ func WriteFile(path string, contacts []model.MergedContact) error {
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
 	}
 
+	// Remove existing file first — os.Rename doesn't overwrite on Windows
+	os.Remove(path)
 	if err := os.Rename(tmpPath, path); err != nil {
 		os.Remove(tmpPath)
 		return fmt.Errorf("renaming %s to %s: %w", tmpPath, path, err)
