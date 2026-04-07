@@ -24,19 +24,20 @@ const (
 func Score(contacts []model.NormalizedContact, pairs [][2]int) []model.ScoredPair {
 	result := make([]model.ScoredPair, 0, len(pairs))
 	for _, p := range pairs {
-		score := scorePair(contacts[p[0]], contacts[p[1]])
+		score, features := scorePair(contacts[p[0]], contacts[p[1]])
 		tier := classify(score)
 		result = append(result, model.ScoredPair{
-			A:     p[0],
-			B:     p[1],
-			Score: score,
-			Tier:  tier,
+			A:        p[0],
+			B:        p[1],
+			Score:    score,
+			Tier:     tier,
+			Features: features,
 		})
 	}
 	return result
 }
 
-func scorePair(a, b model.NormalizedContact) float64 {
+func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 	nameA := a.NormalizedGivenName
 	nameB := b.NormalizedGivenName
 	hasName := nameA != "" && nameB != ""
@@ -74,7 +75,13 @@ func scorePair(a, b model.NormalizedContact) float64 {
 		if matchCount < 2 && score >= model.ThresholdAutoMerge {
 			score = model.ThresholdAutoMerge - 0.01
 		}
-		return score
+		features := model.ScoreFeatures{
+			NameSimilarity: 0,
+			SharedEmail:    emailMatch,
+			SharedPhone:    phoneMatch,
+			SharedOrg:      orgMatch,
+		}
+		return score, features
 	}
 
 	// Score name similarity with nickname expansion
@@ -104,7 +111,13 @@ func scorePair(a, b model.NormalizedContact) float64 {
 	if score > 1.0 {
 		score = 1.0
 	}
-	return score
+	features := model.ScoreFeatures{
+		NameSimilarity: nameSim,
+		SharedEmail:    emailMatch,
+		SharedPhone:    phoneMatch,
+		SharedOrg:      orgMatch,
+	}
+	return score, features
 }
 
 func nameSimilarity(a, b string) float64 {

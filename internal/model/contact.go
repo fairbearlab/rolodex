@@ -76,12 +76,21 @@ type NormalizedContact struct {
 	NormalizedPhones     []string // digits only
 }
 
+// ScoreFeatures holds per-feature scores for a scored pair.
+type ScoreFeatures struct {
+	NameSimilarity float64 `json:"name_similarity"`
+	SharedEmail    bool    `json:"shared_email"`
+	SharedPhone    bool    `json:"shared_phone"`
+	SharedOrg      bool    `json:"shared_org"`
+}
+
 // ScoredPair represents a candidate match between two contacts.
 type ScoredPair struct {
-	A     int     // index into contact slice
-	B     int     // index into contact slice
-	Score float64 // 0.0 to 1.0
-	Tier  Tier
+	A        int           // index into contact slice
+	B        int           // index into contact slice
+	Score    float64       // 0.0 to 1.0
+	Tier     Tier
+	Features ScoreFeatures // per-feature breakdown
 }
 
 type Tier string
