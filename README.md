@@ -25,9 +25,21 @@ This produces:
 - **review.vcf** -- uncertain matches that need your eyes (review tier, score 0.60-0.85)
 - **report.json** -- every merge decision explained with confidence scores
 
+### Review
+
+Interactively review uncertain matches in your terminal:
+
+```
+rolodex review --report report.json --review review.vcf
+```
+
+The TUI walks through each review-tier pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip, `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress, so you can quit with `q` and resume later.
+
+At the end of a session, you get threshold suggestions based on your decisions, so future merges can auto-handle more pairs.
+
 ### Resolve
 
-After reviewing report.json, edit the `decision` field on review-tier entries ("merge" or "skip"), then apply:
+After reviewing (interactively or by editing report.json), apply decisions:
 
 ```
 rolodex resolve --report report.json --review review.vcf --merged merged.vcf --out final.vcf
