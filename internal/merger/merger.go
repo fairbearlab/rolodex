@@ -258,14 +258,22 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 			}
 		}
 
-		// Union extra fields
+		// Union extra fields (append unique values for shared keys)
 		if base.Extra == nil {
 			base.Extra = make(map[string][]string)
 		}
 		for k, vals := range c.Extra {
-			if _, exists := base.Extra[k]; !exists {
-				base.Extra[k] = vals
+			existing := base.Extra[k]
+			seen := make(map[string]bool, len(existing))
+			for _, v := range existing {
+				seen[v] = true
 			}
+			for _, v := range vals {
+				if !seen[v] {
+					existing = append(existing, v)
+				}
+			}
+			base.Extra[k] = existing
 		}
 	}
 

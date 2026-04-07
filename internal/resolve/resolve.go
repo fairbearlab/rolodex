@@ -56,6 +56,9 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 	mergeCount := 0
 	for _, rd := range report.Review {
 		clusterSize := len(rd.Contacts)
+		if clusterSize == 0 {
+			return fmt.Errorf("review cluster %s has zero contacts — report.json may be corrupt", rd.ClusterID)
+		}
 		if reviewIdx+clusterSize > len(reviewContacts) {
 			return fmt.Errorf("report references more review contacts than exist in review.vcf")
 		}
@@ -257,14 +260,22 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 			}
 		}
 
-		// Union extra fields
+		// Union extra fields (append unique values for shared keys)
 		if base.Extra == nil {
 			base.Extra = make(map[string][]string)
 		}
 		for k, vals := range c.Extra {
-			if _, exists := base.Extra[k]; !exists {
-				base.Extra[k] = vals
+			existing := base.Extra[k]
+			seen := make(map[string]bool, len(existing))
+			for _, v := range existing {
+				seen[v] = true
 			}
+			for _, v := range vals {
+				if !seen[v] {
+					existing = append(existing, v)
+				}
+			}
+			base.Extra[k] = existing
 		}
 	}
 
