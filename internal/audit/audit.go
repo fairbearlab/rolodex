@@ -42,6 +42,12 @@ func Audit(contacts []model.ParsedContact, opts AuditOptions) AuditResult {
 		hasTitle := c.Title != ""
 		hasAddress := len(c.Addresses) > 0
 
+		// Contacts with only a name (no org, title, or address) are
+		// low-signal noise. Skip them unless --include-names-only is set.
+		if !opts.IncludeNamesOnly && !hasOrg && !hasTitle && !hasAddress {
+			continue
+		}
+
 		name := contactName(c)
 
 		result.Unreachable = append(result.Unreachable, UnreachableContact{

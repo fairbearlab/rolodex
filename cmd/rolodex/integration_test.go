@@ -113,20 +113,24 @@ func TestRunNoReviewFastPath(t *testing.T) {
 	// Create two VCFs with no overlapping contacts (no review pairs)
 	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
 	googleVCF := filepath.Join(tmpDir, "google.vcf")
-	os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
+	if err := os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Unique;Alice;;;
 FN:Alice Unique
 EMAIL:alice@example.com
 END:VCARD
-`), 0644)
-	os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write iCloud test VCF: %v", err)
+	}
+	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Different;Bob;;;
 FN:Bob Different
 EMAIL:bob@example.com
 END:VCARD
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("failed to write Google test VCF: %v", err)
+	}
 
 	outPath := filepath.Join(tmpDir, "final.vcf")
 	err := run(icloudVCF, googleVCF, outPath, "", false)
@@ -148,23 +152,29 @@ func TestRunKeepIntermediates(t *testing.T) {
 
 	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
 	googleVCF := filepath.Join(tmpDir, "google.vcf")
-	os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
+	if err := os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:One;Person;;;
 FN:Person One
 EMAIL:one@example.com
 END:VCARD
-`), 0644)
-	os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write iCloud test VCF: %v", err)
+	}
+	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Two;Person;;;
 FN:Person Two
 EMAIL:two@example.com
 END:VCARD
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("failed to write Google test VCF: %v", err)
+	}
 
 	outDir := filepath.Join(tmpDir, "out")
-	os.MkdirAll(outDir, 0755)
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("failed to create output directory: %v", err)
+	}
 	outPath := filepath.Join(outDir, "final.vcf")
 	err := run(icloudVCF, googleVCF, outPath, "", true)
 	if err != nil {
@@ -183,20 +193,24 @@ func TestRunReportSaved(t *testing.T) {
 
 	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
 	googleVCF := filepath.Join(tmpDir, "google.vcf")
-	os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
+	if err := os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Solo;Han;;;
 FN:Han Solo
 EMAIL:han@falcon.com
 END:VCARD
-`), 0644)
-	os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write iCloud test VCF: %v", err)
+	}
+	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Skywalker;Luke;;;
 FN:Luke Skywalker
 EMAIL:luke@jedi.com
 END:VCARD
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("failed to write Google test VCF: %v", err)
+	}
 
 	outPath := filepath.Join(tmpDir, "final.vcf")
 	reportPath := filepath.Join(tmpDir, "report.json")
@@ -220,24 +234,36 @@ END:VCARD
 }
 
 func TestRunTempDirCleanup(t *testing.T) {
+	// Capture pre-existing temp dirs to avoid flaky matches from
+	// other tests or prior runs.
+	before, _ := filepath.Glob(filepath.Join(os.TempDir(), "rolodex-run-*"))
+	beforeSet := make(map[string]bool, len(before))
+	for _, e := range before {
+		beforeSet[e] = true
+	}
+
 	tmpDir := t.TempDir()
 
 	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
 	googleVCF := filepath.Join(tmpDir, "google.vcf")
-	os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
+	if err := os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Test;Cleanup;;;
 FN:Cleanup Test
 EMAIL:clean@test.com
 END:VCARD
-`), 0644)
-	os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write iCloud test VCF: %v", err)
+	}
+	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Test;Other;;;
 FN:Other Test
 EMAIL:other@test.com
 END:VCARD
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("failed to write Google test VCF: %v", err)
+	}
 
 	outPath := filepath.Join(tmpDir, "final.vcf")
 	err := run(icloudVCF, googleVCF, outPath, "", false)
@@ -245,10 +271,12 @@ END:VCARD
 		t.Fatalf("run failed: %v", err)
 	}
 
-	// Verify no rolodex-run-* temp dirs remain in the OS temp directory
+	// Verify no new rolodex-run-* temp dirs were left behind
 	entries, _ := filepath.Glob(filepath.Join(os.TempDir(), "rolodex-run-*"))
 	for _, e := range entries {
-		t.Errorf("temp dir not cleaned up: %s", e)
+		if !beforeSet[e] {
+			t.Errorf("temp dir not cleaned up: %s", e)
+		}
 	}
 }
 
@@ -281,12 +309,14 @@ func TestAuditMissingFile(t *testing.T) {
 func TestAuditInvalidFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	vcf := filepath.Join(tmpDir, "test.vcf")
-	os.WriteFile(vcf, []byte(`BEGIN:VCARD
+	if err := os.WriteFile(vcf, []byte(`BEGIN:VCARD
 VERSION:3.0
 N:Test;User;;;
 FN:Test User
 END:VCARD
-`), 0644)
+`), 0644); err != nil {
+		t.Fatalf("failed to write test VCF: %v", err)
+	}
 
 	err := runAuditCmd(vcf, "csv", false)
 	if err == nil {

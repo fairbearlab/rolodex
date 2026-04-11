@@ -34,7 +34,16 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	if err != nil {
 		return fmt.Errorf("creating temp directory: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	// Clean up temp dir only on success; preserve on error so review
+	// decisions in report.json and review.vcf can be recovered.
+	succeeded := false
+	defer func() {
+		if succeeded {
+			os.RemoveAll(tempDir)
+		} else {
+			fmt.Fprintf(os.Stderr, "\nTemp workspace preserved: %s\n", tempDir)
+		}
+	}()
 
 	tempMergedPath := filepath.Join(tempDir, "merged.vcf")
 	tempReviewPath := filepath.Join(tempDir, "review.vcf")
@@ -60,7 +69,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 			return fmt.Errorf("writing review contacts: %w", err)
 		}
 
-		fmt.Printf("%d uncertain matches need review. Launching review...\n\n", pr.ReviewCount)
+		fmt.Printf("%d contacts need review. Launching review...\n\n", len(result.Review))
 
 		if err := reviewCmd.Run(tempReportPath, tempReviewPath, tempCalibrationPath); err != nil {
 			return fmt.Errorf("review: %w", err)
@@ -132,6 +141,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 		}
 	}
 
+	succeeded = true
 	fmt.Println("Done.")
 	return nil
 }

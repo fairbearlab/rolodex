@@ -79,7 +79,13 @@ func runAuditCmdFlags(args []string) error {
 	fs := flag.NewFlagSet("audit", flag.ExitOnError)
 	format := fs.String("format", "text", "output format: text or json")
 	namesOnly := fs.Bool("include-names-only", false, "also flag contacts with only a name")
-	if err := fs.Parse(args); err != nil {
+
+	// Reorder args so flags precede the positional file path.
+	// flag.FlagSet stops at the first non-flag token, so
+	// "audit file.vcf --format json" would silently ignore --format.
+	reordered := reorderFlagsBeforePositional(args, fs)
+
+	if err := fs.Parse(reordered); err != nil {
 		return err
 	}
 	if fs.NArg() < 1 {
@@ -87,6 +93,34 @@ func runAuditCmdFlags(args []string) error {
 	}
 
 	return runAuditCmd(fs.Arg(0), *format, *namesOnly)
+}
+
+// reorderFlagsBeforePositional moves flag arguments (and their values) before
+// positional arguments so that flag.FlagSet.Parse works regardless of order.
+func reorderFlagsBeforePositional(args []string, fs *flag.FlagSet) []string {
+	var flags, positional []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, "-") {
+			positional = append(positional, a)
+			continue
+		}
+		flags = append(flags, a)
+		if strings.Contains(a, "=") {
+			continue
+		}
+		name := strings.TrimLeft(a, "-")
+		if f := fs.Lookup(name); f != nil {
+			if bf, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && bf.IsBoolFlag() {
+				continue
+			}
+			if i+1 < len(args) {
+				i++
+				flags = append(flags, args[i])
+			}
+		}
+	}
+	return append(flags, positional...)
 }
 
 func runMerge(args []string) error {
