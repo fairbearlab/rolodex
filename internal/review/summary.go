@@ -19,7 +19,12 @@ func renderSummaryView(m ReviewModel) string {
 	secs := int(elapsed.Seconds()) % 60
 
 	var lines []string
-	lines = append(lines, titleStyle.Render(" Review Complete"))
+	pending := m.PendingCount()
+	if pending > 0 {
+		lines = append(lines, titleStyle.Render(" Review Paused"))
+	} else {
+		lines = append(lines, titleStyle.Render(" Review Complete"))
+	}
 	lines = append(lines, "")
 	lines = append(lines, fmt.Sprintf("  %d pairs reviewed in %dm %ds", summary.TotalReviewed, mins, secs))
 	lines = append(lines, "")
@@ -61,7 +66,6 @@ func renderSummaryView(m ReviewModel) string {
 		}
 	}
 
-	pending := m.PendingCount()
 	lines = append(lines, "")
 	if pending > 0 {
 		lines = append(lines, fmt.Sprintf("  %d pairs still pending. Run `rolodex review` again to continue.", pending))
@@ -73,11 +77,15 @@ func renderSummaryView(m ReviewModel) string {
 	return borderStyle.Width(w).Render(content) + "\n"
 }
 
-// calEntriesFromDecisions builds calibration entries from the model's in-memory
-// decisions, used when the calibration log isn't available.
+// calEntriesFromDecisions builds calibration entries from the model's final
+// decisions. This keeps summaries accurate when resuming a review because the
+// calibration log may only contain entries from the current session.
 func calEntriesFromDecisions(m ReviewModel) []calibration.Entry {
-	if m.CalLog != nil {
-		return m.CalLog.Entries()
+	if len(m.Decisions) == 0 {
+		if m.CalLog != nil {
+			return m.CalLog.Entries()
+		}
+		return nil
 	}
 
 	var entries []calibration.Entry

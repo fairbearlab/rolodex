@@ -61,6 +61,7 @@ type ReviewModel struct {
 	PairStart    time.Time // when current pair was shown
 	ScrollOffset int       // for scrolling in detailed view
 	ReportPath   string    // path to report.json for persistence
+	LastError    error     // last persistence error, shown in status bar
 }
 
 // BuildClusters constructs ReviewClusters from a report and review contacts.

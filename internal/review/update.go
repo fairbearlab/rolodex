@@ -94,7 +94,7 @@ func (m ReviewModel) decide(choice string) (tea.Model, tea.Cmd) {
 
 	// Log calibration entry
 	if m.CalLog != nil {
-		_ = m.CalLog.Append(calibration.Entry{
+		if err := m.CalLog.Append(calibration.Entry{
 			ClusterID:      c.ClusterID,
 			Decision:       choice,
 			Score:          c.Decision.Score,
@@ -102,7 +102,9 @@ func (m ReviewModel) decide(choice string) (tea.Model, tea.Cmd) {
 			ViewMode:       decision.ViewMode.String(),
 			DecisionTimeMs: elapsed,
 			Timestamp:      time.Now(),
-		})
+		}); err != nil {
+			m.LastError = err
+		}
 	}
 
 	// Persist to report.json
@@ -149,7 +151,7 @@ func (m ReviewModel) undo() (tea.Model, tea.Cmd) {
 	// Log undo in calibration
 	if m.CalLog != nil {
 		c := &m.Clusters[last.ClusterIndex]
-		_ = m.CalLog.Append(calibration.Entry{
+		if err := m.CalLog.Append(calibration.Entry{
 			ClusterID:      c.ClusterID,
 			Decision:       "undo",
 			Score:          c.Decision.Score,
@@ -157,7 +159,9 @@ func (m ReviewModel) undo() (tea.Model, tea.Cmd) {
 			ViewMode:       last.ViewMode.String(),
 			DecisionTimeMs: 0,
 			Timestamp:      time.Now(),
-		})
+		}); err != nil {
+			m.LastError = err
+		}
 	}
 
 	// Persist the undo to report.json
@@ -185,6 +189,8 @@ func (m *ReviewModel) persistReport() {
 		}
 	}
 
-	// Use the reporter's atomic write
-	_ = writeReport(m.ReportPath, m.Report)
+	// Persist report atomically
+	if err := writeReport(m.ReportPath, m.Report); err != nil {
+		m.LastError = err
+	}
 }

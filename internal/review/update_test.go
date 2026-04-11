@@ -1,7 +1,6 @@
 package review
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -169,6 +168,3 @@ func TestScrollDetailedView(t *testing.T) {
 		t.Errorf("ScrollOffset = %d, want 0 (no negative scroll)", m.ScrollOffset)
 	}
 }
-
-// Silence unused import warning
-var _ = fmt.Sprintf

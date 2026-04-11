@@ -121,6 +121,10 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 	lines = append(lines, "")
 	lines = append(lines, renderKeybar())
 
+	if m.LastError != nil {
+		lines = append(lines, warningStyle.Render("  ! save error: "+m.LastError.Error()))
+	}
+
 	content := title + "\n\n" + strings.Join(lines, "\n")
 	return borderStyle.Width(w).Render(content) + "\n"
 }
@@ -175,18 +179,30 @@ func renderDetailed(m ReviewModel, c *ReviewCluster) string {
 
 	content := title + "\n\n" + body.String()
 
+	if m.LastError != nil {
+		body.WriteString("\n")
+		body.WriteString(warningStyle.Render("  ! save error: " + m.LastError.Error()))
+	}
+
 	// Apply scroll offset for long content
 	lines := strings.Split(content, "\n")
 	maxVisible := m.Height - 6
 	if maxVisible < 10 {
 		maxVisible = 10
 	}
-	if len(lines) > maxVisible && m.ScrollOffset > 0 {
+	if len(lines) > maxVisible {
 		offset := m.ScrollOffset
+		if offset < 0 {
+			offset = 0
+		}
 		if offset > len(lines)-maxVisible {
 			offset = len(lines) - maxVisible
 		}
-		lines = lines[offset:]
+		end := offset + maxVisible
+		if end > len(lines) {
+			end = len(lines)
+		}
+		lines = lines[offset:end]
 	}
 
 	return borderStyle.Width(w).Render(strings.Join(lines, "\n")) + "\n"
@@ -242,23 +258,36 @@ func renderContactCard(c model.ParsedContact, w int) string {
 
 func renderScoreBreakdown(c *ReviewCluster) string {
 	f := c.Features
+	nameless := f.NameSimilarity == 0 && !hasDisplayName(c)
+
 	var lines []string
 	lines = append(lines, "  "+labelStyle.Render("Score breakdown:"))
 
-	nameLabel := fmt.Sprintf("    Name:  %.2f", f.NameSimilarity)
-	lines = append(lines, fmt.Sprintf("%-36s x0.40", nameLabel))
+	if nameless {
+		lines = append(lines, "    "+labelStyle.Render("(nameless contacts — name weight redistributed)"))
+	} else {
+		nameLabel := fmt.Sprintf("    Name:  %.2f", f.NameSimilarity)
+		lines = append(lines, fmt.Sprintf("%-36s x0.40", nameLabel))
+	}
+
+	emailWeight := "x0.25"
+	phoneWeight := "x0.25"
+	if nameless {
+		emailWeight = "x0.45"
+		phoneWeight = "x0.45"
+	}
 
 	emailVal := "0.00 (no shared emails)"
 	if f.SharedEmail {
 		emailVal = "1.00 (shared email)"
 	}
-	lines = append(lines, fmt.Sprintf("    Email: %-28s x0.25", emailVal))
+	lines = append(lines, fmt.Sprintf("    Email: %-28s %s", emailVal, emailWeight))
 
 	phoneVal := "0.00 (no shared phones)"
 	if f.SharedPhone {
 		phoneVal = "1.00 (shared phone)"
 	}
-	lines = append(lines, fmt.Sprintf("    Phone: %-28s x0.25", phoneVal))
+	lines = append(lines, fmt.Sprintf("    Phone: %-28s %s", phoneVal, phoneWeight))
 
 	orgVal := "0.00 (no shared org)"
 	if f.SharedOrg {
@@ -267,6 +296,16 @@ func renderScoreBreakdown(c *ReviewCluster) string {
 	lines = append(lines, fmt.Sprintf("    Org:   %-28s x0.10", orgVal))
 
 	return strings.Join(lines, "\n")
+}
+
+// hasDisplayName returns true if any contact in the cluster has a visible name.
+func hasDisplayName(c *ReviewCluster) bool {
+	for _, contact := range c.Contacts {
+		if contact.FormattedName != "" || contact.GivenName != "" || contact.FamilyName != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func renderKeybar() string {
@@ -363,11 +402,12 @@ func truncate(s string, maxLen int) string {
 	if maxLen <= 0 {
 		return ""
 	}
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
 	if maxLen <= 3 {
-		return s[:maxLen]
+		return string(runes[:maxLen])
 	}
-	return s[:maxLen-3] + "..."
+	return string(runes[:maxLen-3]) + "..."
 }
