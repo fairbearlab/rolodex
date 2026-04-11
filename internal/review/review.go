@@ -13,18 +13,19 @@ import (
 	"github.com/fairbearlab/rolodex/internal/resolve"
 )
 
-// Run launches the interactive review TUI.
-func Run(reportPath, reviewPath, calibrationPath string) error {
+// Run launches the interactive review TUI. It returns true if all clusters
+// were resolved, false if the user paused with pending decisions.
+func Run(reportPath, reviewPath, calibrationPath string) (bool, error) {
 	loaded, err := resolve.LoadReportAndReview(reportPath, reviewPath)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	report := loaded.Report
 
 	if len(report.Review) == 0 {
 		fmt.Println("Nothing to review — all pairs were auto-merged or distinct.")
-		return nil
+		return true, nil
 	}
 
 	clusters := BuildClusters(report, loaded.ReviewContacts)
@@ -38,7 +39,7 @@ func Run(reportPath, reviewPath, calibrationPath string) error {
 	}
 	if pending == 0 {
 		fmt.Println("All review clusters already have decisions. Run `rolodex resolve` to apply them.")
-		return nil
+		return true, nil
 	}
 
 	// Set up calibration log
@@ -48,7 +49,7 @@ func Run(reportPath, reviewPath, calibrationPath string) error {
 	}
 	calLog, err := calibration.NewLog(calibrationPath)
 	if err != nil {
-		return fmt.Errorf("setting up calibration log: %w", err)
+		return false, fmt.Errorf("setting up calibration log: %w", err)
 	}
 	defer calLog.Close()
 
@@ -65,17 +66,23 @@ func Run(reportPath, reviewPath, calibrationPath string) error {
 	// Advance to first pending cluster
 	if !m.AdvanceToNextPending() {
 		fmt.Println("All review clusters already have decisions.")
-		return nil
+		return true, nil
 	}
 
 	fmt.Printf("Reviewing %d pending pairs (of %d total)...\n\n", pending, len(clusters))
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		return fmt.Errorf("running review TUI: %w", err)
+	finalModel, err := p.Run()
+	if err != nil {
+		return false, fmt.Errorf("running review TUI: %w", err)
 	}
 
-	return nil
+	// Check if all clusters were resolved or user paused early
+	if fm, ok := finalModel.(ReviewModel); ok {
+		return fm.PendingCount() == 0, nil
+	}
+
+	return false, nil
 }
 
 // writeReport atomically writes report.json.

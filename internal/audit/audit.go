@@ -12,6 +12,7 @@ type AuditResult struct {
 	Total            int
 	UnreachableCount int
 	Unreachable      []UnreachableContact
+	Warnings         []model.Warning
 }
 
 // UnreachableContact describes a contact that cannot be reached.

@@ -6,11 +6,12 @@ import (
 	"strings"
 
 	"github.com/fairbearlab/rolodex/internal/audit"
+	"github.com/fairbearlab/rolodex/internal/model"
 	"github.com/fairbearlab/rolodex/internal/parser"
 )
 
 func runAuditCmd(vcfPath, format string, includeNamesOnly bool) error {
-	contacts, _, err := parser.ParseFile(vcfPath, "audit")
+	contacts, warnings, err := parser.ParseFile(vcfPath, model.SourceUnknown)
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", vcfPath, err)
 	}
@@ -18,6 +19,7 @@ func runAuditCmd(vcfPath, format string, includeNamesOnly bool) error {
 	result := audit.Audit(contacts, audit.AuditOptions{
 		IncludeNamesOnly: includeNamesOnly,
 	})
+	result.Warnings = warnings
 
 	switch format {
 	case "json":
@@ -32,17 +34,24 @@ func runAuditCmd(vcfPath, format string, includeNamesOnly bool) error {
 
 func printAuditJSON(result audit.AuditResult) error {
 	type jsonOutput struct {
-		Total            int                       `json:"total"`
-		UnreachableCount int                       `json:"unreachable_count"`
+		Total            int                        `json:"total"`
+		UnreachableCount int                        `json:"unreachable_count"`
 		Unreachable      []audit.UnreachableContact `json:"unreachable"`
+		WarningCount     int                        `json:"warning_count"`
+		Warnings         []model.Warning            `json:"warnings"`
 	}
 	out := jsonOutput{
 		Total:            result.Total,
 		UnreachableCount: result.UnreachableCount,
 		Unreachable:      result.Unreachable,
+		WarningCount:     len(result.Warnings),
+		Warnings:         result.Warnings,
 	}
 	if out.Unreachable == nil {
 		out.Unreachable = []audit.UnreachableContact{}
+	}
+	if out.Warnings == nil {
+		out.Warnings = []model.Warning{}
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -57,6 +66,15 @@ func printAuditText(result audit.AuditResult) {
 	fmt.Println("Contact Quality Audit")
 	fmt.Println(strings.Repeat("\u2501", 39))
 	fmt.Println()
+
+	if len(result.Warnings) > 0 {
+		fmt.Printf("Parse warnings: %d (malformed entries excluded from audit)\n", len(result.Warnings))
+		for _, w := range result.Warnings {
+			fmt.Printf("  - entry %d: %s\n", w.Index, w.Message)
+		}
+		fmt.Println()
+	}
+
 	fmt.Printf("Total contacts: %d\n", result.Total)
 	fmt.Printf("Unreachable (no email, no phone): %d\n", result.UnreachableCount)
 

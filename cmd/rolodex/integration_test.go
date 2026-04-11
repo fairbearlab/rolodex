@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -384,5 +385,86 @@ END:VCARD
 	err := run(icloudVCF, googleVCF, samePath, samePath, false)
 	if err == nil {
 		t.Error("expected error when --report and --out point to the same file")
+	}
+}
+
+func TestRunReportOverlapKeepIntermediates(t *testing.T) {
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "out")
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
+	googleVCF := filepath.Join(tmpDir, "google.vcf")
+	writeTestVCF(t, icloudVCF, "One", "one@example.com")
+	writeTestVCF(t, googleVCF, "Two", "two@example.com")
+
+	outPath := filepath.Join(outDir, "final.vcf")
+
+	// --report pointing to merged.vcf in the output dir should fail with --keep
+	err := run(icloudVCF, googleVCF, outPath, filepath.Join(outDir, "merged.vcf"), true)
+	if err == nil {
+		t.Error("expected error when --report collides with --keep merged.vcf")
+	}
+
+	// --report pointing to review.vcf in the output dir should fail with --keep
+	err = run(icloudVCF, googleVCF, outPath, filepath.Join(outDir, "review.vcf"), true)
+	if err == nil {
+		t.Error("expected error when --report collides with --keep review.vcf")
+	}
+
+	// Same paths should be fine without --keep
+	err = run(icloudVCF, googleVCF, outPath, filepath.Join(outDir, "merged.vcf"), false)
+	if err != nil {
+		t.Errorf("--report=merged.vcf without --keep should succeed: %v", err)
+	}
+}
+
+func TestRunKeepClearsStaleArtifacts(t *testing.T) {
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "out")
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
+	googleVCF := filepath.Join(tmpDir, "google.vcf")
+	writeTestVCF(t, icloudVCF, "One", "one@example.com")
+	writeTestVCF(t, googleVCF, "Two", "two@example.com")
+
+	outPath := filepath.Join(outDir, "final.vcf")
+
+	// Plant stale artifacts from a hypothetical previous --keep run
+	staleReview := filepath.Join(outDir, "review.vcf")
+	staleCal := filepath.Join(outDir, "calibration.jsonl")
+	if err := os.WriteFile(staleReview, []byte("STALE"), 0600); err != nil {
+		t.Fatalf("write stale review: %v", err)
+	}
+	if err := os.WriteFile(staleCal, []byte("STALE"), 0600); err != nil {
+		t.Fatalf("write stale calibration: %v", err)
+	}
+
+	// Run with --keep; this run has no review pairs, so review.vcf and
+	// calibration.jsonl should NOT be produced. The stale copies must be removed.
+	err := run(icloudVCF, googleVCF, outPath, "", true)
+	if err != nil {
+		t.Fatalf("run --keep failed: %v", err)
+	}
+
+	if _, err := os.Stat(staleReview); !os.IsNotExist(err) {
+		t.Error("stale review.vcf was not cleaned up by --keep")
+	}
+	if _, err := os.Stat(staleCal); !os.IsNotExist(err) {
+		t.Error("stale calibration.jsonl was not cleaned up by --keep")
+	}
+}
+
+// writeTestVCF writes a minimal single-contact VCF for testing.
+func writeTestVCF(t *testing.T, path, name, email string) {
+	t.Helper()
+	data := fmt.Sprintf("BEGIN:VCARD\nVERSION:3.0\nN:%s;Test;;;\nFN:Test %s\nEMAIL:%s\nEND:VCARD\n", name, name, email)
+	if err := os.WriteFile(path, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test VCF %s: %v", path, err)
 	}
 }

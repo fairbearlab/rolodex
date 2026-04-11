@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -37,6 +38,11 @@ func main() {
 		os.Exit(1)
 	}
 	if err != nil {
+		if errors.Is(err, ErrReviewPaused) {
+			// Review pause is not an error — the user intentionally quit
+			// with pending decisions. Messages already printed by run().
+			return
+		}
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

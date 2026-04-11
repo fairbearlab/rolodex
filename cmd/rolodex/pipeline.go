@@ -24,7 +24,6 @@ type PipelineResult struct {
 	ICloudCount int
 	GoogleCount int
 	AutoCount   int
-	ReviewCount int
 }
 
 // runPipeline executes the core merge pipeline (parse → normalize → block →
@@ -87,7 +86,6 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 		ICloudCount: len(icloudContacts),
 		GoogleCount: len(googleContacts),
 		AutoCount:   autoCount,
-		ReviewCount: reviewCount,
 	}, nil
 }
 
@@ -130,7 +128,8 @@ func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error
 }
 
 func reviewInteractive(reportPath, reviewPath, calibrationPath string) error {
-	return reviewCmd.Run(reportPath, reviewPath, calibrationPath)
+	_, err := reviewCmd.Run(reportPath, reviewPath, calibrationPath)
+	return err
 }
 
 func resolve(reportPath, reviewPath, mergedPath, outPath string) error {
