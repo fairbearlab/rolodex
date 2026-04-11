@@ -1,5 +1,29 @@
 # Changelog
 
+## \[0.3.0.0] - 2026-04-11
+
+One command to merge, review, and resolve your contacts. Plus a new audit command to find contacts you can't actually reach.
+
+### Added
+
+* **`rolodex run`** unifies the entire merge-review-resolve pipeline into a single command. Run `rolodex run --icloud X --google Y` and the tool handles everything: merges contacts, launches the TUI for uncertain matches, resolves decisions, and writes a clean `final.vcf`. No intermediate files to manage.
+* **`rolodex audit`** finds unreachable contacts missing both email and phone. Works on any VCF file. Text and JSON output formats.
+* **`--keep` flag** on `run` preserves intermediate files (merged.vcf, review.vcf, calibration.jsonl) alongside the output for debugging.
+* **`--report` flag** on `run` saves the full report.json to a specified path.
+* **Calibration data auto-saved** alongside output when the review TUI runs, so threshold tuning suggestions survive between sessions.
+
+### Changed
+
+* Extracted `runPipeline()` from `pipeline.go` so both `merge` and `run` share the same core logic without duplication.
+* Consolidated error handling in `main.go` to a single exit point.
+* Updated CLI help text to list `run` as the recommended workflow.
+
+### Fixed
+
+* Report and intermediate file copies now use `0600` permissions (matching the reporter package) instead of world-readable `0644`.
+* Output directory paths are validated before running the pipeline, preventing partial-success failures on bad `--report` paths.
+* Removed `has_email` and `has_phone` fields from audit JSON output (they were structurally always `false` for unreachable contacts).
+
 ## \[0.2.0.0] - 2026-04-07
 
 Interactive review command. Walk through uncertain matches one at a time in a terminal UI instead of hand-editing JSON.
