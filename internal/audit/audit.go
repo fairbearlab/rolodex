@@ -19,8 +19,6 @@ type UnreachableContact struct {
 	Name       string `json:"name"`
 	HasOrg     bool   `json:"has_org"`
 	HasAddress bool   `json:"has_address"`
-	HasEmail   bool   `json:"has_email"`
-	HasPhone   bool   `json:"has_phone"`
 	HasTitle   bool   `json:"has_title"`
 	Index      int    `json:"index"`
 }
@@ -50,8 +48,6 @@ func Audit(contacts []model.ParsedContact, opts AuditOptions) AuditResult {
 			Name:       name,
 			HasOrg:     hasOrg,
 			HasAddress: hasAddress,
-			HasEmail:   hasEmail,
-			HasPhone:   hasPhone,
 			HasTitle:   hasTitle,
 			Index:      i,
 		})

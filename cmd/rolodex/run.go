@@ -12,6 +12,16 @@ import (
 )
 
 func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) error {
+	// Validate output paths before running the pipeline
+	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+		return fmt.Errorf("creating output directory: %w", err)
+	}
+	if reportSavePath != "" {
+		if err := os.MkdirAll(filepath.Dir(reportSavePath), 0755); err != nil {
+			return fmt.Errorf("creating report directory: %w", err)
+		}
+	}
+
 	// Run the merge pipeline
 	pr, err := runPipeline(icloudPath, googlePath)
 	if err != nil {
@@ -81,10 +91,21 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 		if err != nil {
 			return fmt.Errorf("reading report: %w", err)
 		}
-		if err := os.WriteFile(reportSavePath, data, 0644); err != nil {
+		if err := os.WriteFile(reportSavePath, data, 0600); err != nil {
 			return fmt.Errorf("saving report: %w", err)
 		}
 		fmt.Printf("Report → %s\n", reportSavePath)
+	}
+
+	// Save calibration data alongside output if it was generated
+	if hasReview {
+		if calData, err := os.ReadFile(tempCalibrationPath); err == nil && len(calData) > 0 {
+			calDst := filepath.Join(filepath.Dir(outPath), "calibration.jsonl")
+			if err := os.WriteFile(calDst, calData, 0600); err != nil {
+				return fmt.Errorf("saving calibration: %w", err)
+			}
+			fmt.Printf("Calibration → %s\n", calDst)
+		}
 	}
 
 	// Copy intermediates if --keep
@@ -104,7 +125,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 				continue // file may not exist (e.g., no review.vcf when no review pairs)
 			}
 			dst := filepath.Join(outDir, f.name)
-			if err := os.WriteFile(dst, data, 0644); err != nil {
+			if err := os.WriteFile(dst, data, 0600); err != nil {
 				return fmt.Errorf("keeping %s: %w", f.name, err)
 			}
 			fmt.Printf("Kept %s\n", dst)

@@ -52,6 +52,18 @@
 **Priority:** P2
 **Depends on:** Phase 2 shipped (calibration data exists), Phase 3 shipped (run command exists)
 
+### Implement --include-names-only logic in audit
+
+**What:** The `--include-names-only` flag is wired in CLI and `AuditOptions` but `Audit()` never reads `opts.IncludeNamesOnly`. The flag is a no-op.
+
+**Why:** Users who pass the flag expect stricter filtering (also flag contacts with only a name, no email/phone/org). Currently they get identical output.
+
+**Context:** The flag should add a second filter: if `!hasEmail && !hasPhone && c.Org == ""` and `opts.IncludeNamesOnly` is true, flag the contact. The struct and CLI plumbing already exist.
+
+**Effort:** XS
+**Priority:** P1
+**Depends on:** Phase 3 shipped
+
 ### Stdout coupling in resolve.Run() and review.Run()
 
 **What:** Refactor `resolve.Run()` and `review.Run()` to accept an `io.Writer` (or quiet flag) for progress output instead of hardcoded `fmt.Printf` calls.
