@@ -12,41 +12,47 @@ Or download a binary from [Releases](https://github.com/fairbearlab/rolodex/rele
 
 ## Usage
 
-### Merge
+### Quick start
 
-Export your contacts as vCard 3.0 (.vcf) files from iCloud and Google, then merge. Both services export 3.0 by default.
+Export your contacts as vCard 3.0 (.vcf) files from iCloud and Google, then run:
 
 ```Shell
+rolodex run --icloud icloud.vcf --google google.vcf
+```
+
+This merges your contacts, drops you into a terminal UI for uncertain matches, resolves everything on exit, and writes a clean `final.vcf`. One command, done.
+
+Use `--report report.json` to save the full merge report, or `--keep` to preserve intermediate files alongside the output.
+
+### Audit
+
+Find contacts you can't actually reach (no email and no phone):
+
+```Shell
+rolodex audit contacts.vcf
+rolodex audit contacts.vcf --format json
+```
+
+Works on any VCF file, not just rolodex output.
+
+### Individual commands
+
+The `run` command wraps these three steps. You can also run them separately for more control:
+
+```Shell
+# Step 1: Merge
 rolodex merge --icloud icloud.vcf --google google.vcf --out merged.vcf --report report.json
-```
 
-This produces:
+# Step 2: Review uncertain matches interactively
+rolodex review --report report.json --review review.vcf
 
-* **merged.vcf** -- confidently merged contacts (auto-merge tier, score > 0.85)
-* **review\.vcf** -- uncertain matches that need your eyes (review tier, score 0.60-0.85)
-* **report.json** -- every merge decision explained with confidence scores
-
-### Review
-
-Interactively review uncertain matches in your terminal:
-
-```Shell
-rolodex review --report report.json --review review.vcf [--calibration cal.jsonl]
-```
-
-The TUI walks through each review-tier pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip, `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress, so you can quit with `q` and resume later.
-
-At the end of a session, you get threshold suggestions based on your decisions, so future merges can auto-handle more pairs. Decisions are also logged to a calibration JSONL file (default: alongside report.json) for analysis.
-
-### Resolve
-
-After reviewing (interactively or by editing report.json), apply decisions:
-
-```Shell
+# Step 3: Apply decisions
 rolodex resolve --report report.json --review review.vcf --merged merged.vcf --out final.vcf
 ```
 
-Import final.vcf back into iCloud or Google.
+The **review** TUI walks through each uncertain pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip, `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress.
+
+At the end of a session, you get threshold suggestions based on your decisions, so future merges can auto-handle more pairs.
 
 ### Version
 

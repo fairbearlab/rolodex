@@ -7,7 +7,9 @@ Rolodex is a Go CLI tool that merges and deduplicates vCard 3.0 files exported f
 ```text
 cmd/rolodex/
   main.go              CLI entry point, command routing
-  pipeline.go          Pipeline orchestration for merge/review/resolve
+  pipeline.go          Core merge pipeline (runPipeline), shared by merge and run
+  run.go               Unified workflow: merge → review → resolve in one command
+  audit.go             Contact quality audit (find unreachable contacts)
 internal/
   model/               Shared data types (ParsedContact, ScoredPair, Report, etc.)
   parser/              vCard 3.0 parsing
@@ -20,40 +22,50 @@ internal/
   review/              Interactive TUI for uncertain matches
   resolve/             Apply review decisions, write final output
   calibration/         Decision logging and threshold analysis
+  audit/               Contact quality checks (reachability)
 testdata/              Test fixtures (icloud.vcf, google.vcf)
 ```
 
 ## Data flow
 
-The tool has three commands that form a pipeline:
+The tool has five commands. The `run` command is the recommended workflow, wrapping merge/review/resolve into a single invocation:
 
 ```text
-                        merge command
-                        ============
+                          run command (unified)
+                          =====================
+
+  icloud.vcf ──┐
+                ├─→ runPipeline() ─→ temp dir ─→ TUI (if review pairs) ─→ resolve ─→ final.vcf
+  google.vcf ──┘                                                          └─→ calibration.jsonl
+
+                          audit command
+                          =============
+
+  any .vcf ──→ Parse ──→ Check reachability ──→ text/json report
+
+
+                     individual commands (merge → review → resolve)
+                     ==============================================
 
   icloud.vcf ──┐
                 ├─→ Parse → Normalize → Block → Score → Merge ─┬─→ merged.vcf
   google.vcf ──┘                                                ├─→ review.vcf
                                                                 └─→ report.json
 
-
-                       review command
-                       ==============
-
   report.json ──┐
                 ├─→ TUI (BubbleTea) ─┬─→ report.json (updated decisions)
   review.vcf  ──┘                    └─→ calibration.jsonl
-
-
-                       resolve command
-                       ===============
 
   report.json ──┐
   review.vcf  ──┼─→ Apply decisions ──→ final.vcf
   merged.vcf  ──┘
 ```
 
-**Typical workflow:** `merge` produces three files. `review` walks through uncertain matches interactively. `resolve` combines the confident merges with reviewed decisions into a single output file.
+**`run` command:** Manages a temp directory for intermediates, calls `runPipeline()` for the core merge logic, launches the TUI if there are review-tier pairs, then resolves automatically. Calibration data is saved alongside the output. The `--keep` flag preserves intermediates.
+
+**`audit` command:** Works on any VCF file independently. Flags contacts with no email and no phone as unreachable.
+
+**Individual commands:** `merge`, `review`, and `resolve` are still available for users who want granular control. Both `merge` and `run` call the shared `runPipeline()` function.
 
 ## Core types
 
@@ -132,6 +144,10 @@ Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if
 ### calibration
 
 Logs every review decision to a JSONL file with cluster ID, score, per-feature scores, view mode, decision, and response time. At the end of a review session, analyzes the log to suggest threshold adjustments — e.g., if the user merged everything above 0.78, suggests raising the auto-merge threshold accordingly.
+
+### audit
+
+Checks contact quality by scanning for unreachable contacts (no email and no phone). Takes `[]model.ParsedContact` and returns `AuditResult` with a list of `UnreachableContact` entries, each annotated with what the contact does have (org, title, address). Used by the `audit` CLI command.
 
 ## Key design decisions
 
