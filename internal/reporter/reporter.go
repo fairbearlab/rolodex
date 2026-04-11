@@ -62,11 +62,13 @@ func Generate(
 			continue
 		}
 
-		// Find the best score in the cluster
+		// Find the best-scoring pair in the cluster
 		bestScore := 0.0
+		var bestFeatures model.ScoreFeatures
 		for _, p := range cluster.Pairs {
 			if p.Score > bestScore {
 				bestScore = p.Score
+				bestFeatures = p.Features
 			}
 		}
 
@@ -119,6 +121,7 @@ func Generate(
 				ClusterID: clusterID,
 				Score:     bestScore,
 				Contacts:  refs,
+				Features:  bestFeatures,
 				Ambiguity: ambiguity,
 				Decision:  "pending",
 			})

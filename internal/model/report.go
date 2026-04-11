@@ -27,11 +27,12 @@ type MergeDecision struct {
 }
 
 type ReviewDecision struct {
-	ClusterID  string       `json:"cluster_id"`
-	Score      float64      `json:"score"`
-	Contacts   []ContactRef `json:"contacts"`
-	Ambiguity  string       `json:"ambiguity"`
-	Decision   string       `json:"decision"` // "pending", "merge", "skip"
+	ClusterID  string        `json:"cluster_id"`
+	Score      float64       `json:"score"`
+	Contacts   []ContactRef  `json:"contacts"`
+	Features   ScoreFeatures `json:"features,omitzero"`
+	Ambiguity  string        `json:"ambiguity"`
+	Decision   string        `json:"decision"` // "pending", "merge", "skip"
 }
 
 type DistinctEntry struct {

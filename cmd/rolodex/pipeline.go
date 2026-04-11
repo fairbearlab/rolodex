@@ -11,6 +11,7 @@ import (
 	"github.com/fairbearlab/rolodex/internal/parser"
 	"github.com/fairbearlab/rolodex/internal/reporter"
 	resolveCmd "github.com/fairbearlab/rolodex/internal/resolve"
+	reviewCmd "github.com/fairbearlab/rolodex/internal/review"
 	"github.com/fairbearlab/rolodex/internal/scorer"
 	"github.com/fairbearlab/rolodex/internal/writer"
 )
@@ -95,6 +96,10 @@ func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error
 
 	fmt.Println("Done.")
 	return nil
+}
+
+func reviewInteractive(reportPath, reviewPath, calibrationPath string) error {
+	return reviewCmd.Run(reportPath, reviewPath, calibrationPath)
 }
 
 func resolve(reportPath, reviewPath, mergedPath, outPath string) error {

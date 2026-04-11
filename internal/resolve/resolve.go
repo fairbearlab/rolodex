@@ -1,9 +1,7 @@
 package resolve
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -16,26 +14,18 @@ import (
 // Run reads an edited report.json, applies decisions to review.vcf contacts,
 // and writes the resolved contacts combined with merged.vcf to the output.
 func Run(reportPath, reviewPath, mergedPath, outPath string) error {
-	// Read report
-	reportData, err := os.ReadFile(reportPath)
+	// Load report and review contacts via shared loader
+	loaded, err := LoadReportAndReview(reportPath, reviewPath)
 	if err != nil {
-		return fmt.Errorf("reading report: %w", err)
+		return err
 	}
-	var report model.Report
-	if err := json.Unmarshal(reportData, &report); err != nil {
-		return fmt.Errorf("parsing report: %w", err)
-	}
+	report := loaded.Report
+	reviewContacts := loaded.ReviewContacts
 
 	// Read merged.vcf, restoring real provenance from X-ROLODEX-SOURCE
 	mergedContacts, _, err := parser.ParseFile(mergedPath, "merged")
 	if err != nil {
 		return fmt.Errorf("reading merged contacts: %w", err)
-	}
-
-	// Read review.vcf, restoring real provenance from X-ROLODEX-SOURCE
-	reviewContacts, _, err := parser.ParseFile(reviewPath, "review")
-	if err != nil {
-		return fmt.Errorf("reading review contacts: %w", err)
 	}
 
 	// Build output: start with all merged contacts (with restored provenance)
