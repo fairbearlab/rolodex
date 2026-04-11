@@ -59,7 +59,7 @@ func (m ReviewModel) View() string {
 }
 
 func renderCompact(m ReviewModel, c *ReviewCluster) string {
-	w := min(m.Width-4, 60)
+	w := max(min(m.Width-4, 60), 20)
 
 	// Header
 	header := fmt.Sprintf(" Review %d/%d", m.ResolvedCount()+1, len(m.Clusters))
@@ -126,7 +126,7 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 }
 
 func renderDetailed(m ReviewModel, c *ReviewCluster) string {
-	w := min(m.Width-4, 72)
+	w := max(min(m.Width-4, 72), 20)
 	cardW := (w - 7) / 2 // two cards with gap
 
 	// Header
@@ -360,8 +360,14 @@ func formatAddress(a model.Address) string {
 }
 
 func truncate(s string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
 	if len(s) <= maxLen {
 		return s
+	}
+	if maxLen <= 3 {
+		return s[:maxLen]
 	}
 	return s[:maxLen-3] + "..."
 }

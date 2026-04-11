@@ -10,7 +10,7 @@ import (
 )
 
 func renderSummaryView(m ReviewModel) string {
-	w := min(m.Width-4, 60)
+	w := max(min(m.Width-4, 60), 20)
 
 	summary := calibration.Analyze(calEntriesFromDecisions(m))
 
