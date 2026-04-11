@@ -12,6 +12,16 @@ import (
 )
 
 func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) error {
+	// Reject --report paths that overlap --out to avoid replacing the
+	// resolved VCF with JSON.
+	if reportSavePath != "" {
+		absOut, _ := filepath.Abs(outPath)
+		absReport, _ := filepath.Abs(reportSavePath)
+		if absOut == absReport {
+			return fmt.Errorf("--report and --out cannot point to the same file (%s)", outPath)
+		}
+	}
+
 	// Validate output paths before running the pipeline
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
@@ -128,12 +138,20 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 			{tempReviewPath, "review.vcf"},
 			{tempCalibrationPath, "calibration.jsonl"},
 		}
+		absOutPath, _ := filepath.Abs(outPath)
 		for _, f := range filesToKeep {
 			data, err := os.ReadFile(f.src)
 			if err != nil {
-				continue // file may not exist (e.g., no review.vcf when no review pairs)
+				if os.IsNotExist(err) {
+					continue // file may not exist (e.g., no review.vcf when no review pairs)
+				}
+				return fmt.Errorf("reading %s for --keep: %w", f.name, err)
 			}
 			dst := filepath.Join(outDir, f.name)
+			// Skip if this would overwrite the final resolved output
+			if absDst, _ := filepath.Abs(dst); absDst == absOutPath {
+				continue
+			}
 			if err := os.WriteFile(dst, data, 0600); err != nil {
 				return fmt.Errorf("keeping %s: %w", f.name, err)
 			}

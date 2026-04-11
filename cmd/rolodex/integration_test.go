@@ -323,3 +323,66 @@ END:VCARD
 		t.Error("expected error for invalid format")
 	}
 }
+
+func TestAuditFlagsAfterPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	vcf := filepath.Join(tmpDir, "test.vcf")
+	if err := os.WriteFile(vcf, []byte(`BEGIN:VCARD
+VERSION:3.0
+N:Test;User;;;
+FN:Test User
+EMAIL:test@example.com
+END:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write test VCF: %v", err)
+	}
+
+	// Flags after the file path should still be parsed
+	err := runAuditCmdFlags([]string{vcf, "--format", "json"})
+	if err != nil {
+		t.Fatalf("audit with flags after path failed: %v", err)
+	}
+
+	// --format=value syntax should also work
+	err = runAuditCmdFlags([]string{vcf, "--format=json"})
+	if err != nil {
+		t.Fatalf("audit with --format=json after path failed: %v", err)
+	}
+
+	// Extra positional args should be rejected
+	err = runAuditCmdFlags([]string{vcf, "extra.vcf"})
+	if err == nil {
+		t.Error("expected error for extra positional args")
+	}
+}
+
+func TestRunReportOverlapOut(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
+	googleVCF := filepath.Join(tmpDir, "google.vcf")
+	if err := os.WriteFile(icloudVCF, []byte(`BEGIN:VCARD
+VERSION:3.0
+N:Test;User;;;
+FN:Test User
+EMAIL:test@example.com
+END:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write iCloud test VCF: %v", err)
+	}
+	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
+VERSION:3.0
+N:Other;User;;;
+FN:Other User
+EMAIL:other@example.com
+END:VCARD
+`), 0644); err != nil {
+		t.Fatalf("failed to write Google test VCF: %v", err)
+	}
+
+	samePath := filepath.Join(tmpDir, "output.vcf")
+	err := run(icloudVCF, googleVCF, samePath, samePath, false)
+	if err == nil {
+		t.Error("expected error when --report and --out point to the same file")
+	}
+}
