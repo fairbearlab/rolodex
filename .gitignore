@@ -18,3 +18,7 @@ report.json.tmp
 # Local dev notes (private)
 notes/
 *.local.md
+
+# Local AI tooling config
+CLAUDE.md
+.claude/
