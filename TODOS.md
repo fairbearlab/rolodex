@@ -40,17 +40,29 @@
 **Priority:** P2
 **Depends on:** Phase 2 shipped
 
-### Threshold override flags on merge command
+### Threshold override flags on merge and run commands
 
-**What:** Add `--auto-merge-threshold` and `--review-threshold` flags to `rolodex merge` to override the hardcoded 0.85/0.60 thresholds.
+**What:** Add `--auto-merge-threshold` and `--review-threshold` flags to `rolodex merge` and `rolodex run` to override the hardcoded 0.85/0.60 thresholds.
 
-**Why:** Phase 2's calibration suggestions tell the user "your effective threshold should be X" but there's no way to act on it. These flags close the feedback loop.
+**Why:** Phase 2's calibration suggestions tell the user "your effective threshold should be X" but there's no way to act on it. These flags close the feedback loop. The `run` command should inherit them when `merge` gets them.
 
-**Context:** ThresholdAutoMerge=0.85 and ThresholdReview=0.60 are constants in model/contact.go:96-98. Flags would override them per-run. The calibration end-of-session summary already generates the suggested values.
+**Context:** ThresholdAutoMerge=0.85 and ThresholdReview=0.60 are constants in model/contact.go:96-98. Flags would override them per-run. The calibration end-of-session summary already generates the suggested values. Both `merge` and `run` call `runPipeline()`, so the flag can be threaded through once.
 
 **Effort:** S
 **Priority:** P2
-**Depends on:** Phase 2 shipped (calibration data exists)
+**Depends on:** Phase 2 shipped (calibration data exists), Phase 3 shipped (run command exists)
+
+### Stdout coupling in resolve.Run() and review.Run()
+
+**What:** Refactor `resolve.Run()` and `review.Run()` to accept an `io.Writer` (or quiet flag) for progress output instead of hardcoded `fmt.Printf` calls.
+
+**Why:** The `run` command calls both functions, and their stdout output interleaves with `run`'s own progress messages. Currently the messages happen to be sequential and informative, so it's acceptable. But as more commands compose these functions, stdout coupling becomes a problem.
+
+**Context:** `resolve.Run()` prints "Merged N review clusters" and "Resolved N contacts". `review.Run()` prints "Reviewing N pending pairs...". These are fine standalone but the `run` command can't control the output. Low priority since the current output reads naturally.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Phase 3 shipped (run command exists)
 
 ## Completed
 

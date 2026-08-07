@@ -4,8 +4,9 @@ package model
 type Source string
 
 const (
-	SourceICloud Source = "icloud"
-	SourceGoogle Source = "google"
+	SourceICloud  Source = "icloud"
+	SourceGoogle  Source = "google"
+	SourceUnknown Source = "unknown"
 )
 
 // ParsedContact is the raw canonical representation of a single vCard entry.
