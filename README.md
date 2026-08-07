@@ -1,5 +1,7 @@
 # rolodex
 
+[![CI](https://github.com/fairbearlab/rolodex/actions/workflows/ci.yml/badge.svg)](https://github.com/fairbearlab/rolodex/actions/workflows/ci.yml)
+
 A CLI tool that merges and deduplicates vCard (.vcf) files. Fix your contacts at the source instead of locking them into another app.
 
 ## Install
