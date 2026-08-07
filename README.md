@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/fairbearlab/rolodex/actions/workflows/ci.yml/badge.svg)](https://github.com/fairbearlab/rolodex/actions/workflows/ci.yml)
 
+> Your contacts contain four copies of your mom. This fixes that.
+
 A CLI tool that merges and deduplicates vCard (.vcf) files. Fix your contacts at the source instead of locking them into another app.
 
 ## Install
