@@ -69,4 +69,4 @@
 ### Interactive CLI review command
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
-**Completed:** v0.2.0.0 (2026-04-07)
+**Completed:** v0.2.0 (2026-04-07)
