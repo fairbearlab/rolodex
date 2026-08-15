@@ -1,6 +1,3 @@
-# Destination: <repo>/.golangci.yml  (rolodex: repo root; choosepaste: engine/.golangci.yml)
-# Shared standard for all fairbearlab Go repos. Session agent: verify against the
-# golangci-lint version installed in CI and adjust schema if needed (this is v2 format).
 version: "2"
 
 linters:
@@ -14,6 +11,7 @@ linters:
     gosec:
       excludes:
         - G304 # file inclusion via variable — both repos legitimately open user-supplied paths
+        - G703 # path traversal via taint analysis (gosec ≥ v2.12) — same rationale: user-supplied output paths
 
 formatters:
   enable:
