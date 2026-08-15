@@ -34,7 +34,7 @@ func TestFullPipeline(t *testing.T) {
 	}
 
 	// Check report.json
-	reportData, err := os.ReadFile(reportPath)
+	reportData, err := os.ReadFile(filepath.Clean(reportPath))
 	if err != nil {
 		t.Fatalf("report.json not found: %v", err)
 	}
@@ -220,7 +220,7 @@ END:VCARD
 		t.Fatalf("run --report failed: %v", err)
 	}
 
-	data, err := os.ReadFile(reportPath)
+	data, err := os.ReadFile(filepath.Clean(reportPath))
 	if err != nil {
 		t.Fatalf("report.json not saved: %v", err)
 	}

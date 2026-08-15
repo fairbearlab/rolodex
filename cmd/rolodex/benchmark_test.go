@@ -8,7 +8,7 @@ import (
 )
 
 func generateVCF(path string, count int, prefix string) error {
-	f, err := os.Create(path)
+	f, err := os.Create(filepath.Clean(path))
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func BenchmarkMerge1000(b *testing.B) {
 	}
 
 	// Google contacts: 450 unique + 50 that share emails with iCloud
-	f, err := os.Create(googlePath)
+	f, err := os.Create(filepath.Clean(googlePath))
 	if err != nil {
 		b.Fatal(err)
 	}

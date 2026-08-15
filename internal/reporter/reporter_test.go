@@ -162,7 +162,7 @@ func TestWriteFileRoundTrip(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("reading written file: %v", err)
 	}

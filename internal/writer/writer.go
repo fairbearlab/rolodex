@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -16,7 +17,7 @@ import (
 // WriteFile writes merged contacts to a .vcf file atomically.
 // Writes to a temp file first, then renames to prevent partial output on crash.
 func WriteFile(path string, contacts []model.MergedContact) error {
-	tmpPath := path + ".tmp"
+	tmpPath := filepath.Clean(path + ".tmp")
 	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("creating %s: %w", tmpPath, err)

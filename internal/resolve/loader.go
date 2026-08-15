@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fairbearlab/rolodex/internal/model"
 	"github.com/fairbearlab/rolodex/internal/parser"
@@ -18,7 +19,7 @@ type LoadedData struct {
 // LoadReportAndReview reads report.json and review.vcf, returning both.
 // This is the shared loader used by both resolve and review commands.
 func LoadReportAndReview(reportPath, reviewPath string) (LoadedData, error) {
-	reportData, err := os.ReadFile(reportPath)
+	reportData, err := os.ReadFile(filepath.Clean(reportPath))
 	if err != nil {
 		return LoadedData{}, fmt.Errorf("reading report: %w", err)
 	}

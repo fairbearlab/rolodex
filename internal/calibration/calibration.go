@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/fairbearlab/rolodex/internal/model"
@@ -30,7 +31,7 @@ type Log struct {
 
 // NewLog opens (or creates) a calibration log file for appending.
 func NewLog(path string) (*Log, error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := os.OpenFile(filepath.Clean(path), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("opening calibration log: %w", err)
 	}
