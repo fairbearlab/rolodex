@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	nonDigitRe = regexp.MustCompile(`\D`)
-	whitespaceRe = regexp.MustCompile(`\s+`)
+	nonDigitRe    = regexp.MustCompile(`\D`)
+	whitespaceRe  = regexp.MustCompile(`\s+`)
 	titlePrefixes = []string{
 		"dr.", "dr", "mr.", "mr", "mrs.", "mrs", "ms.", "ms",
 		"prof.", "prof", "rev.", "rev", "sir", "dame",
@@ -28,10 +28,10 @@ var (
 func Contact(c model.ParsedContact) model.NormalizedContact {
 	return model.NormalizedContact{
 		Parsed:               c,
-		NormalizedFamilyName:  Name(c.FamilyName),
-		NormalizedGivenName:   Name(c.GivenName),
-		NormalizedEmails:      normalizeEmails(c.Emails),
-		NormalizedPhones:      normalizePhones(c.Phones),
+		NormalizedFamilyName: Name(c.FamilyName),
+		NormalizedGivenName:  Name(c.GivenName),
+		NormalizedEmails:     normalizeEmails(c.Emails),
+		NormalizedPhones:     normalizePhones(c.Phones),
 	}
 }
 

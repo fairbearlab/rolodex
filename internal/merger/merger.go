@@ -12,8 +12,8 @@ import (
 
 // Result holds the output of the merge stage.
 type Result struct {
-	Merged  []model.MergedContact // auto-merged, confident
-	Review  []model.MergedContact // review-tier, needs human eyes
+	Merged   []model.MergedContact // auto-merged, confident
+	Review   []model.MergedContact // review-tier, needs human eyes
 	Clusters []model.Cluster       // cluster info for reporting
 }
 

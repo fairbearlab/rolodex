@@ -85,9 +85,9 @@ func TestAudit_Empty(t *testing.T) {
 func TestAudit_Mixed(t *testing.T) {
 	contacts := []model.ParsedContact{
 		{FormattedName: "Reachable", Emails: []model.Email{{Address: "a@b.com"}}},
-		{FormattedName: "Names Only"},                             // skipped by default
+		{FormattedName: "Names Only"}, // skipped by default
 		{FormattedName: "Also Reachable", Phones: []model.Phone{{Number: "555"}}},
-		{FormattedName: "Has Org No Contact", Org: "Corp"},        // flagged
+		{FormattedName: "Has Org No Contact", Org: "Corp"}, // flagged
 	}
 	result := Audit(contacts, AuditOptions{})
 	if result.Total != 4 {

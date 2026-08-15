@@ -20,9 +20,9 @@ func Generate(
 ) model.Report {
 	report := model.Report{
 		Summary: model.ReportSummary{
-			ICloudTotal:   icloudCount,
-			GoogleTotal:   googleCount,
-			WarningCount:  len(warnings),
+			ICloudTotal:  icloudCount,
+			GoogleTotal:  googleCount,
+			WarningCount: len(warnings),
 		},
 		Warnings: warnings,
 	}

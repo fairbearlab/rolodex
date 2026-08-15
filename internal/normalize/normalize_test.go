@@ -17,10 +17,10 @@ func TestNormalizeName(t *testing.T) {
 		{"Smith Jr.", "smith"},
 		{"Smith III", "smith"},
 		{"UPPERCASE", "uppercase"},
-		{"María", "maria"},        // accent stripped
-		{"José", "jose"},          // accent stripped
-		{"François", "francois"},  // cedilla stripped
-		{"Müller", "muller"},      // umlaut stripped
+		{"María", "maria"},       // accent stripped
+		{"José", "jose"},         // accent stripped
+		{"François", "francois"}, // cedilla stripped
+		{"Müller", "muller"},     // umlaut stripped
 		{"  Multiple   Spaces  ", "multiple spaces"},
 		{"", ""},
 		{"Prof. Dr. Jane Smith Esq.", "jane smith"},
@@ -42,7 +42,7 @@ func TestNormalizePhone(t *testing.T) {
 		want  string
 	}{
 		{"+1 (555) 123-4567", "5551234567"},
-		{"15551234567", "5551234567"},     // strip leading 1
+		{"15551234567", "5551234567"}, // strip leading 1
 		{"555-123-4567", "5551234567"},
 		{"(555) 123 4567", "5551234567"},
 		{"5551234567", "5551234567"},

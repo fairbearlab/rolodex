@@ -7,7 +7,7 @@ func FuzzNormalizeName(f *testing.F) {
 	f.Add("Dr. José María García Jr.")
 	f.Add("  ")
 	f.Add("")
-	f.Add("名前") // Japanese
+	f.Add("名前")    // Japanese
 	f.Add("Ṡṁíṫḣ") // dotted letters
 
 	f.Fuzz(func(t *testing.T, input string) {

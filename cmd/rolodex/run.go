@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/fairbearlab/rolodex/internal/reporter"
-	reviewCmd "github.com/fairbearlab/rolodex/internal/review"
 	resolveCmd "github.com/fairbearlab/rolodex/internal/resolve"
+	reviewCmd "github.com/fairbearlab/rolodex/internal/review"
 	"github.com/fairbearlab/rolodex/internal/writer"
 )
 

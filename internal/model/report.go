@@ -2,20 +2,20 @@ package model
 
 // Report is the JSON output explaining every merge decision.
 type Report struct {
-	Summary   ReportSummary    `json:"summary"`
-	Merged    []MergeDecision  `json:"merged"`
-	Review    []ReviewDecision `json:"review"`
-	Distinct  []DistinctEntry  `json:"distinct"`
-	Warnings  []Warning        `json:"warnings"`
+	Summary  ReportSummary    `json:"summary"`
+	Merged   []MergeDecision  `json:"merged"`
+	Review   []ReviewDecision `json:"review"`
+	Distinct []DistinctEntry  `json:"distinct"`
+	Warnings []Warning        `json:"warnings"`
 }
 
 type ReportSummary struct {
-	ICloudTotal  int `json:"icloud_total"`
-	GoogleTotal  int `json:"google_total"`
-	AutoMerged   int `json:"auto_merged"`
-	ReviewCount  int `json:"review_count"`
+	ICloudTotal   int `json:"icloud_total"`
+	GoogleTotal   int `json:"google_total"`
+	AutoMerged    int `json:"auto_merged"`
+	ReviewCount   int `json:"review_count"`
 	DistinctCount int `json:"distinct_count"`
-	WarningCount int `json:"warning_count"`
+	WarningCount  int `json:"warning_count"`
 }
 
 type MergeDecision struct {
@@ -27,17 +27,17 @@ type MergeDecision struct {
 }
 
 type ReviewDecision struct {
-	ClusterID  string        `json:"cluster_id"`
-	Score      float64       `json:"score"`
-	Contacts   []ContactRef  `json:"contacts"`
-	Features   ScoreFeatures `json:"features,omitzero"`
-	Ambiguity  string        `json:"ambiguity"`
-	Decision   string        `json:"decision"` // "pending", "merge", "skip"
+	ClusterID string        `json:"cluster_id"`
+	Score     float64       `json:"score"`
+	Contacts  []ContactRef  `json:"contacts"`
+	Features  ScoreFeatures `json:"features,omitzero"`
+	Ambiguity string        `json:"ambiguity"`
+	Decision  string        `json:"decision"` // "pending", "merge", "skip"
 }
 
 type DistinctEntry struct {
-	Source Source     `json:"source"`
-	Name   string    `json:"name"`
+	Source Source `json:"source"`
+	Name   string `json:"name"`
 }
 
 type ContactRef struct {
@@ -54,7 +54,7 @@ type Conflict struct {
 }
 
 type Warning struct {
-	Source  Source  `json:"source"`
+	Source  Source `json:"source"`
 	Index   int    `json:"index"`
 	Message string `json:"message"`
 	Raw     string `json:"raw,omitempty"`

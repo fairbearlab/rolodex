@@ -330,7 +330,7 @@ func renderHelp(width int) string {
   ?       Toggle this help
   q       Save and quit`
 
-	return borderStyle.Width(w).Render(titleStyle.Render(" Help") + "\n\n" + help) + "\n"
+	return borderStyle.Width(w).Render(titleStyle.Render(" Help")+"\n\n"+help) + "\n"
 }
 
 // Helpers
