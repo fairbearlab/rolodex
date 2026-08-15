@@ -3,7 +3,7 @@
 # Floor set from the measured 61.8% at the time this gate landed (session 4), minus a
 # point of headroom. It catches regression; it is not a stretch goal. internal/review
 # (27.4%) is the known drag — raise this as that package gets tests.
-COVER_MIN ?= 99
+COVER_MIN ?= 60
 
 all: build
 
