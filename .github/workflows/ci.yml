@@ -12,7 +12,7 @@ permissions:
 jobs:
   # Shared fairbearlab Go CI: lint (golangci-lint), test (vet, -race, tidy -diff), vulncheck.
   go:
-    uses: fairbearlab/.github/.github/workflows/go-ci.yml@9505a35b21cdd54521bdc9d18bd5834c94060b11 # v1
+    uses: fairbearlab/.github/.github/workflows/go-ci.yml@5a38bfa7c85a7b57fe49b132068f5f20e1d9ac85 # v1
 
   # Repo-local coverage floor. Deliberately NOT in the shared go-ci workflow: floors are
   # per-repo, and choosepaste has no Go-only floor to speak of.
