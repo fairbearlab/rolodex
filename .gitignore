@@ -6,6 +6,7 @@ dist/
 # Test output
 *.vcf.tmp
 report.json.tmp
+coverage.out
 
 # IDE
 .idea/

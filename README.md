@@ -1,6 +1,10 @@
 # rolodex
 
 [![CI](https://github.com/fairbearlab/rolodex/actions/workflows/ci.yml/badge.svg)](https://github.com/fairbearlab/rolodex/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/fairbearlab/rolodex/badge)](https://scorecard.dev/viewer/?uri=github.com/fairbearlab/rolodex)
+[![codecov](https://codecov.io/gh/fairbearlab/rolodex/graph/badge.svg)](https://codecov.io/gh/fairbearlab/rolodex)
+[![Release](https://img.shields.io/github/v/release/fairbearlab/rolodex?sort=semver)](https://github.com/fairbearlab/rolodex/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > Your contacts contain four copies of your mom. This fixes that.
 
