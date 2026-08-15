@@ -1,6 +1,6 @@
 package model
 
-// acceptanceTestBadFmt is deliberately misformatted to prove the CI gate.
-func   acceptanceTestBadFmt(  ) int {
+// AcceptanceTestBadFmt is deliberately misformatted to prove the CI gate.
+func   AcceptanceTestBadFmt(  ) int {
 	return   1
 }
