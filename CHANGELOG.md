@@ -1,6 +1,6 @@
 # Changelog
 
-## \[0.3.0.0] - 2026-04-11
+## \[0.3.0] - 2026-04-11
 
 One command to merge, review, and resolve your contacts. Plus a new audit command to find contacts you can't actually reach.
 
@@ -29,7 +29,7 @@ One command to merge, review, and resolve your contacts. Plus a new audit comman
 * Output directory paths are validated before running the pipeline, preventing partial-success failures on bad `--report` paths.
 * Removed `has_email` and `has_phone` fields from audit JSON output (they were structurally always `false` for unreachable contacts).
 
-## \[0.2.0.0] - 2026-04-07
+## \[0.2.0] - 2026-04-07
 
 Interactive review command. Walk through uncertain matches one at a time in a terminal UI instead of hand-editing JSON.
 
@@ -46,7 +46,7 @@ Interactive review command. Walk through uncertain matches one at a time in a te
 * Scorer now returns per-feature scores alongside the composite score, propagated through to report.json (backward-compatible addition).
 * Report.json review entries include a `features` field with per-feature score data.
 
-## \[0.1.0.0] - 2026-04-04
+## \[0.1.0] - 2026-04-04
 
 First working release. Merge and deduplicate vCard files from iCloud and Google exports with confidence scoring and explainable decisions.
 

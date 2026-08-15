@@ -1,0 +1,21 @@
+# Shared standard for all fairbearlab Go repos (v2 format). Policy: no rule excludes,
+# no //nolint, no #nosec — fix findings at the source. gosec G304/G703 (path traversal)
+# are satisfied by passing user-supplied paths through filepath.Clean() at the open site.
+version: "2"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - misspell
+    - gosec
+    - copyloopvar
+    - unconvert
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  # Show every finding; the defaults (3 / 50) can hide issues in CI output.
+  max-same-issues: 0
+  max-issues-per-linter: 0

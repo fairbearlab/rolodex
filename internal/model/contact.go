@@ -14,11 +14,11 @@ type ParsedContact struct {
 	Source Source
 
 	// Structured name components
-	FamilyName  string
-	GivenName   string
-	MiddleName  string
-	Prefix      string // Dr., Mr., etc.
-	Suffix      string // Jr., III, etc.
+	FamilyName string
+	GivenName  string
+	MiddleName string
+	Prefix     string // Dr., Mr., etc.
+	Suffix     string // Jr., III, etc.
 
 	FormattedName string // FN field
 
@@ -87,9 +87,9 @@ type ScoreFeatures struct {
 
 // ScoredPair represents a candidate match between two contacts.
 type ScoredPair struct {
-	A        int           // index into contact slice
-	B        int           // index into contact slice
-	Score    float64       // 0.0 to 1.0
+	A        int     // index into contact slice
+	B        int     // index into contact slice
+	Score    float64 // 0.0 to 1.0
 	Tier     Tier
 	Features ScoreFeatures // per-feature breakdown
 }
@@ -111,7 +111,7 @@ const (
 // MergedContact is the output of the merge stage.
 type MergedContact struct {
 	Contact    ParsedContact
-	Sources    []Source  // which sources contributed
+	Sources    []Source // which sources contributed
 	Score      float64  // confidence score (0 if unmatched)
 	MergedFrom []int    // indices of source contacts that were merged
 	ReviewFlag bool     // true if this needs human review
@@ -119,6 +119,6 @@ type MergedContact struct {
 
 // Cluster represents a group of contacts connected by scored pairs.
 type Cluster struct {
-	Indices []int       // indices into the contact slice
+	Indices []int        // indices into the contact slice
 	Pairs   []ScoredPair // all scored pairs in this cluster
 }

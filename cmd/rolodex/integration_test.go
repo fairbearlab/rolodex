@@ -34,7 +34,7 @@ func TestFullPipeline(t *testing.T) {
 	}
 
 	// Check report.json
-	reportData, err := os.ReadFile(reportPath)
+	reportData, err := os.ReadFile(filepath.Clean(reportPath))
 	if err != nil {
 		t.Fatalf("report.json not found: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestEmptyInput(t *testing.T) {
 
 	// Create an empty vcf file
 	emptyPath := filepath.Join(tmpDir, "empty.vcf")
-	if err := os.WriteFile(emptyPath, []byte(""), 0644); err != nil {
+	if err := os.WriteFile(emptyPath, []byte(""), 0600); err != nil {
 		t.Fatalf("failed to create empty vcf file: %v", err)
 	}
 
@@ -120,7 +120,7 @@ N:Unique;Alice;;;
 FN:Alice Unique
 EMAIL:alice@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write iCloud test VCF: %v", err)
 	}
 	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
@@ -129,7 +129,7 @@ N:Different;Bob;;;
 FN:Bob Different
 EMAIL:bob@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write Google test VCF: %v", err)
 	}
 
@@ -159,7 +159,7 @@ N:One;Person;;;
 FN:Person One
 EMAIL:one@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write iCloud test VCF: %v", err)
 	}
 	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
@@ -168,12 +168,12 @@ N:Two;Person;;;
 FN:Person Two
 EMAIL:two@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write Google test VCF: %v", err)
 	}
 
 	outDir := filepath.Join(tmpDir, "out")
-	if err := os.MkdirAll(outDir, 0755); err != nil {
+	if err := os.MkdirAll(outDir, 0750); err != nil {
 		t.Fatalf("failed to create output directory: %v", err)
 	}
 	outPath := filepath.Join(outDir, "final.vcf")
@@ -200,7 +200,7 @@ N:Solo;Han;;;
 FN:Han Solo
 EMAIL:han@falcon.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write iCloud test VCF: %v", err)
 	}
 	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
@@ -209,7 +209,7 @@ N:Skywalker;Luke;;;
 FN:Luke Skywalker
 EMAIL:luke@jedi.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write Google test VCF: %v", err)
 	}
 
@@ -220,7 +220,7 @@ END:VCARD
 		t.Fatalf("run --report failed: %v", err)
 	}
 
-	data, err := os.ReadFile(reportPath)
+	data, err := os.ReadFile(filepath.Clean(reportPath))
 	if err != nil {
 		t.Fatalf("report.json not saved: %v", err)
 	}
@@ -253,7 +253,7 @@ N:Test;Cleanup;;;
 FN:Cleanup Test
 EMAIL:clean@test.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write iCloud test VCF: %v", err)
 	}
 	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
@@ -262,7 +262,7 @@ N:Test;Other;;;
 FN:Other Test
 EMAIL:other@test.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write Google test VCF: %v", err)
 	}
 
@@ -315,7 +315,7 @@ VERSION:3.0
 N:Test;User;;;
 FN:Test User
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write test VCF: %v", err)
 	}
 
@@ -334,7 +334,7 @@ N:Test;User;;;
 FN:Test User
 EMAIL:test@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write test VCF: %v", err)
 	}
 
@@ -368,7 +368,7 @@ N:Test;User;;;
 FN:Test User
 EMAIL:test@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write iCloud test VCF: %v", err)
 	}
 	if err := os.WriteFile(googleVCF, []byte(`BEGIN:VCARD
@@ -377,7 +377,7 @@ N:Other;User;;;
 FN:Other User
 EMAIL:other@example.com
 END:VCARD
-`), 0644); err != nil {
+`), 0600); err != nil {
 		t.Fatalf("failed to write Google test VCF: %v", err)
 	}
 
@@ -391,7 +391,7 @@ END:VCARD
 func TestRunReportOverlapKeepIntermediates(t *testing.T) {
 	tmpDir := t.TempDir()
 	outDir := filepath.Join(tmpDir, "out")
-	if err := os.MkdirAll(outDir, 0755); err != nil {
+	if err := os.MkdirAll(outDir, 0750); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 
@@ -424,7 +424,7 @@ func TestRunReportOverlapKeepIntermediates(t *testing.T) {
 func TestRunKeepClearsStaleArtifacts(t *testing.T) {
 	tmpDir := t.TempDir()
 	outDir := filepath.Join(tmpDir, "out")
-	if err := os.MkdirAll(outDir, 0755); err != nil {
+	if err := os.MkdirAll(outDir, 0750); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 
@@ -464,7 +464,7 @@ func TestRunKeepClearsStaleArtifacts(t *testing.T) {
 func writeTestVCF(t *testing.T, path, name, email string) {
 	t.Helper()
 	data := fmt.Sprintf("BEGIN:VCARD\nVERSION:3.0\nN:%s;Test;;;\nFN:Test %s\nEMAIL:%s\nEND:VCARD\n", name, name, email)
-	if err := os.WriteFile(path, []byte(data), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 		t.Fatalf("failed to write test VCF %s: %v", path, err)
 	}
 }

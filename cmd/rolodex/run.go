@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/fairbearlab/rolodex/internal/reporter"
-	reviewCmd "github.com/fairbearlab/rolodex/internal/review"
 	resolveCmd "github.com/fairbearlab/rolodex/internal/resolve"
+	reviewCmd "github.com/fairbearlab/rolodex/internal/review"
 	"github.com/fairbearlab/rolodex/internal/writer"
 )
 
@@ -48,11 +49,11 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	}
 
 	// Validate output paths before running the pipeline
-	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outPath), 0750); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 	if reportSavePath != "" {
-		if err := os.MkdirAll(filepath.Dir(reportSavePath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(reportSavePath), 0750); err != nil {
 			return fmt.Errorf("creating report directory: %w", err)
 		}
 	}
@@ -75,7 +76,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	paused := false
 	defer func() {
 		if succeeded {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 		} else if !paused {
 			fmt.Fprintf(os.Stderr, "\nTemp workspace preserved: %s\n", tempDir)
 		}
@@ -143,11 +144,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 
 	// Save report if requested
 	if reportSavePath != "" {
-		data, err := os.ReadFile(tempReportPath)
-		if err != nil {
-			return fmt.Errorf("reading report: %w", err)
-		}
-		if err := os.WriteFile(reportSavePath, data, 0600); err != nil {
+		if err := copyFile(tempReportPath, reportSavePath); err != nil {
 			return fmt.Errorf("saving report: %w", err)
 		}
 		fmt.Printf("Report → %s\n", reportSavePath)
@@ -159,8 +156,8 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	calDst := filepath.Join(filepath.Dir(outPath), "calibration.jsonl")
 	wroteCalibration := false
 	if hasReview {
-		if calData, err := os.ReadFile(tempCalibrationPath); err == nil && len(calData) > 0 {
-			f, err := os.OpenFile(calDst, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if calData, err := os.ReadFile(filepath.Clean(tempCalibrationPath)); err == nil && len(calData) > 0 {
+			f, err := os.OpenFile(filepath.Clean(calDst), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 			if err != nil {
 				return fmt.Errorf("saving calibration: %w", err)
 			}
@@ -180,7 +177,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	// remove any stale calibration.jsonl from a previous --keep run
 	// so callers don't read old data.
 	if keep && !wroteCalibration {
-		os.Remove(calDst)
+		_ = os.Remove(calDst)
 	}
 
 	// Copy intermediates if --keep
@@ -204,18 +201,14 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 			if absDst, _ := filepath.Abs(dst); absDst == absOutPath {
 				continue
 			}
-			data, err := os.ReadFile(f.src)
-			if err != nil {
-				if os.IsNotExist(err) {
+			if err := copyFile(f.src, dst); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
 					// Source doesn't exist this run (e.g., no review.vcf
 					// when no review pairs). Remove any stale copy from a
 					// previous --keep run so callers don't read old data.
-					os.Remove(dst)
+					_ = os.Remove(dst)
 					continue
 				}
-				return fmt.Errorf("reading %s for --keep: %w", f.name, err)
-			}
-			if err := os.WriteFile(dst, data, 0600); err != nil {
 				return fmt.Errorf("keeping %s: %w", f.name, err)
 			}
 			fmt.Printf("Kept %s\n", dst)
@@ -224,5 +217,29 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 
 	succeeded = true
 	fmt.Println("Done.")
+	return nil
+}
+
+// copyFile streams src to dst (mode 0600, truncating any existing file).
+// Errors from opening src are returned unwrapped so callers can test them
+// with errors.Is(err, os.ErrNotExist).
+func copyFile(src, dst string) error {
+	in, err := os.Open(filepath.Clean(src))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+
+	out, err := os.OpenFile(filepath.Clean(dst), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return fmt.Errorf("creating %s: %w", dst, err)
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return fmt.Errorf("writing %s: %w", dst, err)
+	}
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("closing %s: %w", dst, err)
+	}
 	return nil
 }

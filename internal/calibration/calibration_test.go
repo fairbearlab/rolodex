@@ -40,7 +40,7 @@ func TestLogAppendAndEntries(t *testing.T) {
 	}
 
 	// Verify file was written
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestLogAppendAndEntries(t *testing.T) {
 		t.Error("calibration file is empty")
 	}
 
-	log.Close()
+	_ = log.Close()
 }
 
 func approxEq(a, b float64) bool {

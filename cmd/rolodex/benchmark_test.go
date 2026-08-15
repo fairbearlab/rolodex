@@ -8,14 +8,14 @@ import (
 )
 
 func generateVCF(path string, count int, prefix string) error {
-	f, err := os.Create(path)
+	f, err := os.Create(filepath.Clean(path))
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	for i := 0; i < count; i++ {
-		fmt.Fprintf(f, `BEGIN:VCARD
+		_, _ = fmt.Fprintf(f, `BEGIN:VCARD
 VERSION:3.0
 N:Family%d;%sGiven%d;;;
 FN:%sGiven%d Family%d
@@ -39,13 +39,13 @@ func BenchmarkMerge1000(b *testing.B) {
 	}
 
 	// Google contacts: 450 unique + 50 that share emails with iCloud
-	f, err := os.Create(googlePath)
+	f, err := os.Create(filepath.Clean(googlePath))
 	if err != nil {
 		b.Fatal(err)
 	}
 	// 50 overlapping (same email as iCloud contacts 0-49)
 	for i := 0; i < 50; i++ {
-		fmt.Fprintf(f, `BEGIN:VCARD
+		_, _ = fmt.Fprintf(f, `BEGIN:VCARD
 VERSION:3.0
 N:Family%d;GGiven%d;;;
 FN:GGiven%d Family%d
@@ -57,7 +57,7 @@ END:VCARD
 	}
 	// 450 unique
 	for i := 50; i < 500; i++ {
-		fmt.Fprintf(f, `BEGIN:VCARD
+		_, _ = fmt.Fprintf(f, `BEGIN:VCARD
 VERSION:3.0
 N:GFamily%d;GGiven%d;;;
 FN:GGiven%d GFamily%d
@@ -67,7 +67,7 @@ ORG:GCompany%d
 END:VCARD
 `, i, i, i, i, i, i+5000, i, i%100)
 	}
-	f.Close()
+	_ = f.Close()
 
 	outPath := filepath.Join(tmpDir, "merged.vcf")
 	reviewPath := filepath.Join(tmpDir, "review.vcf")

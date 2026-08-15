@@ -146,7 +146,7 @@ func TestRunSkipDecision(t *testing.T) {
 		t.Fatalf("Run failed: %v", err)
 	}
 
-	data, err := os.ReadFile(outPath)
+	data, err := os.ReadFile(filepath.Clean(outPath))
 	if err != nil {
 		t.Fatalf("reading output: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestRunPendingKeepsContacts(t *testing.T) {
 		t.Fatalf("Run failed: %v", err)
 	}
 
-	data, err := os.ReadFile(outPath)
+	data, err := os.ReadFile(filepath.Clean(outPath))
 	if err != nil {
 		t.Fatalf("reading output: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRunMalformedReportJSON(t *testing.T) {
 
 	writeTestVCF(t, mergedPath, nil)
 	writeTestVCF(t, reviewPath, nil)
-	os.WriteFile(reportPath, []byte("{invalid json"), 0600)
+	_ = os.WriteFile(reportPath, []byte("{invalid json"), 0600)
 
 	err := Run(reportPath, reviewPath, mergedPath, outPath)
 	if err == nil {

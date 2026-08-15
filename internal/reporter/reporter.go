@@ -20,9 +20,9 @@ func Generate(
 ) model.Report {
 	report := model.Report{
 		Summary: model.ReportSummary{
-			ICloudTotal:   icloudCount,
-			GoogleTotal:   googleCount,
-			WarningCount:  len(warnings),
+			ICloudTotal:  icloudCount,
+			GoogleTotal:  googleCount,
+			WarningCount: len(warnings),
 		},
 		Warnings: warnings,
 	}
@@ -183,9 +183,9 @@ func WriteFile(path string, report model.Report) error {
 		return fmt.Errorf("writing report: %w", err)
 	}
 	// Remove existing file first — os.Rename doesn't overwrite on Windows
-	os.Remove(path)
+	_ = os.Remove(path)
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("renaming report: %w", err)
 	}
 	return nil

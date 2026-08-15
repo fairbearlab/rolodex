@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/fairbearlab/rolodex/internal/model"
@@ -12,13 +13,13 @@ import (
 
 // Entry represents a single calibration log entry.
 type Entry struct {
-	ClusterID      string             `json:"cluster_id"`
-	Decision       string             `json:"decision"` // "merge", "skip", or "undo"
-	Score          float64            `json:"score"`
+	ClusterID      string              `json:"cluster_id"`
+	Decision       string              `json:"decision"` // "merge", "skip", or "undo"
+	Score          float64             `json:"score"`
 	Features       model.ScoreFeatures `json:"features"`
-	ViewMode       string             `json:"view_mode"` // "compact" or "detailed"
-	DecisionTimeMs int64              `json:"decision_time_ms"`
-	Timestamp      time.Time          `json:"timestamp"`
+	ViewMode       string              `json:"view_mode"` // "compact" or "detailed"
+	DecisionTimeMs int64               `json:"decision_time_ms"`
+	Timestamp      time.Time           `json:"timestamp"`
 }
 
 // Log manages an append-only calibration JSONL file.
@@ -30,7 +31,7 @@ type Log struct {
 
 // NewLog opens (or creates) a calibration log file for appending.
 func NewLog(path string) (*Log, error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := os.OpenFile(filepath.Clean(path), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("opening calibration log: %w", err)
 	}
@@ -65,12 +66,12 @@ func (l *Log) Entries() []Entry {
 
 // Summary holds computed statistics from calibration data.
 type Summary struct {
-	TotalReviewed    int
-	MergeCount       int
-	SkipCount        int
-	BandStats        []BandStat
-	AvgCompactTimeMs int64
-	AvgDetailedTimeMs int64
+	TotalReviewed      int
+	MergeCount         int
+	SkipCount          int
+	BandStats          []BandStat
+	AvgCompactTimeMs   int64
+	AvgDetailedTimeMs  int64
 	SuggestedAutoMerge *float64 // nil if no merges
 	SuggestedFloor     *float64 // nil if no merges
 }

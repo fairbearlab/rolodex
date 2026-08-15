@@ -10,23 +10,19 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  # Shared fairbearlab Go CI: lint (golangci-lint), test (vet, -race, tidy -diff), vulncheck.
+  go:
+    uses: fairbearlab/.github/.github/workflows/go-ci.yml@main
+
+  # Repo-specific: build + smoke-run the benchmarks so they don't rot.
+  bench:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-
       - name: Build
         run: go build ./...
-
-      - name: Test
-        run: go test -race -v ./...
-
       - name: Benchmark
         run: go test -bench=. -benchtime=1x ./cmd/rolodex/
-
-      - name: Vet
-        run: go vet ./...

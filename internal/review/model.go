@@ -15,7 +15,7 @@ const CompactThreshold = 0.78
 type ViewMode int
 
 const (
-	ViewCompact  ViewMode = iota
+	ViewCompact ViewMode = iota
 	ViewDetailed
 )
 

@@ -110,7 +110,7 @@ func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error
 		}
 	} else {
 		// Remove any stale review.vcf from a previous run
-		os.Remove(reviewPath)
+		_ = os.Remove(reviewPath)
 	}
 
 	// Report

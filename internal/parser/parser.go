@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	vcard "github.com/emersion/go-vcard"
@@ -15,7 +16,7 @@ import (
 
 // ParseFile reads a .vcf file and returns parsed contacts.
 func ParseFile(path string, source model.Source) ([]model.ParsedContact, []model.Warning, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading %s: %w", path, err)
 	}

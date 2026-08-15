@@ -110,4 +110,3 @@ func describeHas(c audit.UnreachableContact) string {
 	}
 	return strings.Join(parts, ", ")
 }
-

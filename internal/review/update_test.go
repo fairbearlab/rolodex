@@ -13,10 +13,10 @@ func newTestModel(scores []float64) ReviewModel {
 	clusters := BuildClusters(report, contacts)
 
 	m := ReviewModel{
-		Report:   report,
-		Clusters: clusters,
-		Width:    80,
-		Height:   24,
+		Report:    report,
+		Clusters:  clusters,
+		Width:     80,
+		Height:    24,
 		PairStart: time.Now(),
 		StartTime: time.Now(),
 	}

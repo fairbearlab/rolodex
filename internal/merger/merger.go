@@ -12,8 +12,8 @@ import (
 
 // Result holds the output of the merge stage.
 type Result struct {
-	Merged  []model.MergedContact // auto-merged, confident
-	Review  []model.MergedContact // review-tier, needs human eyes
+	Merged   []model.MergedContact // auto-merged, confident
+	Review   []model.MergedContact // review-tier, needs human eyes
 	Clusters []model.Cluster       // cluster info for reporting
 }
 
@@ -69,9 +69,8 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 					if p.Score < minScore {
 						minScore = p.Score
 					}
-					if p.Tier == model.TierReview {
-						allAutoMerge = false
-					} else if p.Tier == model.TierDistinct {
+					switch p.Tier {
+					case model.TierReview, model.TierDistinct:
 						allAutoMerge = false
 					}
 				} else {
@@ -147,7 +146,7 @@ func ClusterID(contacts []model.NormalizedContact, indices []int) string {
 // mergeCluster merges all contacts in a cluster with iCloud priority.
 func mergeCluster(contacts []model.NormalizedContact, indices []int, score float64) model.MergedContact {
 	// Find iCloud contact (priority source) and others
-	var icloudIdx int = -1
+	icloudIdx := -1
 	for _, idx := range indices {
 		if contacts[idx].Parsed.Source == model.SourceICloud {
 			icloudIdx = idx

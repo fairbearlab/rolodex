@@ -26,7 +26,7 @@ func TestMergeAutoMergePair(t *testing.T) {
 				GivenName:     "Bob",
 				FamilyName:    "Smith",
 				FormattedName: "Bob Smith",
-				Emails:        []model.Email{
+				Emails: []model.Email{
 					{Address: "bob@gmail.com", Type: "HOME"},
 					{Address: "robert.smith@acme.com", Type: "WORK"},
 				},
@@ -108,18 +108,18 @@ func TestMergePassthroughFields(t *testing.T) {
 	contacts := []model.NormalizedContact{
 		{
 			Parsed: model.ParsedContact{
-				Source:    model.SourceICloud,
-				GivenName: "Alice",
+				Source:     model.SourceICloud,
+				GivenName:  "Alice",
 				FamilyName: "Smith",
 			},
 		},
 		{
 			Parsed: model.ParsedContact{
-				Source:    model.SourceGoogle,
-				GivenName: "Alice",
+				Source:     model.SourceGoogle,
+				GivenName:  "Alice",
 				FamilyName: "Smith",
-				Org:       "NewCo", // only in Google
-				Birthday:  "1990-01-01", // only in Google
+				Org:        "NewCo",      // only in Google
+				Birthday:   "1990-01-01", // only in Google
 			},
 		},
 	}
