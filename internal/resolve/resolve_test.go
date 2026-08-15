@@ -239,7 +239,7 @@ func TestRunMalformedReportJSON(t *testing.T) {
 
 	writeTestVCF(t, mergedPath, nil)
 	writeTestVCF(t, reviewPath, nil)
-	os.WriteFile(reportPath, []byte("{invalid json"), 0600)
+	_ = os.WriteFile(reportPath, []byte("{invalid json"), 0600)
 
 	err := Run(reportPath, reviewPath, mergedPath, outPath)
 	if err == nil {

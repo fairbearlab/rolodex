@@ -48,11 +48,11 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	}
 
 	// Validate output paths before running the pipeline
-	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outPath), 0750); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 	if reportSavePath != "" {
-		if err := os.MkdirAll(filepath.Dir(reportSavePath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(reportSavePath), 0750); err != nil {
 			return fmt.Errorf("creating report directory: %w", err)
 		}
 	}
@@ -75,7 +75,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	paused := false
 	defer func() {
 		if succeeded {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 		} else if !paused {
 			fmt.Fprintf(os.Stderr, "\nTemp workspace preserved: %s\n", tempDir)
 		}
@@ -180,7 +180,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 	// remove any stale calibration.jsonl from a previous --keep run
 	// so callers don't read old data.
 	if keep && !wroteCalibration {
-		os.Remove(calDst)
+		_ = os.Remove(calDst)
 	}
 
 	// Copy intermediates if --keep
@@ -210,7 +210,7 @@ func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) erro
 					// Source doesn't exist this run (e.g., no review.vcf
 					// when no review pairs). Remove any stale copy from a
 					// previous --keep run so callers don't read old data.
-					os.Remove(dst)
+					_ = os.Remove(dst)
 					continue
 				}
 				return fmt.Errorf("reading %s for --keep: %w", f.name, err)

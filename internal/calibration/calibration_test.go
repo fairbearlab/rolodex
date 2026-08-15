@@ -48,7 +48,7 @@ func TestLogAppendAndEntries(t *testing.T) {
 		t.Error("calibration file is empty")
 	}
 
-	log.Close()
+	_ = log.Close()
 }
 
 func approxEq(a, b float64) bool {

@@ -23,26 +23,26 @@ func WriteFile(path string, contacts []model.MergedContact) error {
 	}
 
 	if err := Write(f, contacts); err != nil {
-		f.Close()
-		os.Remove(tmpPath)
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("writing contacts: %w", err)
 	}
 
 	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tmpPath)
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("syncing %s: %w", tmpPath, err)
 	}
 
 	if err := f.Close(); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
 	}
 
 	// Remove existing file first — os.Rename doesn't overwrite on Windows
-	os.Remove(path)
+	_ = os.Remove(path)
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("renaming %s to %s: %w", tmpPath, path, err)
 	}
 

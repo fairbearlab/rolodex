@@ -51,7 +51,7 @@ func Run(reportPath, reviewPath, calibrationPath string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("setting up calibration log: %w", err)
 	}
-	defer calLog.Close()
+	defer func() { _ = calLog.Close() }()
 
 	// Build the model
 	m := ReviewModel{
@@ -95,9 +95,9 @@ func writeReport(path string, report any) error {
 	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		return fmt.Errorf("writing report: %w", err)
 	}
-	os.Remove(path) // pre-remove for Windows compatibility
+	_ = os.Remove(path) // pre-remove for Windows compatibility
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("renaming report: %w", err)
 	}
 	return nil

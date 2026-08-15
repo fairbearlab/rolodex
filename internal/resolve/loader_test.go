@@ -20,12 +20,12 @@ func TestLoadReportAndReview(t *testing.T) {
 	}
 	reportData, _ := json.MarshalIndent(report, "", "  ")
 	reportPath := filepath.Join(dir, "report.json")
-	os.WriteFile(reportPath, reportData, 0644)
+	_ = os.WriteFile(reportPath, reportData, 0600)
 
 	// Write a minimal review.vcf
 	reviewPath := filepath.Join(dir, "review.vcf")
 	vcf := "BEGIN:VCARD\nVERSION:3.0\nFN:Alice Test\nN:Test;Alice;;;\nEND:VCARD\n"
-	os.WriteFile(reviewPath, []byte(vcf), 0644)
+	_ = os.WriteFile(reviewPath, []byte(vcf), 0600)
 
 	loaded, err := LoadReportAndReview(reportPath, reviewPath)
 	if err != nil {
@@ -46,10 +46,10 @@ func TestLoadReportAndReview(t *testing.T) {
 func TestLoadReportAndReviewBadReport(t *testing.T) {
 	dir := t.TempDir()
 	reportPath := filepath.Join(dir, "report.json")
-	os.WriteFile(reportPath, []byte("not json"), 0644)
+	_ = os.WriteFile(reportPath, []byte("not json"), 0600)
 
 	reviewPath := filepath.Join(dir, "review.vcf")
-	os.WriteFile(reviewPath, []byte("BEGIN:VCARD\nVERSION:3.0\nFN:Test\nEND:VCARD\n"), 0644)
+	_ = os.WriteFile(reviewPath, []byte("BEGIN:VCARD\nVERSION:3.0\nFN:Test\nEND:VCARD\n"), 0600)
 
 	_, err := LoadReportAndReview(reportPath, reviewPath)
 	if err == nil {
