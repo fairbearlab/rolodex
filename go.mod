@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/emersion/go-vcard v0.0.0-20241024213814-c9703dde27ff
+	github.com/emersion/go-vcard v0.1.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
 	golang.org/x/text v0.41.0
 )
