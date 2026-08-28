@@ -38,6 +38,18 @@
 **Priority:** P1
 **Depends on:** Nothing
 
+### Bind cluster ids to reviewed contact content
+
+**What:** `merger.ClusterID` hashes `source:index:family:given` per member. Add the decision-relevant field values (or a per-run identifier) to the hash, so a `review.vcf` from a different run cannot satisfy the id check.
+
+**Why:** `BuildClusters` now rejects a `review.vcf` whose `X-ROLODEX-CLUSTER` tags disagree with `report.json`, which catches reordering and staleness. It does not catch a file from a different run with the same contact order and names but changed phones, emails or birthdays: the ids match, the decision is recorded against the new report, and `resolve` emits the stale contact data.
+
+**Context:** Found by the Codex structured review during the v0.4.0 pre-landing pass. Changing the hash input breaks resume compatibility again, so it is worth batching with any other change that does.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Nothing
+
 ### Same-source field conflicts are dropped and unreportable
 
 **What:** `merger.mergeCluster` fills a single-value field only when the base's is empty, so on a 3-member cluster the second same-source contact's `NOTE`, `ORG`, `TITLE`, `BDAY`, `URL` and `PHOTO` are discarded. `reporter.findConflicts` compares only the first iCloud contact against the first non-iCloud one, so it structurally cannot report a same-source conflict. Compare every member pairwise, and write a report by default.
