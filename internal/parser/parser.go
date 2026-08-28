@@ -59,6 +59,14 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		Extra:  make(map[string][]string),
 	}
 
+	// Provenance written by an earlier rolodex run (review.vcf / merged.vcf).
+	// A single known source overrides the caller's label so the review TUI can
+	// tell which card is which. The field is also kept in Extra: merged
+	// provenance like "merged(icloud+google)" is read from there by resolve.
+	if src := provenanceSource(card); src != "" {
+		c.Source = src
+	}
+
 	// Structured name (N field)
 	if names := card[vcard.FieldName]; len(names) > 0 {
 		// The N field has components: family;given;middle;prefix;suffix
@@ -165,6 +173,18 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	}
 
 	return c
+}
+
+// provenanceSource returns the single source recorded in X-ROLODEX-SOURCE,
+// or "" when the field is absent or names a merged/unknown source.
+func provenanceSource(card vcard.Card) model.Source {
+	src := model.Source(strings.TrimSpace(card.PreferredValue("X-ROLODEX-SOURCE")))
+	switch src {
+	case model.SourceICloud, model.SourceGoogle:
+		return src
+	default:
+		return ""
+	}
 }
 
 // splitN extracts the 5 components of the N field.

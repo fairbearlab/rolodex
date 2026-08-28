@@ -75,8 +75,17 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []
 		clusterSize := len(rd.Contacts)
 		var contacts []model.ParsedContact
 		if contactIdx+clusterSize <= len(reviewContacts) {
-			contacts = reviewContacts[contactIdx : contactIdx+clusterSize]
+			contacts = append(contacts, reviewContacts[contactIdx:contactIdx+clusterSize]...)
 			contactIdx += clusterSize
+		}
+
+		// The parser restores Source from X-ROLODEX-SOURCE in review.vcf. If
+		// that is missing (older files, hand-edited input) fall back to the
+		// provenance the report recorded for the same position.
+		for i := range contacts {
+			if !isKnownSource(contacts[i].Source) && i < len(rd.Contacts) && isKnownSource(rd.Contacts[i].Source) {
+				contacts[i].Source = rd.Contacts[i].Source
+			}
 		}
 
 		clusters = append(clusters, ReviewCluster{
@@ -97,6 +106,10 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []
 	})
 
 	return clusters
+}
+
+func isKnownSource(s model.Source) bool {
+	return s == model.SourceICloud || s == model.SourceGoogle
 }
 
 // CurrentCluster returns the cluster currently being reviewed, or nil if done.

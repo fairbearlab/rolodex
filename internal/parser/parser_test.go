@@ -163,3 +163,27 @@ func TestParseFile(t *testing.T) {
 		t.Fatalf("expected 5 contacts, got %d", len(contacts))
 	}
 }
+
+func TestParseRestoresProvenanceSource(t *testing.T) {
+	vcf := "BEGIN:VCARD\nVERSION:3.0\nFN:A\nN:A;;;;\nX-ROLODEX-SOURCE:icloud\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:B\nN:B;;;;\nX-ROLODEX-SOURCE:google\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:C\nN:C;;;;\nX-ROLODEX-SOURCE:merged(icloud+google)\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:D\nN:D;;;;\nEND:VCARD\n"
+	contacts, _, err := Parse(strings.NewReader(vcf), "review")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []model.Source{model.SourceICloud, model.SourceGoogle, "review", "review"}
+	for i, w := range want {
+		if contacts[i].Source != w {
+			t.Errorf("contact %d source = %q, want %q", i, contacts[i].Source, w)
+		}
+	}
+	// Merged provenance stays in Extra for resolve to read.
+	if got := contacts[2].Extra["X-ROLODEX-SOURCE"]; len(got) != 1 || got[0] != "merged(icloud+google)" {
+		t.Errorf("X-ROLODEX-SOURCE not preserved in Extra: %v", got)
+	}
+	if got := contacts[0].Extra["X-ROLODEX-SOURCE"]; len(got) != 1 || got[0] != "icloud" {
+		t.Errorf("single-source X-ROLODEX-SOURCE not preserved in Extra: %v", got)
+	}
+}

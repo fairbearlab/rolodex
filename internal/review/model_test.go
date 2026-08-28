@@ -154,3 +154,42 @@ func TestPendingAndResolvedCount(t *testing.T) {
 		t.Errorf("ResolvedCount = %d, want 1", m.ResolvedCount())
 	}
 }
+
+func TestBuildClustersFallsBackToReportSource(t *testing.T) {
+	report := model.Report{Review: []model.ReviewDecision{{
+		ClusterID: "c1",
+		Contacts: []model.ContactRef{
+			{Source: model.SourceICloud, Name: "A"},
+			{Source: model.SourceGoogle, Name: "A"},
+		},
+		Decision: "pending",
+	}}}
+	// Contacts parsed without X-ROLODEX-SOURCE carry the loader's label.
+	contacts := []model.ParsedContact{
+		{Source: "review", FormattedName: "A"},
+		{Source: "review", FormattedName: "A"},
+	}
+	clusters := BuildClusters(report, contacts)
+	if got := clusters[0].Contacts[0].Source; got != model.SourceICloud {
+		t.Errorf("contact 0 source = %q, want icloud", got)
+	}
+	if got := clusters[0].Contacts[1].Source; got != model.SourceGoogle {
+		t.Errorf("contact 1 source = %q, want google", got)
+	}
+	if contacts[0].Source != "review" {
+		t.Error("BuildClusters must not mutate the caller's slice")
+	}
+}
+
+func TestBuildClustersKeepsParsedSource(t *testing.T) {
+	report := model.Report{Review: []model.ReviewDecision{{
+		ClusterID: "c1",
+		Contacts:  []model.ContactRef{{Source: model.SourceGoogle}, {Source: model.SourceICloud}},
+		Decision:  "pending",
+	}}}
+	contacts := []model.ParsedContact{{Source: model.SourceICloud}, {Source: model.SourceGoogle}}
+	clusters := BuildClusters(report, contacts)
+	if clusters[0].Contacts[0].Source != model.SourceICloud || clusters[0].Contacts[1].Source != model.SourceGoogle {
+		t.Error("per-card X-ROLODEX-SOURCE must take precedence over the report")
+	}
+}
