@@ -74,9 +74,18 @@ type NormalizedContact struct {
 	NormalizedFamilyName string
 	NormalizedGivenName  string
 	NormalizedMiddleName string
-	NormalizedSuffix     string   // generational suffix only (jr, sr, ii, iii, iv, v), from Suffix or the name fields
-	NormalizedEmails     []string // lowercased, trimmed
-	NormalizedPhones     []string // digits only
+	NormalizedSuffix     string // generational suffix only (jr, sr, ii, iii, iv, v), from Suffix or the name fields
+
+	// Accent-preserving forms. The normalized forms above fold diacritics away
+	// so that blocking and similarity scoring stay tolerant of an export that
+	// lost them; these keep the marks so an identity rule can tell "Nguyên"
+	// from "Nguyễn" before merging two people into one.
+	StrictFamilyName string
+	StrictGivenName  string
+	StrictMiddleName string
+
+	NormalizedEmails []string // lowercased, trimmed
+	NormalizedPhones []string // digits only
 }
 
 // ScoreFeatures holds per-feature scores for a scored pair.

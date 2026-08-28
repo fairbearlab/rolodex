@@ -154,3 +154,125 @@ func TestSameNameFoldsGivenNameInitialIntoMiddle(t *testing.T) {
 		t.Error("NameExact = true for John Doe V vs John Doe")
 	}
 }
+
+// A folded middle initial must stay in the name, not be eaten as a suffix.
+// "v" sat in normalize's nameSuffixes table, so Name("John V") returned
+// "john": the middle initial vanished, and an empty middle name compares
+// compatible with every other initial. "John V Doe" and "John W Doe" sharing
+// one email then auto-merged — two people, one contact, no review card.
+// GenerationalSuffix already refuses to read a trailing single letter as
+// generational; Name now applies the same rule.
+func TestMiddleInitialIsNotAGenerationalSuffix(t *testing.T) {
+	named := func(given, middle, suffix, email string) model.NormalizedContact {
+		return normalize.Contact(model.ParsedContact{
+			GivenName: given, MiddleName: middle, FamilyName: "Doe",
+			Suffix: suffix, Emails: []model.Email{{Address: email}},
+		})
+	}
+	const shared = "doe.family@example.com"
+
+	// Different middle initials are different people, even on a shared email.
+	for _, tc := range []struct{ ga, ma, gb, mb string }{
+		{"John V", "", "John W", ""},
+		{"John V", "", "John", "X"},
+		{"John", "V", "John", "W"},
+	} {
+		got := tierOf(named(tc.ga, tc.ma, "", shared), named(tc.gb, tc.mb, "", shared))
+		if got.Features.NameExact || got.Tier == model.TierAutoMerge {
+			t.Errorf("%q/%q vs %q/%q: NameExact=%v tier=%q, want no auto_merge on differing middle initials",
+				tc.ga, tc.ma, tc.gb, tc.mb, got.Features.NameExact, got.Tier)
+		}
+	}
+
+	// The cross-source shape this rule exists for still matches: Google folds
+	// the initial into the given name, iCloud keeps it in the middle slot.
+	if got := tierOf(named("John V", "", "", shared), named("John", "V", "", shared)); !got.Features.NameExact {
+		t.Error(`"John V"/"" vs "John"/"V": NameExact = false, want the folded initial to match the middle slot`)
+	}
+
+	// A real generational V lives in the N suffix component and still counts.
+	if got := tierOf(named("John", "", "V", shared), named("John", "", "", shared)); got.Features.NameExact {
+		t.Error(`suffix "V" vs none: NameExact = true, want a generational suffix to distinguish`)
+	}
+
+	// Titles are multi-letter and must still be stripped.
+	if normalize.Name("Dr. John") != "john" {
+		t.Errorf(`Name("Dr. John") = %q, want "john"`, normalize.Name("Dr. John"))
+	}
+	// The single-letter guard must not resurrect stripped multi-letter suffixes.
+	if normalize.Name("John Jr.") != "john" {
+		t.Errorf(`Name("John Jr.") = %q, want "john"`, normalize.Name("John Jr."))
+	}
+}
+
+// Diacritics distinguish people. normalize.Name applies NFKD and drops every
+// combining mark, so "Nguyên" and "Nguyễn" both fold to "nguyen". That folding
+// is right for blocking and similarity, but the exact-name rule merges on one
+// identifier, so on the folded form alone two household members sharing a
+// landline were fused with no review card. Vietnamese given names are
+// distinguished almost entirely by tone marks.
+func TestExactNameRequiresMatchingDiacritics(t *testing.T) {
+	named := func(given, family string) model.NormalizedContact {
+		return normalize.Contact(model.ParsedContact{
+			GivenName: given, FamilyName: family,
+			Phones: []model.Phone{{Number: "555-0100"}},
+		})
+	}
+
+	// Different names that fold together must not auto-merge.
+	for _, tc := range []struct{ ga, fa, gb, fb string }{
+		{"Nguyên", "Le", "Nguyễn", "Le"},
+		{"Hà", "Le", "Ha", "Le"},
+		{"René", "Dupont", "Rene", "Dupont"},
+	} {
+		got := tierOf(named(tc.ga, tc.fa), named(tc.gb, tc.fb))
+		if got.Features.NameExact || got.Tier == model.TierAutoMerge {
+			t.Errorf("%q %q vs %q %q: NameExact=%v tier=%q, want no auto_merge on names that differ by marks",
+				tc.ga, tc.fa, tc.gb, tc.fb, got.Features.NameExact, got.Tier)
+		}
+		// Recall is preserved: the pair still reaches a human.
+		if got.Tier != model.TierReview {
+			t.Errorf("%q vs %q: tier = %q, want the pair still surfaced for review", tc.ga, tc.gb, got.Tier)
+		}
+	}
+
+	// Identical accented names, plain ASCII names and nicknames still match.
+	for _, tc := range []struct{ ga, fa, gb, fb string }{
+		{"José", "Garcia", "José", "Garcia"},
+		{"John", "Smith", "John", "Smith"},
+		{"Bob", "Smith", "Robert", "Smith"},
+		// Compatibility variants are the SAME name written two ways: fullwidth
+		// Latin and halfwidth kana are a routine iCloud-vs-Google divergence,
+		// so NameStrict folds them (NFKC) while keeping the combining marks
+		// that separate "Nguyên" from "Nguyễn".
+		{"Ｊｏｈｎ", "Smith", "John", "Smith"},
+		{"ﾀﾅｶ", "Z", "タナカ", "Z"},
+	} {
+		if got := tierOf(named(tc.ga, tc.fa), named(tc.gb, tc.fb)); !got.Features.NameExact {
+			t.Errorf("%q %q vs %q %q: NameExact = false, want the rule to still fire",
+				tc.ga, tc.fa, tc.gb, tc.fb)
+		}
+	}
+}
+
+// A set of initials is not a name, however it is punctuated. isInitial counted
+// runes on the whole string, so "j.r." (three runes) passed the guard that
+// rejects "j", and two different "J.R. Smith"s on one office switchboard
+// auto-merged with no review card.
+func TestSameNameRejectsMultipleInitials(t *testing.T) {
+	for _, given := range []string{"J.R.", "J R", "A.B.", "J.R.T.", "J"} {
+		a := parsed(given, "Smith", "", []string{"jr.smith@corp.com"}, []string{"3175550000"})
+		b := parsed(given, "Smith", "", []string{"jrt.smith@corp.com"}, []string{"3175550000"})
+		got := tierOf(a, b)
+		if got.Features.NameExact || got.Tier == model.TierAutoMerge {
+			t.Errorf("%q Smith on a shared phone: NameExact=%v tier=%q, want no auto_merge on initials",
+				given, got.Features.NameExact, got.Tier)
+		}
+	}
+	// A real name with an initial after it is still a name.
+	a := parsed("John R.", "Smith", "", nil, []string{"3175550000"})
+	b := parsed("John R.", "Smith", "", nil, []string{"3175550000"})
+	if got := tierOf(a, b); !got.Features.NameExact {
+		t.Error(`"John R." Smith: NameExact = false, want a real given name to still match`)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -41,6 +42,9 @@ func Contact(c model.ParsedContact) model.NormalizedContact {
 		NormalizedFamilyName: Name(c.FamilyName),
 		NormalizedGivenName:  Name(c.GivenName),
 		NormalizedMiddleName: Name(c.MiddleName),
+		StrictFamilyName:     NameStrict(c.FamilyName),
+		StrictGivenName:      NameStrict(c.GivenName),
+		StrictMiddleName:     NameStrict(c.MiddleName),
 		NormalizedSuffix:     GenerationalSuffix(c),
 		NormalizedEmails:     normalizeEmails(c.Emails),
 		NormalizedPhones:     normalizePhones(c.Phones),
@@ -131,8 +135,50 @@ func Name(s string) string {
 	return strings.Join(filtered, " ")
 }
 
+// NameStrict normalizes like Name but KEEPS diacritics. Name applies NFKD and
+// drops every combining mark, so "Nguyên" and "Nguyễn" — different Vietnamese
+// names — both fold to "nguyen". That folding is right for blocking and for
+// similarity scoring, but on its own it let the exact-name rule auto-merge two
+// people who share nothing but a phone. Callers that need identity, not
+// similarity, compare this form as well.
+func NameStrict(s string) string {
+	if s == "" {
+		return ""
+	}
+	// NFKC, not NFC: compatibility folding collapses halfwidth kana and
+	// fullwidth Latin, which are a routine iCloud-vs-Google divergence for
+	// Japanese contacts, while leaving the combining marks that distinguish
+	// "Nguyên" from "Nguyễn" — the only thing this form exists to see.
+	s = norm.NFKC.String(s)
+	s = strings.ToLower(s)
+	s = whitespaceRe.ReplaceAllString(strings.TrimSpace(s), " ")
+	words := strings.Fields(s)
+	var filtered []string
+	for _, w := range words {
+		if isTitleOrSuffix(w) {
+			continue
+		}
+		filtered = append(filtered, w)
+	}
+	if len(filtered) == 0 {
+		return s // don't strip everything
+	}
+	return strings.Join(filtered, " ")
+}
+
 func isTitleOrSuffix(word string) bool {
 	lower := strings.ToLower(strings.TrimRight(word, ".,"))
+	// A single letter is an initial, not a suffix. Google folds the middle
+	// initial into the given name ("John V") where iCloud keeps it in the
+	// middle slot. Stripping the "v" left an empty middle name, and an empty
+	// middle name compares compatible with every other initial, so
+	// "John V Doe" and "John W Doe" on one shared identifier merged unseen.
+	// GenerationalSuffix already declines to read a trailing single letter as
+	// generational; a real "V" belongs in the N suffix component, where it is
+	// still honoured.
+	if utf8.RuneCountInString(lower) < 2 {
+		return false
+	}
 	for _, t := range titlePrefixes {
 		if lower == t {
 			return true
@@ -234,6 +280,49 @@ func splitUnescaped(s string, sep rune) []string {
 	return append(parts, b.String())
 }
 
+// DisplayComponents splits a structured value on unescaped separators and
+// unescapes each component for a human reader. The parser keeps values in wire
+// form so a literal separator survives a write, so "Acme\; Inc." is ONE
+// organization that should read "Acme; Inc." — splitting it naively showed the
+// reviewer "Acme\, Inc." while they decided whether to merge two records.
+func DisplayComponents(s string, sep rune) []string {
+	parts := splitUnescaped(s, sep)
+	for i, p := range parts {
+		parts[i] = Unescape(p)
+	}
+	return parts
+}
+
+// Unescape resolves vCard backslash escapes in a single component value.
+func Unescape(s string) string {
+	if !strings.ContainsRune(s, '\\') {
+		return s
+	}
+	var b strings.Builder
+	escaped := false
+	for _, r := range s {
+		switch {
+		case escaped:
+			// "\n" is the vCard encoding of a newline; everything else
+			// stands for the character itself.
+			if r == 'n' || r == 'N' {
+				b.WriteRune('\n')
+			} else {
+				b.WriteRune(r)
+			}
+			escaped = false
+		case r == '\\':
+			escaped = true
+		default:
+			b.WriteRune(r)
+		}
+	}
+	if escaped {
+		b.WriteRune('\\')
+	}
+	return b.String()
+}
+
 // applePlaceholderYear is the year Apple Contacts stores for a birthday
 // entered without a year. iCloud exports it with X-APPLE-OMIT-YEAR=1604;
 // contacts synced onward to Google keep the year but lose the parameter.
@@ -298,9 +387,11 @@ func Birthday(s string) string {
 }
 
 // canonicalBirthday assembles YYYY-MM-DD (or --MM-DD when year is empty),
-// mapping the Apple placeholder year to "no year". It returns raw when the
-// month or day is out of range: "0000-00-00" and "1989-13-45" are
-// placeholders or typos, not dates, and must not compare equal to anything.
+// mapping the Apple placeholder year to "no year". It returns raw for anything
+// that is not a real calendar date: "0000-00-00", "1989-13-45" and "1989-02-31"
+// are placeholders or typos, not dates, and must not compare equal to anything.
+// A birthday is confirming evidence for the exact-name rule, so a placeholder
+// that two contacts happen to share would auto-merge them on the name alone.
 func canonicalBirthday(year, month, day, raw string) string {
 	mo, d := atoi(month), atoi(day)
 	if mo < 1 || mo > 12 || d < 1 || d > 31 {
@@ -308,9 +399,25 @@ func canonicalBirthday(year, month, day, raw string) string {
 	}
 	md := fmt.Sprintf("%02d-%02d", mo, d)
 	if year == "" || year == applePlaceholderYear {
+		// No year: validate against a leap year so 02-29 stays legal.
+		if !validDate(2000, mo, d) {
+			return raw
+		}
 		return "--" + md
 	}
+	y := atoi(year)
+	if y < 1 || !validDate(y, mo, d) {
+		return raw
+	}
 	return year + "-" + md
+}
+
+// validDate reports whether y-m-d is a real Gregorian date. time.Date
+// normalizes out-of-range components (February 31 becomes March 3), so
+// comparing the round trip is what actually rejects them.
+func validDate(y, m, d int) bool {
+	t := time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
+	return t.Year() == y && int(t.Month()) == m && t.Day() == d
 }
 
 func atoi(s string) int {

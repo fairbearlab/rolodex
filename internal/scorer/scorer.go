@@ -297,12 +297,32 @@ func sameName(a, b model.NormalizedContact) bool {
 	if a.NormalizedSuffix != b.NormalizedSuffix {
 		return false
 	}
+	// The names must agree with diacritics folded away AND with them kept.
+	// Name() drops combining marks, so "Nguyên" and "Nguyễn" — two different
+	// Vietnamese names — both fold to "nguyen"; on the folded form alone the
+	// exact-name rule auto-merged two household members who shared only a
+	// landline. Comparing the accent-preserving form too costs recall on one
+	// shape (an export that lost the accent), and that pair still reaches
+	// review through the near-name floor. It never costs precision.
+	return sameNameParts(a.NormalizedFamilyName, a.NormalizedGivenName, a.NormalizedMiddleName,
+		b.NormalizedFamilyName, b.NormalizedGivenName, b.NormalizedMiddleName) &&
+		sameNameParts(a.StrictFamilyName, a.StrictGivenName, a.StrictMiddleName,
+			b.StrictFamilyName, b.StrictGivenName, b.StrictMiddleName)
+}
+
+// sameNameParts compares one normalization of two names. Both the folded and
+// the accent-preserving forms are run through it, so a signal that can confirm
+// identity is held to the same standard in both.
+func sameNameParts(familyA, givenA0, middleA0, familyB, givenB0, middleB0 string) bool {
+	if familyA != familyB {
+		return false
+	}
 	// Google folds the middle name into the given name (N:Doe;John V;;;)
 	// where iCloud uses the middle slot (N:Doe;John;V;;). When the middle
 	// slot is empty, trailing given-name tokens are compared as the middle
 	// name so the two shapes of one person agree.
-	givenA, middleA := splitGiven(a.NormalizedGivenName, a.NormalizedMiddleName)
-	givenB, middleB := splitGiven(b.NormalizedGivenName, b.NormalizedMiddleName)
+	givenA, middleA := splitGiven(givenA0, middleA0)
+	givenB, middleB := splitGiven(givenB0, middleB0)
 	if !compatibleMiddle(middleA, middleB) {
 		return false
 	}
@@ -340,9 +360,25 @@ func sameGivenName(ga, gb string) bool {
 	return !aNick || !bNick // not two distinct diminutives of one canonical
 }
 
-// isInitial reports whether a given name is at most one letter ("J", "J.").
+// isInitial reports whether a given name carries no more identity than a set
+// of initials: "J", "J.", but also "J.R." and "J R". Counting runes on the
+// whole string was not enough — "j.r." is three runes, so it passed the guard,
+// and two different "J.R. Smith"s on one office switchboard auto-merged with
+// no review card. A name is initials when every token in it is a single
+// letter.
 func isInitial(given string) bool {
-	return utf8.RuneCountInString(strings.Trim(given, ".")) <= 1
+	fields := strings.FieldsFunc(given, func(r rune) bool {
+		return r == '.' || r == ' ' || r == '\t'
+	})
+	if len(fields) == 0 {
+		return true
+	}
+	for _, f := range fields {
+		if utf8.RuneCountInString(f) > 1 {
+			return false
+		}
+	}
+	return true
 }
 
 func compatibleMiddle(ma, mb string) bool {
@@ -382,6 +418,11 @@ func compatibleMiddle(ma, mb string) bool {
 // When both contacts carry a birthday but one cannot be read, the guard
 // cannot run, so the rule does not fire and the pair falls through to the
 // score thresholds — fail closed, not open.
+//
+// Note the deliberate asymmetry with BirthdayConflict, which caps both paths:
+// an UNKNOWN birthday withholds only the single-identifier shortcut. A pair
+// that clears the auto-merge threshold on its own (two shared identifiers)
+// still merges. See TestBirthdayGuardFailsClosed.
 func Classify(score float64, f model.ScoreFeatures) model.Tier {
 	confirmed := f.SharedPhone || f.SharedEmail || f.SharedBirthday
 	nameRule := f.NameExact && confirmed && !f.BirthdayUnknown
