@@ -156,3 +156,23 @@ func TestNormalizeBirthday(t *testing.T) {
 		t.Errorf("BirthdayWithoutYear(no year) = %q, want unchanged", got)
 	}
 }
+
+func TestGenerationalSuffix(t *testing.T) {
+	cases := []struct {
+		c    model.ParsedContact
+		want string
+	}{
+		{model.ParsedContact{Suffix: "Jr."}, "jr"},
+		{model.ParsedContact{Suffix: "Junior"}, "jr"},
+		{model.ParsedContact{FamilyName: "Smith Sr."}, "sr"},
+		{model.ParsedContact{GivenName: "John III"}, "iii"},
+		{model.ParsedContact{Suffix: "MD"}, ""},
+		{model.ParsedContact{Suffix: "PhD", FamilyName: "Smith"}, ""},
+		{model.ParsedContact{}, ""},
+	}
+	for _, tc := range cases {
+		if got := GenerationalSuffix(tc.c); got != tc.want {
+			t.Errorf("GenerationalSuffix(%+v) = %q, want %q", tc.c, got, tc.want)
+		}
+	}
+}

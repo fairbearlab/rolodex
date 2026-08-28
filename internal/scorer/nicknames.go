@@ -16,22 +16,21 @@ var nicknames = map[string]string{
 	"will":   "william",
 	"willy":  "william",
 	"willie": "william",
-	// "liam" is deliberately absent: it is a standalone given name in
-	// current usage, and a Will/Liam pair on one household phone would
-	// otherwise auto-merge.
+	// "liam", "jack", "jamie", "leo" and "harry" are deliberately absent:
+	// they are standalone given names in current usage, and mapping them to
+	// a canonical would make e.g. a Will/Liam or Jack/John pair on one
+	// household phone look like one person.
 	"mike":    "michael",
 	"mikey":   "michael",
 	"mick":    "michael",
 	"mickey":  "michael",
 	"jim":     "james",
 	"jimmy":   "james",
-	"jamie":   "james",
 	"dick":    "richard",
 	"rick":    "richard",
 	"ricky":   "richard",
 	"rich":    "richard",
 	"richie":  "richard",
-	"jack":    "john",
 	"johnny":  "john",
 	"jon":     "john",
 	"joe":     "joseph",
@@ -66,13 +65,11 @@ var nicknames = map[string]string{
 	"frank":   "francis",
 	"frankie": "francis",
 	"hank":    "henry",
-	"harry":   "henry",
 	"hal":     "henry",
 	"jerry":   "gerald",
 	"gerry":   "gerald",
 	"larry":   "lawrence",
 	"lenny":   "leonard",
-	"leo":     "leonard",
 	"nick":    "nicholas",
 	"nicky":   "nicholas",
 	"pat":     "patrick",

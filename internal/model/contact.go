@@ -73,6 +73,8 @@ type NormalizedContact struct {
 	// Normalized forms used for blocking and scoring
 	NormalizedFamilyName string
 	NormalizedGivenName  string
+	NormalizedMiddleName string
+	NormalizedSuffix     string   // generational suffix only (jr, sr, ii, iii, iv, v), from Suffix or the name fields
 	NormalizedEmails     []string // lowercased, trimmed
 	NormalizedPhones     []string // digits only
 }
@@ -80,9 +82,12 @@ type NormalizedContact struct {
 // ScoreFeatures holds per-feature scores for a scored pair.
 type ScoreFeatures struct {
 	NameSimilarity float64 `json:"name_similarity"`
-	// NameExact is true when the normalized full names are identical, directly
-	// or after nickname expansion. Stricter than NameSimilarity >= 0.95, which
-	// Jaro-Winkler also awards to Eric/Erica or Paul/Paula.
+	// NameExact is true when the two names identify the same person as far as
+	// the name fields can tell: given and family names identical (directly or
+	// one being a nickname of the other), middle names compatible, and
+	// generational suffixes equal. Stricter than NameSimilarity >= 0.95, which
+	// Jaro-Winkler also awards to Eric/Erica, and than normalized equality,
+	// which would merge John Smith Jr. with John Smith Sr.
 	NameExact   bool `json:"name_exact,omitempty"`
 	SharedEmail bool `json:"shared_email"`
 	SharedPhone bool `json:"shared_phone"`

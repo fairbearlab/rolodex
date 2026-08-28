@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 func makeContact(given, family string, emails []string, phones []string, org string) model.NormalizedContact {
@@ -374,5 +375,41 @@ func TestNameExactFeature(t *testing.T) {
 	}, [][2]int{{0, 1}})[0].Features
 	if !nameless.Nameless {
 		t.Error("nameless pair should record Nameless=true for the TUI")
+	}
+}
+
+func TestSameNameIdentity(t *testing.T) {
+	mk := func(given, middle, family, suffix string) model.NormalizedContact {
+		c := model.ParsedContact{GivenName: given, MiddleName: middle, FamilyName: family, Suffix: suffix,
+			Phones: []model.Phone{{Number: "5558675309"}}}
+		return normalize.Contact(c)
+	}
+	cases := []struct {
+		name string
+		a, b model.NormalizedContact
+		want model.Tier
+	}{
+		{"Jr vs Sr on one landline", mk("John", "", "Smith", "Jr."), mk("John", "", "Smith", "Sr."), model.TierReview},
+		{"Jr vs no suffix", mk("John", "", "Smith", "Jr."), mk("John", "", "Smith", ""), model.TierReview},
+		{"suffix folded into family name", mk("John", "", "Smith Jr.", ""), mk("John", "", "Smith Sr.", ""), model.TierReview},
+		{"III vs IV", mk("John", "", "Smith", "III"), mk("John", "", "Smith", "IV"), model.TierReview},
+		{"same suffix both sides", mk("John", "", "Smith", "Jr."), mk("John", "", "Smith", "Jr"), model.TierAutoMerge},
+		{"credential suffix ignored", mk("John", "", "Smith", "MD"), mk("John", "", "Smith", ""), model.TierAutoMerge},
+		{"different middle names", mk("John", "Andrew", "Smith", ""), mk("John", "Beatrice", "Smith", ""), model.TierReview},
+		{"different middle initials", mk("John", "A.", "Smith", ""), mk("John", "B", "Smith", ""), model.TierReview},
+		{"initial matches full middle", mk("Charles", "J.", "Galanti", ""), mk("Charles", "James", "Galanti", ""), model.TierAutoMerge},
+		{"missing middle on one side", mk("Charles", "J.", "Galanti", ""), mk("Charles", "", "Galanti", ""), model.TierAutoMerge},
+		{"two diminutives of one canonical: Ted/Ned", mk("Ted", "", "Smith", ""), mk("Ned", "", "Smith", ""), model.TierReview},
+		{"Beth/Betty", mk("Beth", "", "Smith", ""), mk("Betty", "", "Smith", ""), model.TierReview},
+		{"nickname vs canonical: Chris/Christopher", mk("Chris", "", "Petry", ""), mk("Christopher", "", "Petry", ""), model.TierAutoMerge},
+		{"Jack/John are different names now", mk("Jack", "", "Smith", ""), mk("John", "", "Smith", ""), model.TierDistinct},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Score([]model.NormalizedContact{tc.a, tc.b}, [][2]int{{0, 1}})[0]
+			if got.Tier != tc.want {
+				t.Errorf("tier = %q (score=%.3f, NameExact=%v), want %q", got.Tier, got.Score, got.Features.NameExact, tc.want)
+			}
+		})
 	}
 }

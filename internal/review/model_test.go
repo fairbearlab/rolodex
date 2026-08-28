@@ -2,6 +2,7 @@ package review
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -193,5 +194,17 @@ func TestBuildClustersKeepsParsedSource(t *testing.T) {
 	clusters := BuildClusters(report, contacts)
 	if clusters[0].Contacts[0].Source != model.SourceICloud || clusters[0].Contacts[1].Source != model.SourceGoogle {
 		t.Error("per-card X-ROLODEX-SOURCE must take precedence over the report")
+	}
+}
+
+func TestBirthdayConflictForcesDetailedView(t *testing.T) {
+	report := makeReport([]float64{1.0})
+	report.Review[0].Features = model.ScoreFeatures{NameSimilarity: 1, NameExact: true, SharedPhone: true, BirthdayConflict: true}
+	m := ReviewModel{Clusters: BuildClusters(report, makeContacts(2)), PairStart: time.Now(), Width: 100, Height: 60}
+	if m.ActiveViewMode() != ViewDetailed {
+		t.Error("a birthday-conflict pair must get the detailed view even at score 1.00")
+	}
+	if out := m.View(); !strings.Contains(out, "birthdays disagree") {
+		t.Errorf("detailed view should explain the hold:\n%s", out)
 	}
 }

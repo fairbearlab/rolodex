@@ -12,8 +12,10 @@ import (
 //
 // Pairs whose linear score reaches the review threshold carry a shared
 // identifier (phone or email) alongside a near-match name, so a one-glance
-// card is enough. Pairs below it were surfaced by the exact-name rule with
-// no confirming identifier and need the full field-by-field view.
+// card is enough. Pairs below it were surfaced by the near-name rule with
+// no confirming identifier and need the full field-by-field view. Pairs
+// held in review by a birthday conflict always get the detailed view,
+// whatever their score: the compact card has no birthday row.
 const CompactThreshold = model.ThresholdReview
 
 // ViewMode controls which layout to render.
@@ -152,6 +154,11 @@ func (m *ReviewModel) ActiveViewMode() ViewMode {
 	}
 	// Multi-contact clusters always use detailed view
 	if len(c.Contacts) > 2 {
+		return ViewDetailed
+	}
+	// A birthday conflict is the reason the pair is here; only the detailed
+	// view shows it.
+	if c.Features.BirthdayConflict {
 		return ViewDetailed
 	}
 	if c.Decision.Score >= CompactThreshold {

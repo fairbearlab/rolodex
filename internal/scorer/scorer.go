@@ -104,7 +104,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 	}
 
 	nameSim := nameSimilarity(fullA, fullB)
-	nameExact := fullA == fullB || expandFullName(fullA) == expandFullName(fullB)
+	nameExact := sameName(a, b)
 
 	score := nameSim * WeightName
 	if emailMatch {
@@ -208,6 +208,63 @@ func sharedBirthday(a, b model.NormalizedContact) bool {
 		return strings.HasSuffix(bb, ba[1:]) // "--06-29" -> "-06-29"
 	}
 	return strings.HasSuffix(ba, bb[1:])
+}
+
+// sameName reports whether two names identify the same person as far as the
+// name fields can tell. It is the gate for the auto-merge rule, so it is
+// deliberately stricter than the similarity score:
+//
+//   - given names equal, or one a nickname of the other (Chris/Christopher);
+//     two different diminutives of one canonical (Ted/Ned, Beth/Betty) are
+//     usually siblings, not one person, and do not count
+//   - family names equal
+//   - middle names compatible: equal, an initial matching the other's first
+//     letter, or absent on one side (Charles J. Galanti / Charles Galanti)
+//   - generational suffixes equal, including absent on both sides; Jr. vs
+//     Sr. — or Jr. vs nothing — is a father and son on one landline
+func sameName(a, b model.NormalizedContact) bool {
+	if a.NormalizedFamilyName != b.NormalizedFamilyName {
+		return false
+	}
+	if a.NormalizedSuffix != b.NormalizedSuffix {
+		return false
+	}
+	if !compatibleMiddle(a.NormalizedMiddleName, b.NormalizedMiddleName) {
+		return false
+	}
+	return sameGivenName(a.NormalizedGivenName, b.NormalizedGivenName)
+}
+
+func sameGivenName(ga, gb string) bool {
+	if ga == gb {
+		return true
+	}
+	wa, wb := strings.Fields(ga), strings.Fields(gb)
+	if len(wa) == 0 || len(wb) == 0 || len(wa) != len(wb) {
+		return false
+	}
+	for i := 1; i < len(wa); i++ {
+		if wa[i] != wb[i] {
+			return false
+		}
+	}
+	if expandName(wa[0]) != expandName(wb[0]) {
+		return false
+	}
+	_, aNick := nicknames[wa[0]]
+	_, bNick := nicknames[wb[0]]
+	return !aNick || !bNick // not two distinct diminutives of one canonical
+}
+
+func compatibleMiddle(ma, mb string) bool {
+	if ma == "" || mb == "" || ma == mb {
+		return true
+	}
+	ma, mb = strings.Trim(ma, "."), strings.Trim(mb, ".")
+	if len(ma) == 1 || len(mb) == 1 {
+		return ma[:1] == mb[:1]
+	}
+	return false
 }
 
 // canonicalBirthdayRe matches the forms normalize.Birthday produces

@@ -91,9 +91,9 @@ rolodex version
 
 The first four sum to 1.0; birthday is a bonus and the total is capped at 1.0. Birthdays compare after normalization, so `1989-10-22`, `19891022` and a no-year `--10-22` all agree.
 
-Tiers: **auto\_merge** (>= 0.85), **review** (0.60-0.85), **distinct** (< 0.60), with two rules layered on top of the score because real exports are sparse (most contacts carry a name and at most one identifier):
+Tiers: **auto\_merge** (>= 0.85), **review** (0.60-0.85), **distinct** (< 0.60), with three rules layered on top of the score because real exports are sparse (most contacts carry a name and at most one identifier):
 
-* An identical name (equal after normalization, directly or via nickname expansion — Chris/Christopher, not Eric/Erica) **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.65.
+* An identical name **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.65. "Identical" means the given and family names are equal (or one is a nickname of the other — Chris/Christopher, but not Eric/Erica and not two different diminutives like Ted/Ned), middle names are compatible (a missing or matching initial is fine), and generational suffixes agree (John Smith Jr. is not John Smith Sr., or John Smith).
 * A near-identical name (similarity >= 0.95) on its own is **at least review**. Same-name pairs are never silently marked distinct; a shared org alone does not auto-merge them, because two people can share a common name and an employer.
 * Two well-formed birthdays that disagree **cap the pair at review**, whatever else matches. Same name and a shared household phone is exactly how a parent and child look; the birthdays are what tell them apart.
 

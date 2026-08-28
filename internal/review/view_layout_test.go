@@ -237,33 +237,47 @@ type errString string
 
 func (e errString) Error() string { return string(e) }
 
+// cardHeight returns the number of lines between the first card top border
+// and the first card bottom border in a rendered detailed view.
+func cardHeight(t *testing.T, out string) int {
+	t.Helper()
+	lines := strings.Split(out, "\n")
+	top, bottom := -1, -1
+	for i, l := range lines {
+		if top == -1 && strings.Contains(l, "┌") {
+			top = i
+		}
+		if bottom == -1 && strings.Contains(l, "└") {
+			bottom = i
+		}
+	}
+	if top == -1 || bottom <= top {
+		t.Fatalf("could not locate cards in:\n%s", out)
+	}
+	return bottom - top
+}
+
 func TestRenderDetailedFitsWideGlyphs(t *testing.T) {
-	c := pairCluster()
-	c.Contacts[0].FormattedName = "田中太郎田中太郎田中太郎田中太郎田中太郎"
-	c.Contacts[0].Org = "株式会社日本電気通信システム研究所;開発部"
-	c.Contacts[1].FormattedName = "Zoë 🎉 Ünal-Østergaard Longname Here"
+	// Over-wide content reflows inside the lipgloss box, so border counts
+	// cannot catch it. Compare the card height against an ASCII contact of
+	// the same display width: any wrap adds a line.
+	wide := pairCluster()
+	wide.Contacts[0].FormattedName = "田中太郎田中太郎田中太郎田中太郎田中太郎"
+	wide.Contacts[0].Org = "株式会社日本電気通信システム研究所;開発部"
+	wide.Contacts[1].FormattedName = "Zoë 🎉 Ünal-Østergaard Longname Here"
+	ascii := pairCluster()
+	ascii.Contacts[0].FormattedName = strings.Repeat("ab", 20)
+	ascii.Contacts[0].Org = strings.Repeat("cd", 18) + ";" + strings.Repeat("ef", 3)
+	ascii.Contacts[1].FormattedName = "Zoe xx Unal-Ostergaard Longname Here"
 	for _, width := range []int{60, 80, 100} {
-		m := ReviewModel{Clusters: []ReviewCluster{c}, Width: width, Height: 60}
-		lines := assertBoxFits(t, renderDetailed(m, &m.Clusters[0]), width)
-		top, bottom := -1, -1
-		for i, l := range lines {
-			if strings.Count(l, "┌") == 2 {
-				top = i
-			}
-			if bottom == -1 && strings.Contains(l, "└") {
-				bottom = i
-			}
+		mw := ReviewModel{Clusters: []ReviewCluster{wide}, Width: width, Height: 60}
+		ma := ReviewModel{Clusters: []ReviewCluster{ascii}, Width: width, Height: 60}
+		outW := renderDetailed(mw, &mw.Clusters[0])
+		assertBoxFits(t, outW, width)
+		if hw, ha := cardHeight(t, outW), cardHeight(t, renderDetailed(ma, &ma.Clusters[0])); hw != ha {
+			t.Errorf("width %d: wide-glyph card is %d lines, ASCII equivalent %d (content wrapped):\n%s", width, hw, ha, outW)
 		}
-		if top == -1 || bottom <= top {
-			t.Fatalf("width %d: could not locate cards", width)
-		}
-		for i := top + 1; i < bottom; i++ {
-			if strings.Count(lines[i], "│") != 6 {
-				t.Errorf("width %d: wide glyphs wrapped a card line %d: %q", width, i, lines[i])
-			}
-		}
-		out := renderCompact(m, &m.Clusters[0])
-		assertBoxFits(t, out, width)
+		assertBoxFits(t, renderCompact(mw, &mw.Clusters[0]), width)
 	}
 }
 

@@ -32,9 +32,32 @@ func Contact(c model.ParsedContact) model.NormalizedContact {
 		Parsed:               c,
 		NormalizedFamilyName: Name(c.FamilyName),
 		NormalizedGivenName:  Name(c.GivenName),
+		NormalizedMiddleName: Name(c.MiddleName),
+		NormalizedSuffix:     GenerationalSuffix(c),
 		NormalizedEmails:     normalizeEmails(c.Emails),
 		NormalizedPhones:     normalizePhones(c.Phones),
 	}
+}
+
+var generationalSuffixes = map[string]string{
+	"jr": "jr", "junior": "jr", "sr": "sr", "senior": "sr",
+	"ii": "ii", "iii": "iii", "iv": "iv", "v": "v",
+}
+
+// GenerationalSuffix returns the contact's generational suffix (jr, sr, ii,
+// iii, iv, v) in canonical lowercase form, or "". It is taken from the N
+// suffix component, or from a trailing token of the family/given name when
+// an export folded it in there ("Smith Jr."). Credentials such as MD or PhD
+// are not generational and are ignored: they never distinguish two people.
+func GenerationalSuffix(c model.ParsedContact) string {
+	for _, field := range []string{c.Suffix, c.FamilyName, c.GivenName} {
+		for _, w := range strings.Fields(strings.ToLower(field)) {
+			if g, ok := generationalSuffixes[strings.Trim(w, ".,")]; ok {
+				return g
+			}
+		}
+	}
+	return ""
 }
 
 // Name applies Unicode NFKD normalization, case folding, whitespace collapse,
