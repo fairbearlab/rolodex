@@ -25,7 +25,7 @@ Duplicate detection that works on sparse real-world exports, and a review TUI th
 * Review card truncation measures terminal columns, so CJK and emoji names no longer overflow the card and wrap.
 * `X-ROLODEX-SOURCE` is only consulted on read-back paths (review/resolve/audit); on `merge` the `--icloud`/`--google` flag stays authoritative even if a re-exported file carries the field.
 * iCloud's `ORG:Acme;` (empty structured unit) no longer produces a false `ORG` conflict against Google's `ORG:Acme`, and no longer prevents org matching. Same for `BDAY` values that differed only by format.
-* `ORG:Acme\; Inc.` (an escaped semicolon inside a component) was split on the escape and written back as `Acme\\;Inc.`, which readers take as organization `Acme\` with a unit `Inc.`. The escape is now kept as part of the component and emitted exactly once, in every field, so it survives a parse/write cycle.
+* `ORG:Acme\; Inc.` (an escaped semicolon inside a component) was split on the escape and written back as `Acme\\;Inc.`, which readers take as organization `Acme\` with a unit `Inc.`. The escape is now kept as part of the component and emitted exactly once, so `ORG` survives a parse/write cycle unchanged. `N` and `ADR` still split naively and drop the space after an escaped separator — tracked in `TODOS.md`.
 * `rolodex review` refuses a `review.vcf` whose length does not match `report.json` instead of silently pairing later clusters with the wrong contacts. `resolve` already did; the TUI now fails the same way before a decision is recorded.
 * A `"."` middle name (a common export placeholder) crashed the scorer; middle initials are now compared by rune, so `Ö` matches `Östen`.
 * **A folded middle initial is no longer eaten as a suffix.** `v` sat in the suffix table, so `John V Doe` normalized to a bare `john` with no middle name — and an empty middle name is compatible with every other initial, so `John V Doe` and `John W Doe` sharing one email merged unseen. A single letter is an initial; a real generational `V` still counts in the dedicated `N` suffix component.
@@ -43,7 +43,7 @@ Duplicate detection that works on sparse real-world exports, and a review TUI th
 * `merge` resolves symlinks before comparing paths, so an input reached through a symlinked directory can no longer be overwritten by an output named directly.
 * **One definition of a valid birthday.** The scorer repeated the normalizer's month and day bounds instead of calling it, and the copy did not learn about real calendar dates: `1989-02-31` was rejected by the normalizer and then accepted by the scorer as a shared birthday, enough to auto-merge two same-named contacts with no phone or email. Both now go through `normalize.ParseCanonicalBirthday`.
 * Review cards no longer tick a placeholder as a shared value. The score said the pair was unconfirmed while the card showed a green check beside `000-000-0000` on both sides — opposite cues on the screen where the merge is chosen.
-* `rolodex --version` reports the release it was built from. `cmd/rolodex/version.txt` is embedded into the binary and had drifted from `VERSION`; `make version-check` now fails the build if the two disagree.
+* `rolodex version` reports the release it was built from. `cmd/rolodex/version.txt` is embedded into the binary and had drifted from `VERSION`; `make version-check` now fails the build if the two disagree.
 
 ## \[0.3.0] - 2026-04-11
 

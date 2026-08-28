@@ -20,7 +20,7 @@
 
 **Why:** go-vcard's decoder does not decode `\;`, so `ORG:Acme\; Inc.` and `ORG:Acme\\; Inc.` parse to the same in-memory value and are indistinguishable afterwards. Whichever form the writer emits, one of the two inputs round-trips wrong. Scoping the replacement to ORG/N/ADR was tried during the v0.4.0 review and reverted: it fixes a real backslash before a separator but breaks the far more common escaped-semicolon case. Only unescaping at the boundary removes the ambiguity.
 
-**Context:** rolodex's own reparse is stable either way, which is why the in-repo round-trip test passes; the corruption only appears on import into Apple or Google Contacts.
+**Context:** rolodex's own reparse is stable either way, which is why the in-repo round-trip test passes; the corruption only appears on import into Apple or Google Contacts. `ORG` round-trips correctly today; `N` and `ADR` do not — `N:Smith\; Jr;John;;;` comes back as `N:Smith\;Jr;John;;` and `ADR:...1 Main\; Apt 2...` as `1 Main\;Apt 2`, losing the space after the escaped separator. Unescaping at the boundary fixes all three at once.
 
 **Effort:** M
 **Priority:** P1
