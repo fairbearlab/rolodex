@@ -258,6 +258,9 @@ func renderDetailed(m ReviewModel, c *ReviewCluster) string {
 		if offset > len(lines)-maxVisible {
 			offset = len(lines) - maxVisible
 		}
+		// offset is already clamped to len(lines)-maxVisible above, so this
+		// cannot fire; it is kept as a slice-bounds backstop in case the
+		// clamp above is ever reordered or relaxed.
 		end := offset + maxVisible
 		if end > len(lines) {
 			end = len(lines)

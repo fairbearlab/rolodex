@@ -76,7 +76,11 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 		if score > 1.0 {
 			score = 1.0
 		}
-		// Need at least 2 matching identifiers for auto_merge
+		// Need at least 2 matching identifiers for auto_merge. With the
+		// current weights the largest single signal is 0.45, so one match
+		// cannot reach the 0.85 threshold and this cannot fire — it is kept
+		// so that raising a nameless weight can never silently break the
+		// two-identifier rule.
 		if matchCount < 2 && score >= model.ThresholdAutoMerge {
 			score = model.ThresholdAutoMerge - 0.01
 		}
