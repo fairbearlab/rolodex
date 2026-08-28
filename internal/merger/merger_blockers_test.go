@@ -1,6 +1,8 @@
 package merger
 
 import (
+	"fmt"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -227,4 +229,70 @@ func TestMergeNearNameOnlyPrefersHigherScoreOverCrossSource(t *testing.T) {
 		}
 	}
 	t.Error("contact 2 (the lower-score partner) did not end up distinct")
+}
+
+// A near-name edge that is not applied must be recorded, not dropped. [0]
+// iCloud David Lee and [2] Google David Lee share a phone and auto-merge;
+// [1] Google David Lee resembles both by name alone. Pair-not-chain keeps
+// [1] off that cluster (TestMergeNearNameOnlyEdgeDoesNotJoinConfirmedCluster),
+// but before this it also produced no review card, no cluster entry and no
+// warning: [1] went to merged.vcf as its own person while the pipeline had
+// just printed "2 review". The suppressed edges come back as one deferred
+// entry per (contact, cluster) pair so the report can say what happened.
+func TestMergeRecordsDeferredNearNameEdges(t *testing.T) {
+	mk := func(src model.Source, phone string) model.NormalizedContact {
+		return normalize.Contact(model.ParsedContact{Source: src, GivenName: "David", FamilyName: "Lee",
+			Phones: []model.Phone{{Number: phone}}})
+	}
+	contacts := []model.NormalizedContact{
+		mk(model.SourceICloud, "3175551111"),
+		mk(model.SourceGoogle, "4155552222"),
+		mk(model.SourceGoogle, "3175551111"),
+	}
+	result := Merge(contacts, allPairs(contacts))
+
+	// The PR's intent is unchanged: one confirmed cluster, nothing in review.
+	if len(result.Clusters) != 1 || len(result.Clusters[0].Indices) != 2 || len(result.Review) != 0 {
+		t.Fatalf("clusters=%+v review=%d, want one two-member cluster and no review", result.Clusters, len(result.Review))
+	}
+
+	if len(result.Deferred) != 1 {
+		t.Fatalf("deferred = %+v, want exactly one entry for contact 1 against cluster [0 2] (two edges, one resemblance)", result.Deferred)
+	}
+	d := result.Deferred[0]
+	if d.Score != 0.40 {
+		t.Errorf("deferred score = %.2f, want the near-name edge score 0.40", d.Score)
+	}
+	sides := []string{fmt.Sprint(d.Sides[0]), fmt.Sprint(d.Sides[1])}
+	sort.Strings(sides)
+	if sides[0] != "[0 2]" || sides[1] != "[1]" {
+		t.Errorf("deferred sides = %v, want the cluster [0 2] and the lone contact [1]", d.Sides)
+	}
+}
+
+// Three namesakes with nothing in common pair up two and leave one over.
+// The leftover's edges are deferred too — an odd namesake is exactly the
+// contact a reviewer would otherwise never hear about.
+func TestMergeRecordsOddNamesakeAsDeferred(t *testing.T) {
+	contacts := []model.NormalizedContact{
+		namesake(model.SourceICloud, "David", "Lee", 0),
+		namesake(model.SourceGoogle, "David", "Lee", 1),
+		namesake(model.SourceGoogle, "David", "Lee", 2),
+	}
+	result := Merge(contacts, allPairs(contacts))
+	if len(result.Clusters) != 1 || len(result.Review) != 2 {
+		t.Fatalf("clusters=%+v review=%d, want one pair in review", result.Clusters, len(result.Review))
+	}
+	if len(result.Deferred) != 1 {
+		t.Fatalf("deferred = %+v, want one entry for the odd namesake against the pair", result.Deferred)
+	}
+	var lone []int
+	for _, side := range result.Deferred[0].Sides {
+		if len(side) == 1 {
+			lone = side
+		}
+	}
+	if len(lone) != 1 || result.Clusters[0].Indices[0] == lone[0] || result.Clusters[0].Indices[1] == lone[0] {
+		t.Errorf("deferred sides = %v, want the contact left out of cluster %v on its own side", result.Deferred[0].Sides, result.Clusters[0].Indices)
+	}
 }

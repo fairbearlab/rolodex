@@ -15,6 +15,7 @@ type Result struct {
 	Merged   []model.MergedContact // auto-merged, confident
 	Review   []model.MergedContact // review-tier, needs human eyes
 	Clusters []model.Cluster       // cluster info for reporting
+	Deferred []model.DeferredEdge  // near-name edges not applied; see DeferredEdge
 }
 
 // Merge takes normalized contacts and scored pairs, clusters them via union-find,
@@ -29,7 +30,11 @@ type Result struct {
 // single merge keystroke destroys five of them. Those edges are applied
 // second, and only between two contacts that nothing else has claimed, so a
 // near-name pair is reviewed as a pair and a third namesake stays distinct
-// rather than being stacked onto a cluster it has no tie to.
+// rather than being stacked onto a cluster it has no tie to. An edge that
+// is not applied is not forgotten either: it is returned in Deferred, one
+// entry per pair of sides, so the report can list the namesake that was
+// left out — before that, it shipped to merged.vcf as its own person with
+// no card, no cluster and no warning.
 func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result {
 	n := len(contacts)
 	uf := newUnionFind(n)
@@ -90,6 +95,7 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 	sort.Ints(roots)
 
 	var result Result
+	result.Deferred = deferredEdges(nearNameOnly, uf, groups)
 	merged := make(map[int]bool)
 
 	for _, root := range roots {
@@ -170,6 +176,47 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 	}
 
 	return result
+}
+
+// deferredEdges collects the near-name-only edges that were not applied —
+// their endpoints ended up in different groups — as one DeferredEdge per
+// pair of groups, carrying the strongest edge between them. Sorted by score
+// descending, then by the lowest member index, so the report is stable.
+func deferredEdges(nearNameOnly []model.ScoredPair, uf *unionFind, groups map[int][]int) []model.DeferredEdge {
+	type key [2]int
+	best := make(map[key]float64)
+	var order []key
+	for _, p := range nearNameOnly {
+		ra, rb := uf.find(p.A), uf.find(p.B)
+		if ra == rb {
+			continue // applied, or joined by other evidence
+		}
+		if ra > rb {
+			ra, rb = rb, ra
+		}
+		k := key{ra, rb}
+		if prev, seen := best[k]; !seen {
+			best[k] = p.Score
+			order = append(order, k)
+		} else if p.Score > prev {
+			best[k] = p.Score
+		}
+	}
+	deferred := make([]model.DeferredEdge, 0, len(order))
+	for _, k := range order {
+		a := append([]int(nil), groups[k[0]]...)
+		b := append([]int(nil), groups[k[1]]...)
+		sort.Ints(a)
+		sort.Ints(b)
+		deferred = append(deferred, model.DeferredEdge{Score: best[k], Sides: [2][]int{a, b}})
+	}
+	sort.SliceStable(deferred, func(i, j int) bool {
+		if deferred[i].Score != deferred[j].Score {
+			return deferred[i].Score > deferred[j].Score
+		}
+		return deferred[i].Sides[0][0] < deferred[j].Sides[0][0]
+	})
+	return deferred
 }
 
 // isNearNameOnly reports whether a pair is in review on the strength of its

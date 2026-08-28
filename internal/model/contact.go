@@ -176,3 +176,15 @@ type Cluster struct {
 	Indices []int        // indices into the contact slice
 	Pairs   []ScoredPair // all scored pairs in this cluster
 }
+
+// DeferredEdge is a near-name-only pair the merger saw but did not apply:
+// at least one side was already in a cluster on confirming evidence, and a
+// same-name edge is a prompt for a human, not a link between people, so it
+// does not chain onto that cluster. Sides holds the two groups the edge
+// would have joined — a cluster's members, or a single contact left
+// distinct. Both stay separate people in the output; this is the record
+// that the resemblance was seen, so the report can say so.
+type DeferredEdge struct {
+	Score float64 // the strongest suppressed edge between the two sides
+	Sides [2][]int
+}

@@ -8,6 +8,8 @@ import (
 
 	"github.com/fairbearlab/rolodex/internal/merger"
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
+	"github.com/fairbearlab/rolodex/internal/scorer"
 )
 
 func TestGenerateAutoMergeCluster(t *testing.T) {
@@ -225,5 +227,50 @@ func TestFindConflictsComparesBirthdaysCanonically(t *testing.T) {
 		if got != tc.wantConflict {
 			t.Errorf("BDAY %q vs %q: conflict reported = %v, want %v", tc.icloud, tc.google, got, tc.wantConflict)
 		}
+	}
+}
+
+// TestGenerateReportsDeferredPairs: a same-name pair the merger left
+// unreviewed (one side already merged on a shared phone) appears in the
+// report under "deferred" with both sides' contacts, and is counted in the
+// summary, so a namesake shipped as a separate person is never silent.
+func TestGenerateReportsDeferredPairs(t *testing.T) {
+	mk := func(src model.Source, phone string) model.NormalizedContact {
+		return normalize.Contact(model.ParsedContact{Source: src, GivenName: "David", FamilyName: "Lee",
+			Phones: []model.Phone{{Number: phone}}})
+	}
+	contacts := []model.NormalizedContact{
+		mk(model.SourceICloud, "3175551111"),
+		mk(model.SourceGoogle, "4155552222"),
+		mk(model.SourceGoogle, "3175551111"),
+	}
+	var idx [][2]int
+	for i := range contacts {
+		for j := i + 1; j < len(contacts); j++ {
+			idx = append(idx, [2]int{i, j})
+		}
+	}
+	result := merger.Merge(contacts, scorer.Score(contacts, idx))
+	report := Generate(contacts, result, 1, 2, nil)
+
+	if report.Summary.ReviewCount != 0 || report.Summary.AutoMerged != 1 || report.Summary.DistinctCount != 1 {
+		t.Fatalf("summary = %+v, want 1 auto-merge, 1 distinct, 0 review", report.Summary)
+	}
+	if report.Summary.DeferredCount != 1 || len(report.Deferred) != 1 {
+		t.Fatalf("deferred_count=%d deferred=%+v, want one deferred pair", report.Summary.DeferredCount, report.Deferred)
+	}
+	d := report.Deferred[0]
+	got := map[int]bool{}
+	for _, c := range d.Contacts {
+		got[c.Index] = true
+		if c.Name == "" {
+			t.Errorf("deferred contact %d has no name", c.Index)
+		}
+	}
+	if len(got) != 3 || !got[0] || !got[1] || !got[2] {
+		t.Errorf("deferred contacts = %+v, want all three David Lees (the cluster and the namesake)", d.Contacts)
+	}
+	if d.Score != 0.40 || d.Reason == "" {
+		t.Errorf("deferred score=%.2f reason=%q, want 0.40 and an explanation", d.Score, d.Reason)
 	}
 }

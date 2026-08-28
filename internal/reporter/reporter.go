@@ -160,6 +160,28 @@ func Generate(
 	// Set ReviewCount to number of review clusters (not individual contacts)
 	report.Summary.ReviewCount = len(report.Review)
 
+	// Same-name pairs the merger saw but did not review. Both sides are in
+	// the output as separate people; without this entry the resemblance
+	// would be recorded nowhere.
+	for _, d := range result.Deferred {
+		var refs []model.ContactRef
+		for _, side := range d.Sides {
+			for _, idx := range side {
+				refs = append(refs, model.ContactRef{
+					Source: contacts[idx].Parsed.Source,
+					Name:   contactName(contacts[idx].Parsed),
+					Index:  idx,
+				})
+			}
+		}
+		report.Deferred = append(report.Deferred, model.DeferredPair{
+			Score:    d.Score,
+			Contacts: refs,
+			Reason:   describeDeferred(contacts, d),
+		})
+	}
+	report.Summary.DeferredCount = len(report.Deferred)
+
 	// Distinct entries
 	for _, mc := range result.Merged {
 		if len(mc.MergedFrom) == 1 {
@@ -221,6 +243,24 @@ func describeAmbiguity(contacts []model.NormalizedContact, cluster model.Cluster
 			fmt.Sprintf("%q and %q scored %.2f (tier: %s)", nameA, nameB, p.Score, p.Tier))
 	}
 	return strings.Join(descriptions, "; ")
+}
+
+// describeDeferred explains why a same-name pair was not put in front of
+// the reviewer.
+func describeDeferred(contacts []model.NormalizedContact, d model.DeferredEdge) string {
+	side := func(members []int) string {
+		names := make([]string, len(members))
+		for i, idx := range members {
+			names[i] = fmt.Sprintf("%s (%s)", contactName(contacts[idx].Parsed), contacts[idx].Parsed.Source)
+		}
+		if len(members) > 1 {
+			return "the merged cluster of " + strings.Join(names, " + ")
+		}
+		return names[0]
+	}
+	return fmt.Sprintf("same name only: %s resembles %s by name, but one side is already merged on a shared identifier "+
+		"and a name alone does not join a cluster; both are in the output as separate people",
+		side(d.Sides[0]), side(d.Sides[1]))
 }
 
 func findConflicts(contacts []model.NormalizedContact, indices []int) []model.Conflict {

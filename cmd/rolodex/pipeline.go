@@ -99,6 +99,13 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 	// Stage 5: Merge
 	fmt.Println("Merging...")
 	result := merger.Merge(normalized, scored)
+	if n := len(result.Deferred); n > 0 {
+		// The "N review" count above is pairs; these pairs will not get a
+		// card, so say so here rather than let the report's smaller review
+		// count look like a discrepancy.
+		fmt.Printf("  %d same-name pair(s) not reviewed: one side is already merged on a shared identifier "+
+			"(kept as separate people; listed under \"deferred\" in the report)\n", n)
+	}
 
 	return &PipelineResult{
 		MergeResult: result,
