@@ -1,6 +1,7 @@
 package review
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -74,17 +75,26 @@ type ReviewModel struct {
 // BuildClusters constructs ReviewClusters from a report and review contacts.
 // Clusters are sorted by score desc, then cluster_id asc (deterministic tie-breaker).
 // Review contacts in the slice correspond sequentially to report.Review clusters.
-func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []ReviewCluster {
+//
+// The two files must agree exactly. If review.vcf is short, the position
+// of every later cluster is wrong and the reviewer would decide on the
+// wrong people; if it is long, the report is stale. Either is fatal here,
+// as it already is in resolve.
+func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) ([]ReviewCluster, error) {
 	var clusters []ReviewCluster
 	contactIdx := 0
 
 	for _, rd := range report.Review {
 		clusterSize := len(rd.Contacts)
-		var contacts []model.ParsedContact
-		if contactIdx+clusterSize <= len(reviewContacts) {
-			contacts = append(contacts, reviewContacts[contactIdx:contactIdx+clusterSize]...)
-			contactIdx += clusterSize
+		if clusterSize == 0 {
+			return nil, fmt.Errorf("review cluster %s has zero contacts — report.json may be corrupt", rd.ClusterID)
 		}
+		if contactIdx+clusterSize > len(reviewContacts) {
+			return nil, fmt.Errorf("report references more review contacts than exist in review.vcf (cluster %s needs %d, %d left)",
+				rd.ClusterID, clusterSize, len(reviewContacts)-contactIdx)
+		}
+		contacts := append([]model.ParsedContact(nil), reviewContacts[contactIdx:contactIdx+clusterSize]...)
+		contactIdx += clusterSize
 
 		// The parser restores Source from X-ROLODEX-SOURCE in review.vcf. If
 		// that is missing (older files, hand-edited input) fall back to the
@@ -104,6 +114,11 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []
 		})
 	}
 
+	if contactIdx < len(reviewContacts) {
+		return nil, fmt.Errorf("review.vcf has %d contacts but report only references %d — report.json is stale",
+			len(reviewContacts), contactIdx)
+	}
+
 	// Sort: score desc, then cluster_id asc for stability
 	sort.SliceStable(clusters, func(i, j int) bool {
 		if clusters[i].Decision.Score != clusters[j].Decision.Score {
@@ -112,7 +127,7 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []
 		return clusters[i].ClusterID < clusters[j].ClusterID
 	})
 
-	return clusters
+	return clusters, nil
 }
 
 func isKnownSource(s model.Source) bool {

@@ -297,10 +297,26 @@ func sameName(a, b model.NormalizedContact) bool {
 	if a.NormalizedSuffix != b.NormalizedSuffix {
 		return false
 	}
-	if !compatibleMiddle(a.NormalizedMiddleName, b.NormalizedMiddleName) {
+	// Google folds the middle name into the given name (N:Doe;John V;;;)
+	// where iCloud uses the middle slot (N:Doe;John;V;;). When the middle
+	// slot is empty, trailing given-name tokens are compared as the middle
+	// name so the two shapes of one person agree.
+	givenA, middleA := splitGiven(a.NormalizedGivenName, a.NormalizedMiddleName)
+	givenB, middleB := splitGiven(b.NormalizedGivenName, b.NormalizedMiddleName)
+	if !compatibleMiddle(middleA, middleB) {
 		return false
 	}
-	return sameGivenName(a.NormalizedGivenName, b.NormalizedGivenName)
+	return sameGivenName(givenA, givenB)
+}
+
+// splitGiven moves trailing given-name tokens into the middle name when the
+// middle slot is empty; otherwise both are returned unchanged.
+func splitGiven(given, middle string) (string, string) {
+	words := strings.Fields(given)
+	if middle != "" || len(words) < 2 {
+		return given, middle
+	}
+	return words[0], strings.Join(words[1:], " ")
 }
 
 func sameGivenName(ga, gb string) bool {

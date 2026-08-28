@@ -123,6 +123,10 @@ func TestNormalizeOrg(t *testing.T) {
 		";":                             "",
 		"":                              "",
 		"https://example.com:8080/team": "https://example.com:8080/team",
+		`Acme\; Inc.`:                   `Acme\; Inc.`, // escaped ';' is not a separator
+		`Acme\; Inc.;`:                  `Acme\; Inc.`,
+		`Acme\; Inc.; Sales `:           `Acme\; Inc.;Sales`,
+		`Acme\\;Sales`:                  `Acme\\;Sales`, // escaped backslash, then a real separator
 	}
 	for in, want := range cases {
 		if got := Org(in); got != want {

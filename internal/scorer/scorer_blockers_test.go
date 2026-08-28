@@ -120,3 +120,37 @@ func TestBirthdayGuardFailsClosed(t *testing.T) {
 		t.Errorf("tier = %q, want %q with a shared email and phone", got.Tier, model.TierAutoMerge)
 	}
 }
+
+// Google folds the middle initial into the given name where iCloud uses the
+// middle slot. That is the common cross-source shape of one person, and it
+// used to drop from auto_merge to review twice over: the bare "V" was read
+// as a generational suffix, and "john v" / "john" differed in word count.
+func TestSameNameFoldsGivenNameInitialIntoMiddle(t *testing.T) {
+	icloud := normalize.Contact(model.ParsedContact{Source: model.SourceICloud,
+		GivenName: "John", MiddleName: "V", FamilyName: "Doe", Phones: []model.Phone{{Number: "3175550000"}}})
+	google := normalize.Contact(model.ParsedContact{Source: model.SourceGoogle,
+		GivenName: "John V", FamilyName: "Doe", Phones: []model.Phone{{Number: "(317) 555-0000"}}})
+	got := tierOf(icloud, google)
+	if !got.Features.NameExact {
+		t.Errorf("NameExact = false for John/V/Doe vs \"John V\"/Doe (suffixes %q vs %q)", icloud.NormalizedSuffix, google.NormalizedSuffix)
+	}
+	if got.Tier != model.TierAutoMerge {
+		t.Errorf("tier = %q, want %q", got.Tier, model.TierAutoMerge)
+	}
+
+	// A different folded initial is still a different person.
+	other := normalize.Contact(model.ParsedContact{Source: model.SourceGoogle,
+		GivenName: "John P", FamilyName: "Doe", Phones: []model.Phone{{Number: "3175550000"}}})
+	if got := tierOf(icloud, other); got.Features.NameExact {
+		t.Error("NameExact = true for middle V vs folded initial P")
+	}
+
+	// A real fifth-generation suffix in the N suffix component still separates.
+	fifth := normalize.Contact(model.ParsedContact{Source: model.SourceGoogle,
+		GivenName: "John", FamilyName: "Doe", Suffix: "V", Phones: []model.Phone{{Number: "3175550000"}}})
+	plain := normalize.Contact(model.ParsedContact{Source: model.SourceICloud,
+		GivenName: "John", FamilyName: "Doe", Phones: []model.Phone{{Number: "3175550000"}}})
+	if got := tierOf(fifth, plain); got.Features.NameExact {
+		t.Error("NameExact = true for John Doe V vs John Doe")
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 
@@ -68,13 +69,22 @@ func GenerationalSuffix(c model.ParsedContact) string {
 	// precedes it. A field that is nothing but the token is the name itself:
 	// a contact whose given name is the initial "V" is not a fifth-generation
 	// namesake, and treating it as one silently blocks every match against
-	// the same person recorded with a full given name.
+	// the same person recorded with a full given name. A trailing single
+	// letter is not a suffix either: Google folds the middle initial into
+	// the given name ("John V") where iCloud keeps it in the middle slot,
+	// and that is the common cross-source shape of one person, not the rare
+	// fifth of a line. (A real "V" belongs in the N suffix component, where
+	// it is still honoured.)
 	for _, field := range []string{c.FamilyName, c.GivenName} {
 		words := strings.Fields(strings.ToLower(field))
 		if len(words) < 2 {
 			continue
 		}
-		if g, ok := generationalSuffixes[strings.Trim(words[len(words)-1], ".,")]; ok {
+		last := strings.Trim(words[len(words)-1], ".,")
+		if utf8.RuneCountInString(last) < 2 {
+			continue
+		}
+		if g, ok := generationalSuffixes[last]; ok {
 			return g
 		}
 	}
@@ -184,8 +194,13 @@ func normalizePhones(phones []model.Phone) []string {
 // because they carry position: Apple writes ";Engineering" for a contact
 // with a department but no company, and collapsing it would promote the
 // department into the company slot on round-trip.
+//
+// A literal semicolon inside a component is escaped as "\;" on the wire
+// ("ORG:Acme\; Inc."), and go-vcard hands that through undecoded. Only an
+// unescaped ";" separates components, so the escape survives intact and is
+// emitted as "\;" again by the writer.
 func Org(s string) string {
-	parts := strings.Split(s, ";")
+	parts := splitUnescaped(s, ';')
 	for i := range parts {
 		parts[i] = strings.TrimSpace(parts[i])
 	}
@@ -193,6 +208,30 @@ func Org(s string) string {
 		parts = parts[:len(parts)-1]
 	}
 	return strings.Join(parts, ";")
+}
+
+// splitUnescaped splits s on sep, ignoring occurrences preceded by a
+// backslash. The backslashes are kept: the value stays in wire form.
+func splitUnescaped(s string, sep rune) []string {
+	var parts []string
+	var b strings.Builder
+	escaped := false
+	for _, r := range s {
+		switch {
+		case escaped:
+			b.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			b.WriteRune(r)
+			escaped = true
+		case r == sep:
+			parts = append(parts, b.String())
+			b.Reset()
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return append(parts, b.String())
 }
 
 // applePlaceholderYear is the year Apple Contacts stores for a birthday

@@ -1,6 +1,7 @@
 package writer
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -51,13 +52,27 @@ func WriteFile(path string, contacts []model.MergedContact) error {
 }
 
 // Write writes merged contacts as vCard 3.0 to a writer.
+//
+// go-vcard's decoder leaves an escaped semicolon ("\;", the only way to put
+// a literal ';' inside a structured field such as ORG, N or ADR) in the
+// value undecoded, and its encoder then escapes the backslash, so every
+// rewrite would turn "Acme\; Inc." into "Acme\\; Inc." — which readers take
+// as organization "Acme\" with a unit "Inc.". The doubled form is collapsed
+// back after encoding. (A value that genuinely held a backslash before a
+// separator is indistinguishable after decoding, and comes out escaped.)
 func Write(w io.Writer, contacts []model.MergedContact) error {
-	enc := vcard.NewEncoder(w)
+	var buf bytes.Buffer
+	enc := vcard.NewEncoder(&buf)
 
 	for _, mc := range contacts {
+		buf.Reset()
 		card := contactToCard(mc)
 		if err := enc.Encode(card); err != nil {
 			return fmt.Errorf("encoding contact %q: %w", mc.Contact.FormattedName, err)
+		}
+		out := strings.ReplaceAll(buf.String(), `\\;`, `\;`)
+		if _, err := io.WriteString(w, out); err != nil {
+			return fmt.Errorf("writing contact %q: %w", mc.Contact.FormattedName, err)
 		}
 	}
 	return nil

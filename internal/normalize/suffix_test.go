@@ -35,6 +35,14 @@ func TestGenerationalSuffixTrailingTokenOnly(t *testing.T) {
 		{"lone roman numeral given name", model.ParsedContact{GivenName: "Ii"}, ""},
 		{"lone jr given name", model.ParsedContact{GivenName: "Jr"}, ""},
 
+		// A trailing single letter is a middle initial Google folded into the
+		// given name, not a fifth-generation suffix; iCloud puts the same
+		// letter in the middle slot and the two must normalize alike.
+		{"trailing initial in given name", model.ParsedContact{GivenName: "John V", FamilyName: "Doe"}, ""},
+		{"trailing dotted initial in given name", model.ParsedContact{GivenName: "John V.", FamilyName: "Doe"}, ""},
+		{"trailing initial in family name", model.ParsedContact{FamilyName: "Doe V"}, ""},
+		{"two-letter roman numeral still counts", model.ParsedContact{GivenName: "John IV"}, "iv"},
+
 		// A leading or interior match is not a generational suffix either.
 		{"leading token not a suffix", model.ParsedContact{FamilyName: "Jr Smith"}, ""},
 

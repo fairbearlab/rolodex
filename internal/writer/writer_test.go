@@ -8,6 +8,7 @@ import (
 	vcard "github.com/emersion/go-vcard"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/parser"
 )
 
 func TestWriteBasicContact(t *testing.T) {
@@ -100,5 +101,40 @@ func TestWriteReviewFlag(t *testing.T) {
 
 	if !strings.Contains(buf.String(), "X-ROLODEX-REVIEW:true") {
 		t.Error("missing X-ROLODEX-REVIEW field")
+	}
+}
+
+// TestWriteKeepsEscapedSemicolon: go-vcard decodes "ORG:Acme\; Inc." to the
+// value `Acme\; Inc.` and would re-encode it as `Acme\\; Inc.`, which every
+// reader takes as org "Acme\" plus unit "Inc.". The writer must emit the
+// escape exactly once, and the value must survive a parse/write cycle.
+func TestWriteKeepsEscapedSemicolon(t *testing.T) {
+	in := "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A\r\nN:A;;;;\r\nORG:Acme\\; Inc.\r\nNOTE:x\\;y\r\nEND:VCARD\r\n"
+	contacts, _, err := parser.Parse(strings.NewReader(in), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got := contacts[0].Org; got != `Acme\; Inc.` {
+		t.Fatalf("parsed ORG = %q, want the escape kept as one component", got)
+	}
+
+	var buf bytes.Buffer
+	if err := Write(&buf, []model.MergedContact{{Contact: contacts[0], Sources: []model.Source{model.SourceICloud}}}); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ORG:Acme\\; Inc.\r\n") || strings.Contains(out, `\\;`) {
+		t.Errorf("ORG escape not preserved on write:\n%s", out)
+	}
+	if !strings.Contains(out, "NOTE:x\\;y\r\n") {
+		t.Errorf("NOTE escape not preserved on write:\n%s", out)
+	}
+
+	again, _, err := parser.Parse(strings.NewReader(out), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	if again[0].Org != contacts[0].Org || again[0].Note != contacts[0].Note {
+		t.Errorf("round trip changed ORG %q -> %q, NOTE %q -> %q", contacts[0].Org, again[0].Org, contacts[0].Note, again[0].Note)
 	}
 }
