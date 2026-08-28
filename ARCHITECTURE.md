@@ -89,11 +89,11 @@ ParsedContact → NormalizedContact → ScoredPair → MergedContact
 
 ### parser
 
-Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR`, the Apple placeholder year `1604`, and hand-typed slash, dotted and month-name forms are all recognized; anything else passes through untouched and the scorer treats it as unreadable). An escaped `\;` inside `ORG` is kept as part of its component. A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, audit); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
+Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR`, the Apple placeholder year `1604`, and hand-typed slash, dotted and month-name forms are all recognized; anything else passes through untouched and the scorer treats it as unreadable). An escaped `\;` inside `ORG` is kept as part of its component. A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, audit); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Every decoded field value and parameter is stripped of C0/C1 control characters, DEL, and bidi/invisible characters (RTL/LTR overrides, zero-width space, BOM) — a .vcf is untrusted input, and these could otherwise repaint the review terminal or forge a line in the written output; TAB, LF, and the zero-width joiners used in Indic/Persian names and emoji are kept. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
 
 ### normalize
 
-Prepares contacts for comparison. Names go through Unicode NFKD decomposition, accent/combining-mark stripping, case folding, whitespace collapse, and title/suffix removal (Dr., Jr., III, etc.). Phones are reduced to digits-only with US country code stripping (11-digit numbers starting with 1). Emails are lowercased and trimmed.
+Prepares contacts for comparison. Names go through Unicode NFKD decomposition, accent/combining-mark stripping, case folding, whitespace collapse, and title/suffix removal (Dr., Jr., III, etc.) for blocking and similarity scoring. A second, diacritic-preserving form (`NameStrict`) is kept alongside it for identity checks: it applies NFKC (which still folds compatibility variants like halfwidth kana and fullwidth Latin, a routine iCloud-vs-Google divergence) but keeps combining marks, so "Nguyên" and "Nguyễn" no longer compare equal the way they would after NFKD strips the accents. Phones are reduced to digits-only with US country code stripping (11-digit numbers starting with 1). Emails are lowercased and trimmed.
 
 ### blocker
 
@@ -104,8 +104,8 @@ Generates candidate pairs for scoring without comparing every contact against ev
 Computes a weighted composite score for each candidate pair:
 
 - **Name similarity** (0.40): Jaro-Winkler distance on full name strings, with nickname expansion (~120 mappings like Bob/Robert, Bill/William). The higher of direct and nickname-expanded scores is used.
-- **Shared email** (0.25): Binary — any normalized email in common.
-- **Shared phone** (0.25): Binary — any normalized phone in common.
+- **Shared email** (0.25): Binary — any normalized email in common that is also plausible (a non-empty local part and a domain with a dot); `unknown@` or a bare local part is never evidence.
+- **Shared phone** (0.25): Binary — any normalized phone in common that is also plausible (7+ digits, not all the same digit); placeholders like `0` or `000-000-0000` are never evidence.
 - **Shared org** (0.10): Exact match on lowercased org field (the parser has already dropped iCloud's empty trailing `;` component).
 - **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date. Both sides must be canonical, in-range dates; equal free text is not a match.
 
@@ -136,7 +136,7 @@ Generates a JSON report (`model.Report`) with:
 
 ### review
 
-Interactive terminal UI built on BubbleTea. Loads review clusters from `report.json` and `review.vcf`, sorted by score descending. Adaptive pacing shows a compact card for pairs whose score reaches the review threshold (>= 0.60, meaning a shared phone or email backs the name match) and a full field-by-field diff, with the iCloud card on the left labelled as the conflict winner, for pairs surfaced by the exact-name rule alone. Supports merge (`m`), skip (`s`), undo (`u`), detail toggle (`d`), and quit (`q`). Decisions are saved to `report.json` after every keypress, so sessions can be interrupted and resumed.
+Interactive terminal UI built on BubbleTea. Loads review clusters from `report.json` and `review.vcf`, sorted by score descending. Rejects a `review.vcf` whose length or per-contact `X-ROLODEX-CLUSTER` tags disagree with `report.json` instead of pairing a decision with the wrong cluster — the same check `resolve` already applied. Adaptive pacing shows a compact card for pairs whose score reaches the review threshold (>= 0.60, meaning a shared phone or email backs the name match) and a full field-by-field diff, with the iCloud card on the left labelled as the conflict winner, for pairs surfaced by the exact-name rule alone. Supports merge (`m`), skip (`s`), undo (`u`), detail toggle (`d`), and quit (`q`). Decisions are saved to `report.json` after every keypress, so sessions can be interrupted and resumed.
 
 ### resolve
 
@@ -173,6 +173,7 @@ Checks contact quality by scanning for unreachable contacts (no email and no pho
 | `golang.org/x/text` | Unicode NFKD normalization |
 | `charmbracelet/bubbletea` | Terminal UI framework (review command) |
 | `charmbracelet/lipgloss` | Terminal styling (review command) |
+| `charmbracelet/x/ansi` | ANSI-aware string truncation for review card rendering |
 
 ## Testing
 
