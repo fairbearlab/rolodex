@@ -92,10 +92,14 @@ type ScoreFeatures struct {
 	SharedEmail bool `json:"shared_email"`
 	SharedPhone bool `json:"shared_phone"`
 	SharedOrg   bool `json:"shared_org"`
-	// SharedBirthday is true when both birthdays are present and agree;
-	// BirthdayConflict when both are present, well-formed and disagree.
+	// SharedBirthday is true when both birthdays are present, well-formed
+	// and agree; BirthdayConflict when both are well-formed and disagree;
+	// BirthdayUnknown when both are present but at least one is not in a
+	// form the comparison can read, so neither of the other two can be
+	// trusted.
 	SharedBirthday   bool `json:"shared_birthday,omitempty"`
 	BirthdayConflict bool `json:"birthday_conflict,omitempty"`
+	BirthdayUnknown  bool `json:"birthday_unknown,omitempty"`
 	// Nameless is true when the pair was scored with the nameless weight table
 	// (either contact lacks a given name).
 	Nameless bool `json:"nameless,omitempty"`

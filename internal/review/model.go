@@ -156,9 +156,10 @@ func (m *ReviewModel) ActiveViewMode() ViewMode {
 	if len(c.Contacts) > 2 {
 		return ViewDetailed
 	}
-	// A birthday conflict is the reason the pair is here; only the detailed
-	// view shows it.
-	if c.Features.BirthdayConflict {
+	// A birthday conflict is the reason the pair is here, and an unreadable
+	// birthday is what kept it out of auto_merge; only the detailed view
+	// shows the birthdays.
+	if c.Features.BirthdayConflict || c.Features.BirthdayUnknown {
 		return ViewDetailed
 	}
 	if c.Decision.Score >= CompactThreshold {

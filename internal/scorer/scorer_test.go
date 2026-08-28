@@ -321,9 +321,15 @@ func TestClassifyPrecisionGuards(t *testing.T) {
 			wantTier: model.TierReview,
 		},
 		{
-			name:     "unparseable birthday is not a conflict",
-			a:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "October 22"),
+			name:     "unreadable birthday is not a conflict, but it disarms the exact-name rule -> review",
+			a:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "circa 1950"),
 			b:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "1995-12-31"),
+			wantTier: model.TierReview,
+		},
+		{
+			name:     "unreadable birthday on one side only, none on the other -> nothing to disagree with, auto_merge",
+			a:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "circa 1950"),
+			b:        makeContact("john", "smith", nil, []string{"3175554444"}, ""),
 			wantTier: model.TierAutoMerge,
 		},
 		{

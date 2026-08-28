@@ -141,7 +141,25 @@ func TestNormalizeBirthday(t *testing.T) {
 		"1604-10-26":           "--10-26", // Apple placeholder year
 		"16041026":             "--10-26",
 		" 19891022 ":           "1989-10-22",
-		"October 22":           "October 22", // unrecognized: untouched
+		"October 22":           "--10-22",
+		"October 22, 1989":     "1989-10-22",
+		"Oct 22 1989":          "1989-10-22",
+		"22 October 1989":      "1989-10-22",
+		"22nd Oct 1989":        "1989-10-22",
+		"1989/10/22":           "1989-10-22",
+		"10/22/1989":           "1989-10-22", // US, month first
+		"22/10/1989":           "1989-10-22", // day first, unambiguous
+		"3/4/1989":             "1989-03-04", // ambiguous: read month first
+		"22.10.1989":           "1989-10-22", // European, day first
+		"10.22.1989":           "1989-10-22", // dotted but month first
+		"10/22":                "--10-22",
+		"1989":                 "1989",       // bare year: unreadable, untouched
+		"1989-10":              "1989-10",    // partial ISO: unreadable
+		"10/22/89":             "10/22/89",   // two-digit year: unreadable
+		"1989-13-45":           "1989-13-45", // out of range: unreadable
+		"0000-00-00":           "0000-00-00", // placeholder: unreadable
+		"Smarch 3":             "Smarch 3",   // not a month
+		"unknown":              "unknown",
 		"":                     "",
 	}
 	for in, want := range cases {

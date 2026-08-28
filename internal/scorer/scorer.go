@@ -2,7 +2,9 @@ package scorer
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/xrash/smetrics"
 
@@ -53,6 +55,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 	orgMatch := sharedOrg(a, b)
 	bdayMatch := sharedBirthday(a, b)
 	bdayConflict := birthdayConflict(a, b)
+	bdayUnknown := birthdayUnknown(a, b)
 
 	if !hasName {
 		// Nameless contact: redistribute weights
@@ -91,6 +94,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 			SharedOrg:        orgMatch,
 			SharedBirthday:   bdayMatch,
 			BirthdayConflict: bdayConflict,
+			BirthdayUnknown:  bdayUnknown,
 			Nameless:         true,
 		}
 		return score, features
@@ -135,6 +139,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 		SharedOrg:        orgMatch,
 		SharedBirthday:   bdayMatch,
 		BirthdayConflict: bdayConflict,
+		BirthdayUnknown:  bdayUnknown,
 	}
 	return score, features
 }
@@ -193,25 +198,71 @@ func sharedOrg(a, b model.NormalizedContact) bool {
 	return orgA != "" && orgB != "" && orgA == orgB
 }
 
-// sharedBirthday reports whether both contacts carry the same canonical
+// canonicalBirthdayRe matches the forms normalize.Birthday produces
+// (YYYY-MM-DD or --MM-DD). Only those are trusted as evidence in either
+// direction: anything else that survived normalization is free text.
+var canonicalBirthdayRe = regexp.MustCompile(`^(\d{4}|-)-(\d{2})-(\d{2})$`)
+
+// parseBirthday splits a canonical birthday into its year ("" when the year
+// is unknown) and month-day. ok is false for anything non-canonical,
+// including a placeholder that merely looks canonical ("0000-00-00"): the
+// normalizer passes those through untouched, so the range check is repeated
+// here rather than trusted.
+func parseBirthday(s string) (year, monthDay string, ok bool) {
+	m := canonicalBirthdayRe.FindStringSubmatch(s)
+	if m == nil {
+		return "", "", false
+	}
+	month, _ := strconv.Atoi(m[2])
+	day, _ := strconv.Atoi(m[3])
+	if month < 1 || month > 12 || day < 1 || day > 31 {
+		return "", "", false
+	}
+	if m[1] != "-" {
+		year = m[1]
+	}
+	return year, m[2] + "-" + m[3], true
+}
+
+// sharedBirthday reports whether both contacts carry the same well-formed
 // birthday. A no-year value (--MM-DD) matches a full date with the same
-// month and day, since iCloud may omit the year that Google keeps.
+// month and day, since iCloud may omit the year that Google keeps. Two
+// equal raw strings are not enough: "1989" == "1989" or "unknown" ==
+// "unknown" is not a shared birthday, and this feature promotes an
+// identical name to auto_merge on its own.
 func sharedBirthday(a, b model.NormalizedContact) bool {
+	yearA, mdA, okA := parseBirthday(a.Parsed.Birthday)
+	yearB, mdB, okB := parseBirthday(b.Parsed.Birthday)
+	if !okA || !okB || mdA != mdB {
+		return false
+	}
+	return yearA == "" || yearB == "" || yearA == yearB
+}
+
+// birthdayConflict reports whether both contacts carry a well-formed birthday
+// and the two disagree. Two people with the same name and a shared household
+// phone are told apart by exactly this.
+func birthdayConflict(a, b model.NormalizedContact) bool {
+	_, _, okA := parseBirthday(a.Parsed.Birthday)
+	_, _, okB := parseBirthday(b.Parsed.Birthday)
+	if !okA || !okB {
+		return false
+	}
+	return !sharedBirthday(a, b)
+}
+
+// birthdayUnknown reports whether both contacts carry a birthday but at
+// least one is not in a form the conflict check can read. The guard cannot
+// run, so Classify must not lean on it: an unreadable birthday is "unknown",
+// never "no conflict".
+func birthdayUnknown(a, b model.NormalizedContact) bool {
 	ba, bb := a.Parsed.Birthday, b.Parsed.Birthday
 	if ba == "" || bb == "" {
 		return false
 	}
-	if ba == bb {
-		return true
-	}
-	noYearA, noYearB := strings.HasPrefix(ba, "--"), strings.HasPrefix(bb, "--")
-	if noYearA == noYearB {
-		return false
-	}
-	if noYearA {
-		return strings.HasSuffix(bb, ba[1:]) // "--06-29" -> "-06-29"
-	}
-	return strings.HasSuffix(ba, bb[1:])
+	_, _, okA := parseBirthday(ba)
+	_, _, okB := parseBirthday(bb)
+	return !okA || !okB
 }
 
 // sameName reports whether two names identify the same person as far as the
@@ -227,7 +278,20 @@ func sharedBirthday(a, b model.NormalizedContact) bool {
 //   - generational suffixes equal, including absent on both sides; Jr. vs
 //     Sr. — or Jr. vs nothing — is a father and son on one landline
 func sameName(a, b model.NormalizedContact) bool {
+	// Positive name evidence is required. Two contacts with no family name
+	// do not share one, and a single-letter given name is an initial, not a
+	// name: "Alex" / "Alex" or "J. Smith" / "J. Smith" on a shared office
+	// switchboard are as likely two people as one. Such pairs still reach
+	// review through the near-name floor; they cannot auto-merge on one
+	// identifier. (A one-character CJK given name is also excluded here;
+	// that costs recall on the auto-merge rule, never precision.)
+	if a.NormalizedFamilyName == "" && b.NormalizedFamilyName == "" {
+		return false
+	}
 	if a.NormalizedFamilyName != b.NormalizedFamilyName {
+		return false
+	}
+	if isInitial(a.NormalizedGivenName) || isInitial(b.NormalizedGivenName) {
 		return false
 	}
 	if a.NormalizedSuffix != b.NormalizedSuffix {
@@ -260,6 +324,11 @@ func sameGivenName(ga, gb string) bool {
 	return !aNick || !bNick // not two distinct diminutives of one canonical
 }
 
+// isInitial reports whether a given name is at most one letter ("J", "J.").
+func isInitial(given string) bool {
+	return utf8.RuneCountInString(strings.Trim(given, ".")) <= 1
+}
+
 func compatibleMiddle(ma, mb string) bool {
 	if ma == "" || mb == "" || ma == mb {
 		return true
@@ -279,21 +348,6 @@ func compatibleMiddle(ma, mb string) bool {
 	return false
 }
 
-// canonicalBirthdayRe matches the forms normalize.Birthday produces
-// (YYYY-MM-DD or --MM-DD); only those are trusted enough to call a conflict.
-var canonicalBirthdayRe = regexp.MustCompile(`^(\d{4}|-)-\d{2}-\d{2}$`)
-
-// birthdayConflict reports whether both contacts carry a well-formed birthday
-// and the two disagree. Two people with the same name and a shared household
-// phone are told apart by exactly this.
-func birthdayConflict(a, b model.NormalizedContact) bool {
-	ba, bb := a.Parsed.Birthday, b.Parsed.Birthday
-	if !canonicalBirthdayRe.MatchString(ba) || !canonicalBirthdayRe.MatchString(bb) {
-		return false
-	}
-	return !sharedBirthday(a, b)
-}
-
 // Classify assigns a tier from the linear score and the feature breakdown.
 //
 // The score thresholds apply first. On top of them, an identical name
@@ -306,9 +360,16 @@ func birthdayConflict(a, b model.NormalizedContact) bool {
 // confirming identifier: common names from two sources may be two people,
 // which is exactly what the review tier is for. Two well-formed birthdays
 // that disagree cap any pair at review.
+//
+// The exact-name rule merges on a single identifier, which is precisely the
+// shape the birthday guard exists for (parent and child on one landline).
+// When both contacts carry a birthday but one cannot be read, the guard
+// cannot run, so the rule does not fire and the pair falls through to the
+// score thresholds — fail closed, not open.
 func Classify(score float64, f model.ScoreFeatures) model.Tier {
 	confirmed := f.SharedPhone || f.SharedEmail || f.SharedBirthday
-	autoMerge := score >= model.ThresholdAutoMerge || (f.NameExact && confirmed)
+	nameRule := f.NameExact && confirmed && !f.BirthdayUnknown
+	autoMerge := score >= model.ThresholdAutoMerge || nameRule
 	switch {
 	case autoMerge && !f.BirthdayConflict:
 		return model.TierAutoMerge

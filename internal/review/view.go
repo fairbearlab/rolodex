@@ -435,6 +435,8 @@ func renderScoreBreakdown(c *ReviewCluster) string {
 	bdayVal := shared(f.SharedBirthday, "shared birthday", "no shared birthday")
 	if f.BirthdayConflict {
 		bdayVal = "0.00 (birthdays differ)"
+	} else if f.BirthdayUnknown {
+		bdayVal = "0.00 (a birthday could not be read)"
 	}
 	lines = append(lines, row("Birthday", bdayVal, bdayWeight))
 
@@ -442,6 +444,8 @@ func renderScoreBreakdown(c *ReviewCluster) string {
 	switch {
 	case f.BirthdayConflict:
 		lines = append(lines, "    "+warningStyle.Render("Held for review: the two birthdays disagree."))
+	case f.BirthdayUnknown:
+		lines = append(lines, "    "+warningStyle.Render("Held for review: a birthday could not be read, so they may disagree."))
 	case !nameless && f.NearName() && c.Decision.Score < model.ThresholdReview:
 		lines = append(lines, "    "+labelStyle.Render("Surfaced because the names match."))
 	}

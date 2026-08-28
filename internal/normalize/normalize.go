@@ -1,7 +1,9 @@
 package normalize
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -15,6 +17,11 @@ var (
 	whitespaceRe  = regexp.MustCompile(`\s+`)
 	bdayFullRe    = regexp.MustCompile(`^(\d{4})-?(\d{2})-?(\d{2})(?:[T ].*)?$`)
 	bdayNoYearRe  = regexp.MustCompile(`^--(\d{2})-?(\d{2})$`)
+	bdayYMDSepRe  = regexp.MustCompile(`^(\d{4})[/.](\d{1,2})[/.](\d{1,2})$`)
+	bdaySlashRe   = regexp.MustCompile(`^(\d{1,2})/(\d{1,2})(?:/(\d{4}))?$`)
+	bdayDottedRe  = regexp.MustCompile(`^(\d{1,2})\.(\d{1,2})\.(\d{4})$`)
+	bdayMonthDMRe = regexp.MustCompile(`^(\d{1,2})(?:st|nd|rd|th)?\.? +([A-Za-z]+)\.?(?:,? +(\d{4}))?$`)
+	bdayMonthMDRe = regexp.MustCompile(`^([A-Za-z]+)\.? +(\d{1,2})(?:st|nd|rd|th)?(?:,? +(\d{4}))?$`)
 	titlePrefixes = []string{
 		"dr.", "dr", "mr.", "mr", "mrs.", "mrs", "ms.", "ms",
 		"prof.", "prof", "rev.", "rev", "sir", "dame",
@@ -193,23 +200,86 @@ func Org(s string) string {
 // contacts synced onward to Google keep the year but lose the parameter.
 const applePlaceholderYear = "1604"
 
+var monthNames = map[string]int{
+	"jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+	"apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+	"aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9, "oct": 10,
+	"october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
+
 // Birthday canonicalizes a BDAY value to YYYY-MM-DD, or --MM-DD when the
 // year is unknown. Recognized inputs: "1989-10-22", "19891022" (Google),
-// "--1022" / "--10-22" (no year), the Apple placeholder year 1604, and any
-// of these with a trailing time. Anything else is returned trimmed but
-// otherwise untouched.
+// "--1022" / "--10-22" (no year), the Apple placeholder year 1604, any of
+// these with a trailing time, and the hand-typed forms "1989/10/22",
+// "10/22/1989" (month first, as typed in the US), "22.10.1989" (day first,
+// as typed in Europe), "10/22", "October 22, 1989", "22 Oct 1989" and
+// "October 22". A slash or dotted date whose first number cannot be the
+// month (or day) it is read as is flipped, so "22/10/1989" still works.
+// Anything else — including a bare year, a two-digit year, and a month or
+// day out of range — is returned trimmed but otherwise untouched, and the
+// scorer treats it as unreadable rather than as a date.
 func Birthday(s string) string {
 	s = strings.TrimSpace(s)
 	if m := bdayFullRe.FindStringSubmatch(s); m != nil {
-		if m[1] == applePlaceholderYear {
-			return "--" + m[2] + "-" + m[3]
-		}
-		return m[1] + "-" + m[2] + "-" + m[3]
+		return canonicalBirthday(m[1], m[2], m[3], s)
 	}
 	if m := bdayNoYearRe.FindStringSubmatch(s); m != nil {
-		return "--" + m[1] + "-" + m[2]
+		return canonicalBirthday("", m[1], m[2], s)
+	}
+	if m := bdayYMDSepRe.FindStringSubmatch(s); m != nil {
+		return canonicalBirthday(m[1], m[2], m[3], s)
+	}
+	if m := bdaySlashRe.FindStringSubmatch(s); m != nil {
+		month, day := m[1], m[2]
+		if atoi(month) > 12 && atoi(day) <= 12 {
+			month, day = day, month
+		}
+		return canonicalBirthday(m[3], month, day, s)
+	}
+	if m := bdayDottedRe.FindStringSubmatch(s); m != nil {
+		day, month := m[1], m[2]
+		if atoi(month) > 12 && atoi(day) <= 12 {
+			month, day = day, month
+		}
+		return canonicalBirthday(m[3], month, day, s)
+	}
+	if m := bdayMonthDMRe.FindStringSubmatch(s); m != nil {
+		if mon, ok := monthNames[strings.ToLower(m[2])]; ok {
+			return canonicalBirthday(m[3], strconv.Itoa(mon), m[1], s)
+		}
+		return s
+	}
+	if m := bdayMonthMDRe.FindStringSubmatch(s); m != nil {
+		if mon, ok := monthNames[strings.ToLower(m[1])]; ok {
+			return canonicalBirthday(m[3], strconv.Itoa(mon), m[2], s)
+		}
+		return s
 	}
 	return s
+}
+
+// canonicalBirthday assembles YYYY-MM-DD (or --MM-DD when year is empty),
+// mapping the Apple placeholder year to "no year". It returns raw when the
+// month or day is out of range: "0000-00-00" and "1989-13-45" are
+// placeholders or typos, not dates, and must not compare equal to anything.
+func canonicalBirthday(year, month, day, raw string) string {
+	mo, d := atoi(month), atoi(day)
+	if mo < 1 || mo > 12 || d < 1 || d > 31 {
+		return raw
+	}
+	md := fmt.Sprintf("%02d-%02d", mo, d)
+	if year == "" || year == applePlaceholderYear {
+		return "--" + md
+	}
+	return year + "-" + md
+}
+
+func atoi(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return -1
+	}
+	return n
 }
 
 // BirthdayWithoutYear drops the year from a canonical YYYY-MM-DD value,
