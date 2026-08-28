@@ -295,9 +295,7 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		if base.Title == "" && c.Title != "" {
 			base.Title = c.Title
 		}
-		if base.Birthday == "" && c.Birthday != "" {
-			base.Birthday = c.Birthday
-		}
+		base.Birthday = normalize.PreferBirthday(base.Birthday, c.Birthday)
 		if base.Note == "" && c.Note != "" {
 			base.Note = c.Note
 		}

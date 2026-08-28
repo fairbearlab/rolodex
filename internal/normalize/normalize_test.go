@@ -386,3 +386,46 @@ func TestPlausibleIdentifiers(t *testing.T) {
 		}
 	}
 }
+
+func TestBirthdaysAgree(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"1989-06-29", "1989-06-29", true},
+		{"--06-29", "1989-06-29", true},
+		{"1989-06-29", "--06-29", true},
+		{"--06-29", "--06-29", true},
+		{"1989-06-29", "1990-06-29", false},
+		{"--06-29", "--06-30", false},
+		{"1989", "1989", false}, // equal free text is not a date
+		{"", "", false},
+		{"", "1989-06-29", false},
+		{"1989-02-31", "1989-02-31", false}, // not a real date
+	}
+	for _, tc := range cases {
+		if got := BirthdaysAgree(tc.a, tc.b); got != tc.want {
+			t.Errorf("BirthdaysAgree(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestPreferBirthday(t *testing.T) {
+	cases := []struct {
+		priority, other, want string
+	}{
+		{"--10-22", "1989-10-22", "1989-10-22"}, // completed by the full date
+		{"1989-10-22", "--10-22", "1989-10-22"},
+		{"1989-10-22", "1990-10-22", "1989-10-22"}, // disagreement: priority wins
+		{"--10-22", "1989-10-23", "--10-22"},       // different day: not a completion
+		{"", "1989-10-22", "1989-10-22"},           // fill an empty value
+		{"1989-10-22", "", "1989-10-22"},
+		{"unknown", "1989-10-22", "unknown"}, // free text is kept for the reviewer
+		{"--10-22", "1989", "--10-22"},
+	}
+	for _, tc := range cases {
+		if got := PreferBirthday(tc.priority, tc.other); got != tc.want {
+			t.Errorf("PreferBirthday(%q, %q) = %q, want %q", tc.priority, tc.other, got, tc.want)
+		}
+	}
+}

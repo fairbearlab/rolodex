@@ -193,3 +193,37 @@ func TestGenerateWarnings(t *testing.T) {
 		t.Errorf("expected 1 warning, got %d", len(report.Warnings))
 	}
 }
+
+// TestFindConflictsComparesBirthdaysCanonically: the report raw-compared the
+// BDAY strings, so a pair the scorer had just merged on a shared birthday
+// (iCloud `--10-22`, Google `1989-10-22`) was reported with both
+// shared_birthday:true and a BDAY conflict. Two dates that agree are not a
+// conflict; two that disagree, or free text against a date, still are.
+func TestFindConflictsComparesBirthdaysCanonically(t *testing.T) {
+	cases := []struct {
+		icloud, google string
+		wantConflict   bool
+	}{
+		{"--10-22", "1989-10-22", false},
+		{"1989-10-22", "--10-22", false},
+		{"1989-10-22", "1989-10-22", false},
+		{"1989-10-22", "1990-10-22", true},
+		{"--10-22", "1989-10-23", true},
+		{"unknown", "1989-10-22", true},
+	}
+	for _, tc := range cases {
+		contacts := []model.NormalizedContact{
+			{Parsed: model.ParsedContact{Source: model.SourceICloud, FormattedName: "Jane Doe", Birthday: tc.icloud}},
+			{Parsed: model.ParsedContact{Source: model.SourceGoogle, FormattedName: "Jane Doe", Birthday: tc.google}},
+		}
+		var got bool
+		for _, c := range findConflicts(contacts, []int{0, 1}) {
+			if c.Field == "BDAY" {
+				got = true
+			}
+		}
+		if got != tc.wantConflict {
+			t.Errorf("BDAY %q vs %q: conflict reported = %v, want %v", tc.icloud, tc.google, got, tc.wantConflict)
+		}
+	}
+}

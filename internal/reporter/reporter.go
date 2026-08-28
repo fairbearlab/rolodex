@@ -9,6 +9,7 @@ import (
 
 	"github.com/fairbearlab/rolodex/internal/merger"
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 // Generate creates a JSON report from the merge result.
@@ -257,7 +258,12 @@ func findConflicts(contacts []model.NormalizedContact, indices []int) []model.Co
 	check("FN", icloud.FormattedName, other.FormattedName)
 	check("ORG", icloud.Org, other.Org)
 	check("TITLE", icloud.Title, other.Title)
-	check("BDAY", icloud.Birthday, other.Birthday)
+	// Birthdays are compared as dates, not strings: iCloud's "--10-22" and
+	// Google's "1989-10-22" are the same birthday, and the scorer has just
+	// counted them as one. Free text still conflicts by inequality.
+	if !normalize.BirthdaysAgree(icloud.Birthday, other.Birthday) {
+		check("BDAY", icloud.Birthday, other.Birthday)
+	}
 	check("NOTE", icloud.Note, other.Note)
 
 	return conflicts

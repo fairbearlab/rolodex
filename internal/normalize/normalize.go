@@ -373,6 +373,39 @@ func ParseCanonicalBirthday(s string) (year, monthDay string, ok bool) {
 	return year, m[2] + "-" + m[3], true
 }
 
+// BirthdaysAgree reports whether two canonical birthdays are the same date
+// as far as both can tell: equal month and day, and equal year unless one
+// side has none — iCloud may omit the year that Google keeps. Anything that
+// is not a real canonical date agrees with nothing. The scorer, the merger
+// and the report all decide "same birthday" here, so a pair cannot be
+// merged on a shared birthday and then reported as a birthday conflict.
+func BirthdaysAgree(a, b string) bool {
+	yearA, mdA, okA := ParseCanonicalBirthday(a)
+	yearB, mdB, okB := ParseCanonicalBirthday(b)
+	if !okA || !okB || mdA != mdB {
+		return false
+	}
+	return yearA == "" || yearB == "" || yearA == yearB
+}
+
+// PreferBirthday chooses the birthday for a merged contact. The priority
+// source's value wins, except that an empty value is filled from the other
+// side and a no-year date is completed by a full date it agrees with:
+// iCloud's "--10-22" and Google's "1989-10-22" are one birthday, and keeping
+// the yearless form lost the year with no warning. A disagreement is left
+// to the priority source and shows up in the report as a conflict.
+func PreferBirthday(priority, other string) string {
+	if priority == "" {
+		return other
+	}
+	yearP, _, okP := ParseCanonicalBirthday(priority)
+	yearO, _, okO := ParseCanonicalBirthday(other)
+	if okP && okO && yearP == "" && yearO != "" && BirthdaysAgree(priority, other) {
+		return other
+	}
+	return priority
+}
+
 // minPhoneDigits is the shortest real subscriber number.
 const minPhoneDigits = 7
 

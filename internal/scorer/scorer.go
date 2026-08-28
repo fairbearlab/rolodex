@@ -216,14 +216,10 @@ func parseBirthday(s string) (year, monthDay string, ok bool) {
 // month and day, since iCloud may omit the year that Google keeps. Two
 // equal raw strings are not enough: "1989" == "1989" or "unknown" ==
 // "unknown" is not a shared birthday, and this feature promotes an
-// identical name to auto_merge on its own.
+// identical name to auto_merge on its own. The comparison lives in
+// normalize so the merger and the report answer the same question.
 func sharedBirthday(a, b model.NormalizedContact) bool {
-	yearA, mdA, okA := parseBirthday(a.Parsed.Birthday)
-	yearB, mdB, okB := parseBirthday(b.Parsed.Birthday)
-	if !okA || !okB || mdA != mdB {
-		return false
-	}
-	return yearA == "" || yearB == "" || yearA == yearB
+	return normalize.BirthdaysAgree(a.Parsed.Birthday, b.Parsed.Birthday)
 }
 
 // birthdayConflict reports whether both contacts carry a well-formed birthday
