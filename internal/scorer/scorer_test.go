@@ -66,10 +66,11 @@ func TestScoreNicknameMatch(t *testing.T) {
 	}
 }
 
-func TestScoreNicknameSharedEmailAutoMerges(t *testing.T) {
-	// Bob and Robert expand to the same name; with a shared email that is
-	// an exact-name + identifier match and auto-merges (the linear score
-	// alone is only 0.65).
+func TestScoreNicknameSharedEmailIsReviewed(t *testing.T) {
+	// Bob and Robert expand to the same name, so with a shared email the
+	// pair scores 0.65 and is reviewed. It is not an exact-name match: a
+	// nickname is similarity, not identity, so one identifier does not
+	// auto-merge it (see TestNicknameIsSimilarityNotIdentity).
 	a := makeContact("bob", "smith", []string{"bob@gmail.com"}, nil, "")
 	b := makeContact("robert", "smith", []string{"bob@gmail.com"}, nil, "")
 
@@ -77,9 +78,9 @@ func TestScoreNicknameSharedEmailAutoMerges(t *testing.T) {
 	pairs := [][2]int{{0, 1}}
 	scored := Score(contacts, pairs)
 
-	if scored[0].Tier != model.TierAutoMerge {
-		t.Errorf("tier = %q (score=%.3f), want auto_merge for Bob/Robert + shared email",
-			scored[0].Tier, scored[0].Score)
+	if scored[0].Tier != model.TierReview || scored[0].Features.NameExact {
+		t.Errorf("tier = %q exact=%v (score=%.3f), want review for Bob/Robert + shared email",
+			scored[0].Tier, scored[0].Features.NameExact, scored[0].Score)
 	}
 }
 
@@ -333,16 +334,16 @@ func TestClassifyPrecisionGuards(t *testing.T) {
 			wantTier: model.TierAutoMerge,
 		},
 		{
-			name:     "Will/Liam on a shared phone: liam is not a nickname, different names -> distinct",
+			name:     "Will/Liam on a shared phone: similar through the table, not identical -> review",
 			a:        makeContact("will", "smith", nil, []string{"3175550000"}, ""),
 			b:        makeContact("liam", "smith", nil, []string{"3175550000"}, ""),
-			wantTier: model.TierDistinct,
+			wantTier: model.TierReview,
 		},
 		{
-			name:     "Chris/Christopher on a shared phone: exact after expansion -> auto_merge",
+			name:     "Chris/Christopher on a shared phone: a nickname is not identity -> review",
 			a:        makeContact("chris", "petry", nil, []string{"3175550000"}, ""),
 			b:        makeContact("christopher", "petry", nil, []string{"3175550000"}, ""),
-			wantTier: model.TierAutoMerge,
+			wantTier: model.TierReview,
 		},
 	}
 	for _, tc := range cases {
@@ -363,10 +364,11 @@ func TestNameExactFeature(t *testing.T) {
 		a, b string
 		want bool
 	}{
-		{"chris", "christopher", true},
+		{"chris", "christopher", false}, // a nickname is similarity, not identity
 		{"eric", "erica", false},
-		{"jon", "john", true}, // both expand to john
+		{"jon", "john", false},
 		{"will", "liam", false},
+		{"john", "john", true},
 	}
 	for _, tc := range cases {
 		got := Score([]model.NormalizedContact{
@@ -407,8 +409,8 @@ func TestSameNameIdentity(t *testing.T) {
 		{"missing middle on one side", mk("Charles", "J.", "Galanti", ""), mk("Charles", "", "Galanti", ""), model.TierAutoMerge},
 		{"two diminutives of one canonical: Ted/Ned", mk("Ted", "", "Smith", ""), mk("Ned", "", "Smith", ""), model.TierReview},
 		{"Beth/Betty", mk("Beth", "", "Smith", ""), mk("Betty", "", "Smith", ""), model.TierReview},
-		{"nickname vs canonical: Chris/Christopher", mk("Chris", "", "Petry", ""), mk("Christopher", "", "Petry", ""), model.TierAutoMerge},
-		{"Jack/John are different names now", mk("Jack", "", "Smith", ""), mk("John", "", "Smith", ""), model.TierDistinct},
+		{"nickname vs canonical: Chris/Christopher", mk("Chris", "", "Petry", ""), mk("Christopher", "", "Petry", ""), model.TierReview},
+		{"standalone nickname: Jack/John", mk("Jack", "", "Smith", ""), mk("John", "", "Smith", ""), model.TierReview},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -25,9 +25,10 @@ func TestExpandFullNameDegenerateInput(t *testing.T) {
 	}
 }
 
-// TestSameGivenNameMultiWord covers the compound-given-name branches:
-// differing word counts, a mismatch after the first word, and a nickname in
-// the first position of an otherwise identical compound name.
+// TestSameGivenNameMultiWord pins sameGivenName as literal equality of the
+// normalized given name, compound names included. It once expanded the
+// first word through the nickname table, which made "bob james" identical
+// to "robert james"; a nickname is similarity, not identity.
 func TestSameGivenNameMultiWord(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -37,7 +38,7 @@ func TestSameGivenNameMultiWord(t *testing.T) {
 		{"identical single", "john", "john", true},
 		{"differing word counts", "mary jane", "mary", false},
 		{"mismatch after first word", "mary jane", "mary ann", false},
-		{"nickname first, rest equal", "bob james", "robert james", true},
+		{"nickname first, rest equal", "bob james", "robert james", false},
 		{"two diminutives, rest equal", "ted james", "ned james", false},
 		{"empty vs name", "", "john", false},
 		{"name vs empty", "john", "", false},

@@ -98,9 +98,9 @@ type NormalizedContact struct {
 type ScoreFeatures struct {
 	NameSimilarity float64 `json:"name_similarity"`
 	// NameExact is true when the two names identify the same person as far as
-	// the name fields can tell: given and family names identical (directly or
-	// one being a nickname of the other), middle names compatible, and
-	// generational suffixes equal. Stricter than NameSimilarity >= 0.95, which
+	// the name fields can tell: given and family names identical (a nickname
+	// counts toward NameSimilarity, never toward identity), middle names
+	// compatible, and generational suffixes equal. Stricter than NameSimilarity >= 0.95, which
 	// Jaro-Winkler also awards to Eric/Erica, and than normalized equality,
 	// which would merge John Smith Jr. with John Smith Sr.
 	NameExact   bool `json:"name_exact,omitempty"`

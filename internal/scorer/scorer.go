@@ -257,9 +257,11 @@ func birthdayUnknown(a, b model.NormalizedContact) bool {
 // name fields can tell. It is the gate for the auto-merge rule, so it is
 // deliberately stricter than the similarity score:
 //
-//   - given names equal, or one a nickname of the other (Chris/Christopher);
-//     two different diminutives of one canonical (Ted/Ned, Beth/Betty) are
-//     usually siblings, not one person, and do not count
+//   - given names equal. A nickname is not identity: Chris/Christopher
+//     score as one name and get a review card, but Alex is Alexandra as
+//     well as Alexander and Sam is Samantha — a household landline joins
+//     exactly those pairs — so a nickname plus one identifier is reviewed,
+//     never merged unseen
 //   - family names equal
 //   - middle names compatible: equal, an initial matching the other's first
 //     letter, or absent on one side (Charles J. Galanti / Charles Galanti)
@@ -327,25 +329,14 @@ func splitGiven(given, middle string) (string, string) {
 	return words[0], strings.Join(words[1:], " ")
 }
 
+// sameGivenName is plain equality of the normalized given names. It once
+// ran both sides through the nickname table, which made Alex/Alexander an
+// identical name and auto-merged it on a shared household phone — and the
+// same table entry is Alex/Alexandra. Nicknames contribute to similarity
+// (nameSimilarity), which floors such pairs at review; identity is held to
+// the literal name.
 func sameGivenName(ga, gb string) bool {
-	if ga == gb {
-		return true
-	}
-	wa, wb := strings.Fields(ga), strings.Fields(gb)
-	if len(wa) == 0 || len(wb) == 0 || len(wa) != len(wb) {
-		return false
-	}
-	for i := 1; i < len(wa); i++ {
-		if wa[i] != wb[i] {
-			return false
-		}
-	}
-	if expandName(wa[0]) != expandName(wb[0]) {
-		return false
-	}
-	_, aNick := nicknames[wa[0]]
-	_, bNick := nicknames[wb[0]]
-	return !aNick || !bNick // not two distinct diminutives of one canonical
+	return ga == gb
 }
 
 // isInitial reports whether a given name carries no more identity than a set
@@ -391,8 +382,8 @@ func compatibleMiddle(ma, mb string) bool {
 // Classify assigns a tier from the linear score and the feature breakdown.
 //
 // The score thresholds apply first. On top of them, an identical name
-// (NameExact: equal after normalization, directly or via nickname expansion)
-// plus one confirming identifier — shared phone, email or birthday — is
+// (NameExact: equal after normalization; a nickname is similarity, not
+// identity) plus one confirming identifier — shared phone, email or birthday — is
 // auto_merge even though the linear score for that shape (0.40 + 0.25 =
 // 0.65) cannot reach the auto_merge threshold. A merely near-identical
 // name (Jaro-Winkler >= ThresholdNearName, which Eric/Erica also clears) is

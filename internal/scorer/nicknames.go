@@ -2,35 +2,44 @@ package scorer
 
 import "strings"
 
-// nicknames maps diminutives to their canonical form.
-// All keys are lowercase.
+// nicknames maps diminutives to their canonical form. All keys are lowercase.
+//
+// The table feeds name *similarity* only: Bob Smith and Robert Smith score
+// as one name and get a review card. It never makes an *identity* —
+// sameGivenName requires the given names to be equal — because a nickname
+// is also a nickname of other names: Alex is Alexandra as well as
+// Alexander, Sam is Samantha, Pat is Patricia, Frank is Frances, and those
+// are siblings and spouses on one household landline. An earlier attempt
+// to keep identity honest by deleting jack, liam, jamie, leo and harry
+// (standalone names in current usage) cost the similarity floor instead:
+// Jack Smith and John Smith on one phone scored 0.578 and were written out
+// as two distinct people without a card. They are back, as similarity.
 var nicknames = map[string]string{
-	"bob":    "robert",
-	"bobby":  "robert",
-	"rob":    "robert",
-	"robbie": "robert",
-	"robby":  "robert",
-	"bert":   "robert",
-	"bill":   "william",
-	"billy":  "william",
-	"will":   "william",
-	"willy":  "william",
-	"willie": "william",
-	// "liam", "jack", "jamie", "leo" and "harry" are deliberately absent:
-	// they are standalone given names in current usage, and mapping them to
-	// a canonical would make e.g. a Will/Liam or Jack/John pair on one
-	// household phone look like one person.
+	"bob":     "robert",
+	"bobby":   "robert",
+	"rob":     "robert",
+	"robbie":  "robert",
+	"robby":   "robert",
+	"bert":    "robert",
+	"bill":    "william",
+	"billy":   "william",
+	"will":    "william",
+	"willy":   "william",
+	"willie":  "william",
+	"liam":    "william",
 	"mike":    "michael",
 	"mikey":   "michael",
 	"mick":    "michael",
 	"mickey":  "michael",
 	"jim":     "james",
 	"jimmy":   "james",
+	"jamie":   "james",
 	"dick":    "richard",
 	"rick":    "richard",
 	"ricky":   "richard",
 	"rich":    "richard",
 	"richie":  "richard",
+	"jack":    "john",
 	"johnny":  "john",
 	"jon":     "john",
 	"joe":     "joseph",
@@ -65,11 +74,13 @@ var nicknames = map[string]string{
 	"frank":   "francis",
 	"frankie": "francis",
 	"hank":    "henry",
+	"harry":   "henry",
 	"hal":     "henry",
 	"jerry":   "gerald",
 	"gerry":   "gerald",
 	"larry":   "lawrence",
 	"lenny":   "leonard",
+	"leo":     "leonard",
 	"nick":    "nicholas",
 	"nicky":   "nicholas",
 	"pat":     "patrick",

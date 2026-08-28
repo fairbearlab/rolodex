@@ -236,11 +236,10 @@ func TestExactNameRequiresMatchingDiacritics(t *testing.T) {
 		}
 	}
 
-	// Identical accented names, plain ASCII names and nicknames still match.
+	// Identical accented names and plain ASCII names still match.
 	for _, tc := range []struct{ ga, fa, gb, fb string }{
 		{"José", "Garcia", "José", "Garcia"},
 		{"John", "Smith", "John", "Smith"},
-		{"Bob", "Smith", "Robert", "Smith"},
 		// Compatibility variants are the SAME name written two ways: fullwidth
 		// Latin and halfwidth kana are a routine iCloud-vs-Google divergence,
 		// so NameStrict folds them (NFKC) while keeping the combining marks
