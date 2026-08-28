@@ -75,7 +75,7 @@ END:VCARD
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := merge(icloudPath, googlePath, outPath, reviewPath, reportPath); err != nil {
+		if err := merge(icloudPath, googlePath, outPath, reviewPath, reportPath, false); err != nil {
 			b.Fatal(err)
 		}
 	}

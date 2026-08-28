@@ -19,7 +19,7 @@ func TestFullPipeline(t *testing.T) {
 	reportPath := filepath.Join(tmpDir, "report.json")
 
 	err := merge("../../testdata/icloud.vcf", "../../testdata/google.vcf",
-		outPath, reviewPath, reportPath)
+		outPath, reviewPath, reportPath, false)
 	if err != nil {
 		t.Fatalf("merge failed: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestEmptyInput(t *testing.T) {
 	reviewPath := filepath.Join(tmpDir, "review.vcf")
 
 	err := merge(emptyPath, "../../testdata/google.vcf",
-		outPath, reviewPath, "")
+		outPath, reviewPath, "", false)
 	if err != nil {
 		t.Fatalf("merge with empty input failed: %v", err)
 	}

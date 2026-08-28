@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -97,5 +98,130 @@ func TestRunMergeRequiresBothSources(t *testing.T) {
 	}
 	if err := runMerge([]string{"--google", icloud}); err == nil {
 		t.Error("expected an error when --icloud is missing, got nil")
+	}
+}
+
+// TestRunMergeRejectsCollidingOutputs pins the guard on the derived --review
+// default. "--out dir/review.vcf" aimed both writes at one file: pipeline.go
+// wrote the merged contacts and then overwrote them with the review set, so
+// the merged output vanished with no error. run.go already refused its
+// reserved paths this way; merge did not.
+func TestRunMergeRejectsCollidingOutputs(t *testing.T) {
+	dir := t.TempDir()
+	icloud := filepath.Join(dir, "icloud.vcf")
+	google := filepath.Join(dir, "google.vcf")
+	writeTestVCF(t, icloud, "Alpha", "alpha@example.com")
+	writeTestVCF(t, google, "Alpha", "alpha.other@example.com")
+
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{
+			"derived review path collides with --out",
+			[]string{"--out", filepath.Join(dir, "review.vcf")},
+		},
+		{
+			"explicit --review equals --out",
+			[]string{"--out", filepath.Join(dir, "m.vcf"), "--review", filepath.Join(dir, "m.vcf")},
+		},
+		{
+			"--report equals --out",
+			[]string{"--out", filepath.Join(dir, "m.vcf"), "--report", filepath.Join(dir, "m.vcf")},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{"--icloud", icloud, "--google", google}, tc.args...)
+			err := runMerge(args)
+			if err == nil {
+				t.Fatal("runMerge accepted colliding output paths; one write would silently destroy the other")
+			}
+			if !strings.Contains(err.Error(), "must be different") {
+				t.Errorf("error = %v, want it to name the collision", err)
+			}
+		})
+	}
+}
+
+// TestRunMergeKeepsUnrelatedReviewFile pins the deletion guard. When a run
+// produces no review-tier pairs, merge clears a stale review.vcf — but the
+// path is now derived from --out, so "merge --out ~/Documents/merged.vcf"
+// deleted ~/Documents/review.vcf, a file this run never wrote and the user
+// never named.
+func TestRunMergeKeepsUnrelatedReviewFile(t *testing.T) {
+	dir := t.TempDir()
+	icloud := filepath.Join(dir, "icloud.vcf")
+	google := filepath.Join(dir, "google.vcf")
+	// Identical contacts with a shared email auto-merge, so nothing is queued
+	// for review and merge reaches the removal branch.
+	writeTestVCF(t, icloud, "Alpha", "alpha@example.com")
+	writeTestVCF(t, google, "Alpha", "alpha@example.com")
+
+	bystander := filepath.Join(dir, "review.vcf")
+	const content = "a file the user wrote, not rolodex\n"
+	if err := os.WriteFile(bystander, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out := filepath.Join(dir, "merged.vcf")
+	if err := runMerge([]string{"--icloud", icloud, "--google", google, "--out", out}); err != nil {
+		t.Fatalf("runMerge: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Clean(bystander))
+	if err != nil {
+		t.Fatalf("rolodex deleted %s, a path it derived and the user never named: %v", bystander, err)
+	}
+	if string(got) != content {
+		t.Errorf("bystander file = %q, want it untouched (%q)", got, content)
+	}
+}
+
+// TestRunMergeRejectsAliasedAndInputPaths pins the rest of the path guard.
+// filepath.Abs cleans a path but does not case-fold, and macOS APFS/HFS+ are
+// case-insensitive by default: "--out Merged.vcf --review merged.vcf" named
+// one file that looked like two, and the stale-review removal then deleted the
+// merged output while the command exited 0. Writing over an input export
+// destroyed the one artifact worth keeping if the merge went wrong, and
+// writer.WriteFile stages through "<path>.tmp", so that sibling is reserved.
+func TestRunMergeRejectsAliasedAndInputPaths(t *testing.T) {
+	dir := t.TempDir()
+	icloud := filepath.Join(dir, "icloud.vcf")
+	google := filepath.Join(dir, "google.vcf")
+	writeTestVCF(t, icloud, "Alpha", "alpha@example.com")
+	writeTestVCF(t, google, "Alpha", "alpha@example.com")
+
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"case-folded alias of --out", []string{
+			"--out", filepath.Join(dir, "Merged.vcf"), "--review", filepath.Join(dir, "merged.vcf")}},
+		{"--out over the iCloud input", []string{
+			"--out", icloud, "--review", filepath.Join(dir, "r.vcf")}},
+		{"--review over the Google input", []string{
+			"--out", filepath.Join(dir, "m.vcf"), "--review", google}},
+		{"--out collides with --review staging file", []string{
+			"--out", filepath.Join(dir, "a.vcf.tmp"), "--review", filepath.Join(dir, "a.vcf")}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{"--icloud", icloud, "--google", google}, tc.args...)
+			if err := runMerge(args); err == nil {
+				t.Fatal("runMerge accepted aliased paths; one write would silently destroy another file")
+			}
+		})
+	}
+
+	// The inputs must still be intact after every rejected run.
+	for _, p := range []string{icloud, google} {
+		data, err := os.ReadFile(filepath.Clean(p))
+		if err != nil {
+			t.Fatalf("input %s was destroyed: %v", p, err)
+		}
+		if !strings.Contains(string(data), "Alpha") {
+			t.Errorf("input %s was overwritten: %q", p, data)
+		}
 	}
 }

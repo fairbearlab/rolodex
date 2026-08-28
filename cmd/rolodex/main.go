@@ -144,11 +144,79 @@ func runMerge(args []string) error {
 	if *icloudPath == "" || *googlePath == "" {
 		return fmt.Errorf("both --icloud and --google flags are required")
 	}
-	if *reviewPath == "" {
+	reviewDerived := *reviewPath == ""
+	if reviewDerived {
 		*reviewPath = filepath.Join(filepath.Dir(*outPath), "review.vcf")
 	}
+	if err := checkDistinctOutputs(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath); err != nil {
+		return err
+	}
 
-	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath)
+	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath, reviewDerived)
+}
+
+// checkDistinctOutputs rejects a run whose paths collide. --review defaults to
+// a path derived from --out, so "merge --out dir/review.vcf" aimed both writes
+// at one file: the merged contacts were written and then overwritten by the
+// review set, with no error.
+//
+// Three subtleties, each of which cost a whole address book in testing:
+//   - Keys are case-folded. macOS APFS and HFS+ are case-insensitive by
+//     default, so "--out Merged.vcf --review merged.vcf" is ONE file that
+//     filepath.Abs reports as two. The stale-review removal then unlinked the
+//     merged output and the command still exited 0.
+//   - The input exports are included. Writing --out over --icloud destroyed
+//     the one artifact a user needs if the merge went wrong.
+//   - writer.WriteFile stages through "<path>.tmp", so that sibling is
+//     reserved too.
+func checkDistinctOutputs(icloudPath, googlePath, outPath, reviewPath, reportPath string) error {
+	type entry struct{ flag, path string }
+	inputs := []entry{{"--icloud", icloudPath}, {"--google", googlePath}}
+	outputs := []entry{{"--out", outPath}, {"--review", reviewPath}, {"--report", reportPath}}
+
+	seen := make(map[string]string)
+	claim := func(key, flag string) error {
+		if prev, ok := seen[key]; ok && prev != flag {
+			return fmt.Errorf("%s and %s refer to the same file; they must be different", prev, flag)
+		}
+		seen[key] = flag
+		return nil
+	}
+	key := func(path string) (string, error) {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+		return strings.ToLower(abs), nil
+	}
+
+	for _, e := range append(append([]entry{}, inputs...), outputs...) {
+		if e.path == "" {
+			continue
+		}
+		k, err := key(e.path)
+		if err != nil {
+			return fmt.Errorf("resolving %s path %q: %w", e.flag, e.path, err)
+		}
+		if err := claim(k, e.flag); err != nil {
+			return err
+		}
+	}
+	// Reserve the staging sibling of every file we write, and refuse to write
+	// on top of an input.
+	for _, e := range outputs {
+		if e.path == "" {
+			continue
+		}
+		k, err := key(e.path + ".tmp")
+		if err != nil {
+			return fmt.Errorf("resolving %s path %q: %w", e.flag, e.path, err)
+		}
+		if err := claim(k, e.flag); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func runReview(args []string) error {

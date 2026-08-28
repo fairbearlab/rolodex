@@ -26,6 +26,23 @@ type PipelineResult struct {
 	AutoCount   int
 }
 
+// reportParseWarnings tells the user, on stderr, about entries the decoder
+// could not read. A malformed card is skipped and its contact is gone from
+// every output, but the "N contacts loaded" line is counted AFTER the loss, so
+// nothing on screen revealed it — a truncated export (an interrupted download,
+// a full disk) silently shrank the address book and the command exited 0.
+// audit already surfaces these; the merge pipeline did not.
+func reportParseWarnings(path string, warnings []model.Warning) {
+	if len(warnings) == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "  warning: %d malformed entries in %s were skipped and are NOT in the output:\n",
+		len(warnings), path)
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "    - entry %d: %s\n", w.Index, w.Message)
+	}
+}
+
 // runPipeline executes the core merge pipeline (parse → normalize → block →
 // score → merge) and returns the in-memory result without writing any files.
 func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
@@ -36,6 +53,7 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 		return nil, fmt.Errorf("parsing iCloud file: %w", err)
 	}
 	fmt.Printf("  %d contacts loaded\n", len(icloudContacts))
+	reportParseWarnings(icloudPath, icloudWarnings)
 
 	fmt.Println("Parsing Google contacts...")
 	googleContacts, googleWarnings, err := parser.ParseFile(googlePath, model.SourceGoogle)
@@ -43,6 +61,7 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 		return nil, fmt.Errorf("parsing Google file: %w", err)
 	}
 	fmt.Printf("  %d contacts loaded\n", len(googleContacts))
+	reportParseWarnings(googlePath, googleWarnings)
 
 	// Combine all contacts and warnings
 	allContacts := append(icloudContacts, googleContacts...)
@@ -89,7 +108,22 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 	}, nil
 }
 
-func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error {
+// sameFile reports whether two paths resolve to the same file on disk. It
+// answers false when either cannot be stat'd, so a missing file never blocks
+// the caller's normal path.
+func sameFile(a, b string) bool {
+	fa, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+	fb, err := os.Stat(b)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(fa, fb)
+}
+
+func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string, reviewDerived bool) error {
 	pr, err := runPipeline(icloudPath, googlePath)
 	if err != nil {
 		return err
@@ -108,8 +142,15 @@ func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string) error
 		if err := writer.WriteFile(reviewPath, result.Review); err != nil {
 			return fmt.Errorf("writing review output: %w", err)
 		}
-	} else {
-		// Remove any stale review.vcf from a previous run
+	} else if !reviewDerived && !sameFile(reviewPath, outPath) {
+		// Clear a stale review.vcf from a previous run, but only at a path the
+		// user named. --review defaults to a path derived from --out, and
+		// deleting that meant "merge --out ~/Documents/merged.vcf" removed
+		// ~/Documents/review.vcf — a file this run never created and the user
+		// never mentioned. The sameFile check is a second line of defence: on
+		// a case-insensitive filesystem "--out Merged.vcf --review merged.vcf"
+		// are one file, and removing it here deleted the merged output that
+		// had just been written.
 		_ = os.Remove(reviewPath)
 	}
 
