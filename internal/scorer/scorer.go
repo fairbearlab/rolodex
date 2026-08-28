@@ -170,8 +170,45 @@ func expandFullName(name string) string {
 	return strings.Join(parts, " ")
 }
 
+// A shared identifier is what promotes an identical name straight to
+// auto_merge, so equality alone is not enough: the value has to be a plausible
+// identifier in the first place. Exports carry placeholders — "TEL:0",
+// "EMAIL:unknown", "TEL:000-000-0000" — and two contacts holding the same
+// placeholder share nothing. This is the same rule the birthday signal
+// already applies: only a well-formed value counts as evidence.
+
+// minPhoneDigits is the shortest real subscriber number. Anything below it is
+// a placeholder or a truncated field, not a number two people can share.
+const minPhoneDigits = 7
+
+func plausiblePhone(p string) bool {
+	if len(p) < minPhoneDigits {
+		return false
+	}
+	// "0000000000" and "1111111111" are placeholders, not numbers.
+	for i := 0; i < len(p); i++ {
+		if p[i] != p[0] {
+			return true
+		}
+	}
+	return false
+}
+
+func plausibleEmail(e string) bool {
+	at := strings.IndexByte(e, '@')
+	if at <= 0 || at == len(e)-1 {
+		return false
+	}
+	domain := e[at+1:]
+	dot := strings.IndexByte(domain, '.')
+	return dot > 0 && dot < len(domain)-1
+}
+
 func sharedEmail(a, b model.NormalizedContact) bool {
 	for _, ea := range a.NormalizedEmails {
+		if !plausibleEmail(ea) {
+			continue
+		}
 		for _, eb := range b.NormalizedEmails {
 			if ea == eb {
 				return true
@@ -183,6 +220,9 @@ func sharedEmail(a, b model.NormalizedContact) bool {
 
 func sharedPhone(a, b model.NormalizedContact) bool {
 	for _, pa := range a.NormalizedPhones {
+		if !plausiblePhone(pa) {
+			continue
+		}
 		for _, pb := range b.NormalizedPhones {
 			if pa == pb {
 				return true

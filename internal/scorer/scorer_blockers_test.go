@@ -276,3 +276,46 @@ func TestSameNameRejectsMultipleInitials(t *testing.T) {
 		t.Error(`"John R." Smith: NameExact = false, want a real given name to still match`)
 	}
 }
+
+// A shared identifier promotes an identical name straight to auto_merge, so
+// the value has to be a plausible identifier first. Exports carry placeholders
+// and two contacts holding the same placeholder share nothing — the same rule
+// the birthday signal already applies.
+func TestPlaceholderIdentifiersAreNotConfirmation(t *testing.T) {
+	for _, tc := range []struct{ name, phone, email string }{
+		{"single digit phone", "0", ""},
+		{"short phone", "12345", ""},
+		{"repeated-digit phone", "000-000-0000", ""},
+		{"repeated-digit phone 1s", "111-111-1111", ""},
+		{"non-address email", "", "unknown"},
+		{"email with no domain dot", "", "user@localhost"},
+		{"email with no local part", "", "@example.com"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var phones, emails []string
+			if tc.phone != "" {
+				phones = []string{tc.phone}
+			}
+			if tc.email != "" {
+				emails = []string{tc.email}
+			}
+			a := parsed("John", "Smith", "", emails, phones)
+			b := parsed("John", "Smith", "", emails, phones)
+			got := tierOf(a, b)
+			if got.Features.SharedPhone || got.Features.SharedEmail {
+				t.Errorf("SharedPhone=%v SharedEmail=%v for %q/%q; a placeholder is not a shared identifier",
+					got.Features.SharedPhone, got.Features.SharedEmail, tc.phone, tc.email)
+			}
+			if got.Tier == model.TierAutoMerge {
+				t.Errorf("tier = %q, want no auto_merge on a shared placeholder", got.Tier)
+			}
+		})
+	}
+
+	// Real identifiers still confirm.
+	a := parsed("John", "Smith", "", []string{"john@example.com"}, []string{"2125550199"})
+	b := parsed("John", "Smith", "", []string{"john@example.com"}, []string{"2125550199"})
+	if got := tierOf(a, b); got.Tier != model.TierAutoMerge {
+		t.Errorf("tier = %q, want auto_merge on a real shared email and phone", got.Tier)
+	}
+}

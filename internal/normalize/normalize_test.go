@@ -306,3 +306,30 @@ func TestUnescape(t *testing.T) {
 		}
 	}
 }
+
+// The ISO tail is a time, not "anything at all". The optional group matched
+// arbitrary trailing text, so "1989-10-22 or 23" yielded a date the caller
+// then trusted as confirming evidence.
+func TestBirthdayRejectsTrailingText(t *testing.T) {
+	for _, raw := range []string{
+		"1989-10-22 or 23", "1989-10-22 maybe", "1989-10-22 approx", "1989-10-22x",
+	} {
+		if got := Birthday(raw); got != raw {
+			t.Errorf("Birthday(%q) = %q, want it left raw", raw, got)
+		}
+	}
+	// Real ISO datetimes still normalize to the date.
+	for _, tc := range []struct{ in, want string }{
+		{"1989-10-22T00:00:00", "1989-10-22"},
+		{"1989-10-22T00:00:00Z", "1989-10-22"},
+		{"1989-10-22T12:30", "1989-10-22"},
+		{"1989-10-22 00:00:00", "1989-10-22"},
+		{"1989-10-22T00:00:00.500Z", "1989-10-22"},
+		{"1989-10-22T00:00:00+02:00", "1989-10-22"},
+		{"1989-10-22", "1989-10-22"},
+	} {
+		if got := Birthday(tc.in); got != tc.want {
+			t.Errorf("Birthday(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

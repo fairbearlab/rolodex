@@ -15,9 +15,12 @@ import (
 )
 
 var (
-	nonDigitRe    = regexp.MustCompile(`\D`)
-	whitespaceRe  = regexp.MustCompile(`\s+`)
-	bdayFullRe    = regexp.MustCompile(`^(\d{4})-?(\d{2})-?(\d{2})(?:[T ].*)?$`)
+	nonDigitRe   = regexp.MustCompile(`\D`)
+	whitespaceRe = regexp.MustCompile(`\s+`)
+	// The optional tail is an ISO time, not "anything at all": the old
+	// `(?:[T ].*)?$` matched "1989-10-22 or 23" and handed back a date the
+	// caller then trusted as confirming evidence.
+	bdayFullRe    = regexp.MustCompile(`^(\d{4})-?(\d{2})-?(\d{2})(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$`)
 	bdayNoYearRe  = regexp.MustCompile(`^--(\d{2})-?(\d{2})$`)
 	bdayYMDSepRe  = regexp.MustCompile(`^(\d{4})[/.](\d{1,2})[/.](\d{1,2})$`)
 	bdaySlashRe   = regexp.MustCompile(`^(\d{1,2})/(\d{1,2})(?:/(\d{4}))?$`)
