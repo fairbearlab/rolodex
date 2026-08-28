@@ -148,17 +148,25 @@ func runMerge(args []string) error {
 	if reviewDerived {
 		*reviewPath = filepath.Join(filepath.Dir(*outPath), "review.vcf")
 	}
-	if err := checkDistinctOutputs(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath); err != nil {
+	inputs := []pathFlag{{"--icloud", *icloudPath}, {"--google", *googlePath}}
+	outputs := []pathFlag{{"--out", *outPath}, {"--review", *reviewPath}, {"--report", *reportPath}}
+	if err := checkDistinctPaths(inputs, outputs); err != nil {
 		return err
 	}
 
 	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath, reviewDerived)
 }
 
-// checkDistinctOutputs rejects a run whose paths collide. --review defaults to
-// a path derived from --out, so "merge --out dir/review.vcf" aimed both writes
-// at one file: the merged contacts were written and then overwritten by the
-// review set, with no error.
+// pathFlag names a path the way the user gave it, for error messages.
+type pathFlag struct{ flag, path string }
+
+// checkDistinctPaths rejects a command whose paths collide: an output over
+// an input, or two outputs on one file. --review defaults to a path derived
+// from --out, so "merge --out dir/review.vcf" aimed both writes at one file:
+// the merged contacts were written and then overwritten by the review set,
+// with no error. run had a narrower copy of this check that never included
+// its inputs, so "run --out icloud.vcf" replaced the iCloud export with the
+// resolved output and exited 0; resolve had no check at all.
 //
 // Three subtleties, each of which cost a whole address book in testing:
 //   - Keys are case-folded. macOS APFS and HFS+ are case-insensitive by
@@ -169,11 +177,9 @@ func runMerge(args []string) error {
 //     the one artifact a user needs if the merge went wrong.
 //   - writer.WriteFile stages through "<path>.tmp", so that sibling is
 //     reserved too.
-func checkDistinctOutputs(icloudPath, googlePath, outPath, reviewPath, reportPath string) error {
-	type entry struct{ flag, path string }
-	inputs := []entry{{"--icloud", icloudPath}, {"--google", googlePath}}
-	outputs := []entry{{"--out", outPath}, {"--review", reviewPath}, {"--report", reportPath}}
-
+//
+// Empty paths (an optional flag left unset) are skipped.
+func checkDistinctPaths(inputs, outputs []pathFlag) error {
 	seen := make(map[string]string)
 	claim := func(key, flag string) error {
 		if prev, ok := seen[key]; ok && prev != flag {
@@ -182,31 +188,12 @@ func checkDistinctOutputs(icloudPath, googlePath, outPath, reviewPath, reportPat
 		seen[key] = flag
 		return nil
 	}
-	// Resolve symlinks as well as case. filepath.Abs cleans a path but follows
-	// nothing, so "--icloud real/icloud.vcf --out alias/icloud.vcf" through a
-	// symlinked directory looked like two files and the source export was
-	// overwritten. A path that does not exist yet still has a parent that
-	// usually does, so resolve the directory and keep the base name.
-	key := func(path string) (string, error) {
-		abs, err := filepath.Abs(path)
-		if err != nil {
-			return "", err
-		}
-		if resolved, err := filepath.EvalSymlinks(abs); err == nil {
-			return strings.ToLower(resolved), nil
-		}
-		dir, base := filepath.Split(abs)
-		if resolvedDir, err := filepath.EvalSymlinks(filepath.Clean(dir)); err == nil {
-			return strings.ToLower(filepath.Join(resolvedDir, base)), nil
-		}
-		return strings.ToLower(abs), nil
-	}
 
-	for _, e := range append(append([]entry{}, inputs...), outputs...) {
+	for _, e := range append(append([]pathFlag{}, inputs...), outputs...) {
 		if e.path == "" {
 			continue
 		}
-		k, err := key(e.path)
+		k, err := pathKey(e.path)
 		if err != nil {
 			return fmt.Errorf("resolving %s path %q: %w", e.flag, e.path, err)
 		}
@@ -220,7 +207,7 @@ func checkDistinctOutputs(icloudPath, googlePath, outPath, reviewPath, reportPat
 		if e.path == "" {
 			continue
 		}
-		k, err := key(e.path + ".tmp")
+		k, err := pathKey(e.path + ".tmp")
 		if err != nil {
 			return fmt.Errorf("resolving %s path %q: %w", e.flag, e.path, err)
 		}
@@ -229,6 +216,27 @@ func checkDistinctOutputs(icloudPath, googlePath, outPath, reviewPath, reportPat
 		}
 	}
 	return nil
+}
+
+// pathKey identifies the file a path names, resolving symlinks as well as
+// case. filepath.Abs cleans a path but follows nothing, so "--icloud
+// real/icloud.vcf --out alias/icloud.vcf" through a symlinked directory
+// looked like two files and the source export was overwritten. A path that
+// does not exist yet still has a parent that usually does, so resolve the
+// directory and keep the base name.
+func pathKey(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return strings.ToLower(resolved), nil
+	}
+	dir, base := filepath.Split(abs)
+	if resolvedDir, err := filepath.EvalSymlinks(filepath.Clean(dir)); err == nil {
+		return strings.ToLower(filepath.Join(resolvedDir, base)), nil
+	}
+	return strings.ToLower(abs), nil
 }
 
 func runReview(args []string) error {
@@ -259,6 +267,10 @@ func runResolve(args []string) error {
 
 	if *reportPath == "" || *reviewPath == "" || *mergedPath == "" {
 		return fmt.Errorf("--report, --review, and --merged flags are required")
+	}
+	inputs := []pathFlag{{"--report", *reportPath}, {"--review", *reviewPath}, {"--merged", *mergedPath}}
+	if err := checkDistinctPaths(inputs, []pathFlag{{"--out", *outPath}}); err != nil {
+		return err
 	}
 
 	return resolve(*reportPath, *reviewPath, *mergedPath, *outPath)
