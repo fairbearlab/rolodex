@@ -73,7 +73,7 @@ type Summary struct {
 	AvgCompactTimeMs   int64
 	AvgDetailedTimeMs  int64
 	SuggestedAutoMerge *float64 // nil if no merges
-	SuggestedFloor     *float64 // nil if no merges
+	SuggestedFloor     *float64 // nil if no merges, or if it would not sit below SuggestedAutoMerge
 }
 
 // BandStat holds merge/skip counts for a score band.
@@ -153,12 +153,20 @@ func Analyze(entries []Entry) Summary {
 		suggested := math.Floor(lowestMergedScore*100) / 100
 		s.SuggestedAutoMerge = &suggested
 
-		// Suggested floor = suggested auto_merge - 0.05, clamped to 0.50
+		// Suggested floor = suggested auto_merge - 0.05, clamped to 0.50.
+		// The clamp must not lift the floor to or above the suggestion:
+		// before the exact-name and near-name rules every reviewed pair
+		// scored at least 0.60 and the clamp never engaged, but a name-only
+		// pair merged at 0.40 now yields a suggestion of 0.40, and a "review
+		// floor" of 0.50 above it describes an empty band. No floor is
+		// suggested in that case.
 		floor := suggested - 0.05
 		if floor < 0.50 {
 			floor = 0.50
 		}
-		s.SuggestedFloor = &floor
+		if floor < suggested {
+			s.SuggestedFloor = &floor
+		}
 	}
 
 	return s

@@ -216,3 +216,43 @@ func TestBandStatsCoversExactNameFloorPairs(t *testing.T) {
 		t.Errorf("score 0.50 landed in %v, want only the 0.50-0.60 band", edge.BandStats)
 	}
 }
+
+// TestFloorNeverExceedsSuggestedAutoMerge: the floor is the suggested
+// auto_merge threshold minus 0.05, clamped to 0.50 — and the clamp was
+// applied without looking at the suggestion. Before the exact-name and
+// near-name rules, every reviewed pair scored at least 0.60, so the clamp was
+// unreachable; now a name-only pair at 0.40 that the reviewer merges yields
+// "Suggested auto_merge: 0.40" followed by "Suggested review floor: 0.50",
+// a review band with its floor above its ceiling. When the clamp would put
+// the floor at or above the suggestion there is no band to suggest.
+func TestFloorNeverExceedsSuggestedAutoMerge(t *testing.T) {
+	cases := []struct {
+		score     float64
+		wantFloor *float64
+	}{
+		{0.90, ptr(0.85)},
+		{0.52, ptr(0.50)}, // clamp engages, still below the suggestion
+		{0.50, nil},       // clamp would equal the suggestion: empty band
+		{0.40, nil},       // near-name floor pair
+		{0.0, nil},        // nameless or exact-name floor pair
+	}
+	for _, tc := range cases {
+		s := Analyze([]Entry{{ClusterID: "a", Decision: "merge", Score: tc.score}})
+		if s.SuggestedAutoMerge == nil || !approxEq(*s.SuggestedAutoMerge, tc.score) {
+			t.Errorf("score %.2f: SuggestedAutoMerge = %v, want %.2f", tc.score, s.SuggestedAutoMerge, tc.score)
+		}
+		switch {
+		case tc.wantFloor == nil && s.SuggestedFloor != nil:
+			t.Errorf("score %.2f: SuggestedFloor = %.2f, want none (it would not be below the suggested auto_merge)", tc.score, *s.SuggestedFloor)
+		case tc.wantFloor != nil && s.SuggestedFloor == nil:
+			t.Errorf("score %.2f: SuggestedFloor = nil, want %.2f", tc.score, *tc.wantFloor)
+		case tc.wantFloor != nil && !approxEq(*s.SuggestedFloor, *tc.wantFloor):
+			t.Errorf("score %.2f: SuggestedFloor = %.2f, want %.2f", tc.score, *s.SuggestedFloor, *tc.wantFloor)
+		}
+		if s.SuggestedFloor != nil && *s.SuggestedFloor >= *s.SuggestedAutoMerge {
+			t.Errorf("score %.2f: floor %.2f is not below suggested auto_merge %.2f", tc.score, *s.SuggestedFloor, *s.SuggestedAutoMerge)
+		}
+	}
+}
+
+func ptr(f float64) *float64 { return &f }
