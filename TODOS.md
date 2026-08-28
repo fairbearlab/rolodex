@@ -1,5 +1,65 @@
 # TODOS
 
+## Merge Safety
+
+### Cap the email and phone blocking buckets
+
+**What:** `internal/blocker/blocker.go` caps the last-name bucket at `maxLastNameBlockSize = 50` and falls back to `addFilteredPairs`, but the email and phone buckets have no cap. Apply the same cap-and-filter path to both, and warn when a bucket is truncated. Independently, cap cluster size in `merger.Merge` (or refuse to auto-apply a `merge` decision above N members).
+
+**Why:** One shared identifier produces an O(k^2) pair explosion **and** a single unbounded review cluster. Measured on a real build: 500 contacts sharing one `TEL` collapse into ONE review cluster of 501 members — the TUI shows it as a single card and `resolve.mergeReviewCluster` fuses all 501 into one contact on a single `m` keystroke. 4,000 such contacts produce 7,998,000 candidate pairs, 9.1s and 3.99 GB RSS; ~8,000 is an OOM kill. This is the same hazard `isNearNameOnly` was written for, on the path that guard does not cover.
+
+**Context:** Found independently by the security specialist and the adversarial pass during the v0.4.0 pre-landing review. Entirely reachable without malice: a company switchboard, a family landline, or a placeholder like `000-000-0000` that some exports emit. `.vcf` input is untrusted, so it is also a trivial DoS. This is the single worst remaining bug in the tool.
+
+**Effort:** M
+**Priority:** P0
+**Depends on:** Nothing
+
+### Unescape `\;` at parse time instead of patching the serialized card
+
+**What:** `internal/writer/writer.go` post-processes the encoded card with `strings.ReplaceAll(buf.String(), "\\;", "\;")`. Move the fix to the read side: unescape `\;` in `parser.cardToContact` so memory holds true values, and let the encoder escape them properly on the way out. `normalize.splitUnescaped` and `normalize.Unescape` already model the wire form and would be simplified by it.
+
+**Why:** go-vcard's decoder does not decode `\;`, so `ORG:Acme\; Inc.` and `ORG:Acme\\; Inc.` parse to the same in-memory value and are indistinguishable afterwards. Whichever form the writer emits, one of the two inputs round-trips wrong. Scoping the replacement to ORG/N/ADR was tried during the v0.4.0 review and reverted: it fixes a real backslash before a separator but breaks the far more common escaped-semicolon case. Only unescaping at the boundary removes the ambiguity.
+
+**Context:** rolodex's own reparse is stable either way, which is why the in-repo round-trip test passes; the corruption only appears on import into Apple or Google Contacts.
+
+**Effort:** M
+**Priority:** P1
+**Depends on:** Nothing
+
+### `[s] skip` destroys both contacts with no warning
+
+**What:** `internal/resolve/resolve.go` excludes a skipped cluster from `output` entirely. Review-cluster members are not in `merged.vcf` (`merger.go` routes them exclusively to `result.Review`), so `skip` is the only decision that deletes data — `pending` and `q` both keep everything. Either rename the key to `[s] discard both` with a confirmation, or change the semantics to emit both contacts separately.
+
+**Why:** On a card asking "are these the same person?", `[s] skip` reads as "no" or "not now" — which is exactly when a reviewer wants **both** kept. A reviewer working 200 near-name pairs and pressing `s` on the genuinely-different ones deletes 400 people from their address book.
+
+**Context:** Documented in ARCHITECTURE.md and asserted in `resolve_test.go`, so the behaviour is intentional; the problem is that the label does not match it. Needs a product decision, not a bug fix.
+
+**Effort:** S
+**Priority:** P1
+**Depends on:** Nothing
+
+### Same-source field conflicts are dropped and unreportable
+
+**What:** `merger.mergeCluster` fills a single-value field only when the base's is empty, so on a 3-member cluster the second same-source contact's `NOTE`, `ORG`, `TITLE`, `BDAY`, `URL` and `PHOTO` are discarded. `reporter.findConflicts` compares only the first iCloud contact against the first non-iCloud one, so it structurally cannot report a same-source conflict. Compare every member pairwise, and write a report by default.
+
+**Why:** Two iCloud "John Smith" cards with `NOTE:Met at conf` and `NOTE:Owes me $500`, plus a Google card sharing a phone: one note survives, silently. `merge --report` defaults to `""` and `run` deletes the temp report on success unless `--report` is passed, so in the default flows the loss is recorded nowhere.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** Nothing
+
+### Validate vCard TYPE parameters
+
+**What:** `writer.contactToCard` copies attacker-controlled `TYPE` parameter values straight into `vcard.Params`, and go-vcard's encoder escapes only backslash, LF and comma — never `;` or `:`. Validate against the known type tokens in `parser.fieldType`, or reject any parsed param value containing `;`, `:`, `"`, CR or LF. Same for `PhotoType`.
+
+**Why:** `EMAIL;TYPE="X:evil@attacker.test,":real@good.test` is written back as `EMAIL;TYPE=X:EVIL@ATTACKER.TEST:real@good.test`, which readers parse as the address `EVIL@ATTACKER.TEST:real@good.test` — the genuine address is corrupted in the user's merged export.
+
+**Context:** Cannot forge a whole new property (LF is escaped). Control characters are now stripped at the parse boundary, which closed the related CR-injection path; this is the remaining `;`/`:` case.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Nothing
+
 ## Merge Engine
 
 ### Calibration dataset for scoring thresholds
@@ -25,6 +85,30 @@
 **Effort:** M
 **Priority:** P3
 **Depends on:** Merge stage must be stable first
+
+### Hoist per-contact work out of the per-pair scoring loop
+
+**What:** Cache each contact's parsed birthday and split given/middle tokens on `NormalizedContact` during `normalize.Contact`, and have `sharedBirthday`, `birthdayConflict`, `birthdayUnknown`, `sameName` and `sameGivenName` read the cached values. `scorePair` currently runs eight `parseBirthday` calls per pair and re-tokenizes both given names on every comparison.
+
+**Why:** All of this work depends only on each contact individually, never on the pairing, so it repeats identically every time either contact appears in a candidate pair.
+
+**Context:** Not urgent at current scale — `blocker.Block` prunes to shared email, phone or last-name buckets, so the author's real export produces 559 candidate pairs, where the redundant work costs microseconds. It becomes real if the blocking buckets are ever widened, and it compounds with the uncapped-bucket bug above.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** Cap the email and phone blocking buckets
+
+### Decide whether an unknown birthday should cap the score path too
+
+**What:** `scorer.Classify` has `nameRule := f.NameExact && confirmed && !f.BirthdayUnknown`, but the tier switch is `case autoMerge && !f.BirthdayConflict`. A `BirthdayConflict` caps both paths; a `BirthdayUnknown` caps only the single-identifier name rule. Decide whether to add `&& !f.BirthdayUnknown` to the switch.
+
+**Why:** A pair with a shared email, phone and org reaches 0.95 and auto-merges even though one birthday is unreadable and might be a conflict. The adversarial pass called this the same asymmetry class the repo has been bitten by twice.
+
+**Context:** Deliberate as it stands — `TestBirthdayGuardFailsClosed` asserts it with the comment "the unknown birthday only withholds the single-identifier shortcut", and two shared identifiers is not "name alone". Tightening it would grow the review queue. This is a threshold-calibration call, best made against the labelled dataset below.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Calibration dataset for scoring thresholds
 
 ## Review UX
 
@@ -63,6 +147,28 @@
 **Effort:** S
 **Priority:** P3
 **Depends on:** Phase 3 shipped (run command exists)
+
+### `run` exits 0 when the review is paused
+
+**What:** `cmd/rolodex/main.go` returns without `os.Exit(1)` on `ErrReviewPaused`. Exit non-zero (or document the code) so a wrapping script can tell a paused review from a completed one.
+
+**Why:** No `final.vcf` was written, but a Makefile or CI step sees success. The guidance is printed to stderr, so an interactive user is informed; an automated one is not.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Nothing
+
+### Warn about PII left in the temp workspace
+
+**What:** On a pipeline error or a paused review, `rolodex run` preserves the temp workspace and nothing ever removes it. Say plainly that it holds the user's full contact data, and/or place it under `os.UserCacheDir` and prune old workspaces on the next run.
+
+**Why:** The directory holds `merged.vcf`, `review.vcf` and `report.json` — every name, phone, email, birthday and address, plus conflict entries recording both sources' values. Permissions are correct (0700/0600), so this is retention rather than access control, but a full copy accumulates after every failed run with only a stderr line as notice.
+
+**Context:** `internal/calibration` is clean by contrast — cluster hash, score and feature booleans only, opened 0600.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Nothing
 
 ## Completed
 

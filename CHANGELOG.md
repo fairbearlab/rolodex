@@ -1,6 +1,6 @@
 # Changelog
 
-## \[Unreleased]
+## \[0.4.0] - 2026-08-28
 
 Duplicate detection that works on sparse real-world exports, and a review TUI that renders.
 
@@ -28,6 +28,16 @@ Duplicate detection that works on sparse real-world exports, and a review TUI th
 * `ORG:Acme\; Inc.` (an escaped semicolon inside a component) was split on the escape and written back as `Acme\\;Inc.`, which readers take as organization `Acme\` with a unit `Inc.`. The escape is now kept as part of the component and emitted exactly once, in every field, so it survives a parse/write cycle.
 * `rolodex review` refuses a `review.vcf` whose length does not match `report.json` instead of silently pairing later clusters with the wrong contacts. `resolve` already did; the TUI now fails the same way before a decision is recorded.
 * A `"."` middle name (a common export placeholder) crashed the scorer; middle initials are now compared by rune, so `Ö` matches `Östen`.
+* **A folded middle initial is no longer eaten as a suffix.** `v` sat in the suffix table, so `John V Doe` normalized to a bare `john` with no middle name — and an empty middle name is compatible with every other initial, so `John V Doe` and `John W Doe` sharing one email merged unseen. A single letter is an initial; a real generational `V` still counts in the dedicated `N` suffix component.
+* **A set of initials is not a name.** The guard counted runes across the whole given name, so `J.R.` and `J R` slipped past the check that rejects `J`, and two different `J.R. Smith`s on one office switchboard auto-merged.
+* **Diacritics distinguish people.** Names are folded for blocking and similarity, but the identical-name rule now also compares an accent-preserving form: `Nguyên` and `Nguyễn`, `Hà` and `Ha`, `René` and `Rene` go to review instead of merging on a shared phone alone. Compatibility variants are still one name — halfwidth kana and fullwidth Latin (a routine iCloud-vs-Google divergence) match as before.
+* **Impossible birthdays are not evidence.** `1989-02-31`, `1999-02-29` and year `0000` passed the month and day range check and counted as a shared birthday, which is enough to auto-merge two same-named contacts with no phone or email. Only real calendar dates count now; `2000-02-29` and a no-year `--02-29` still do.
+* **A stale `review.vcf` with the right number of contacts is refused.** The length check passed and every cluster was then handed the wrong people, recording the decision against another cluster's id. Each contact's `X-ROLODEX-CLUSTER` is now checked against the report, as `resolve` already did.
+* **Control characters are stripped from every field at parse time.** A contact name carrying terminal escapes could clear and repaint the review screen, and a right-to-left override reordered the *other* card on the same row — hiding what the reviewer was about to merge. A bare carriage return also survived into the written `.vcf`, where it could forge a property line. Zero-width joiners are kept: they are load-bearing in Indic and Persian names and in emoji.
+* **`merge` refuses to write two outputs to one file, or over an input.** `--out dir/review.vcf` aimed the merged output and the review set at the same path and the merged contacts were lost; on macOS, where the filesystem is case-insensitive by default, `--out Merged.vcf --review merged.vcf` deleted the merged file outright and still exited 0. Writing `--out` over `--icloud` destroyed the source export. All are now rejected before anything is written.
+* **A derived `review.vcf` is never deleted.** When a run produced nothing to review it removed the review path — which now defaults next to `--out`, so `merge --out ~/Documents/merged.vcf` deleted `~/Documents/review.vcf`, a file rolodex never wrote.
+* **Malformed entries are reported.** A truncated card was skipped and its contact silently absent from every output, with the "contacts loaded" count taken after the loss. `merge` and `run` now name the skipped entries on stderr, as `audit` already did.
+* Organizations containing a literal semicolon render as `Acme; Inc.` in the review card instead of `Acme\, Inc.` — the card is what a merge decision is made on.
 
 ## \[0.3.0] - 2026-04-11
 
