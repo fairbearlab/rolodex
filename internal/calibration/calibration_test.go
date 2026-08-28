@@ -166,3 +166,53 @@ func TestBandStats(t *testing.T) {
 		t.Errorf("band %s: merged=%d skipped=%d, want 1/1", mid.Label, mid.Merged, mid.Skipped)
 	}
 }
+
+// TestBandStatsCoversExactNameFloorPairs: the exact-name rule auto-merges
+// pairs whose linear score is well under 0.50 (name 0.40 + one identifier),
+// so those decisions need a band of their own or they vanish from the
+// calibration report entirely.
+func TestBandStatsCoversExactNameFloorPairs(t *testing.T) {
+	entries := []Entry{
+		{ClusterID: "a", Decision: "merge", Score: 0.90},
+		{ClusterID: "b", Decision: "merge", Score: 0.55},
+		{ClusterID: "c", Decision: "merge", Score: 0.45},
+		{ClusterID: "d", Decision: "skip", Score: 0.40},
+		{ClusterID: "e", Decision: "merge", Score: 0.0},
+	}
+
+	s := Analyze(entries)
+
+	byLabel := make(map[string]BandStat, len(s.BandStats))
+	for _, b := range s.BandStats {
+		byLabel[b.Label] = b
+	}
+
+	low, ok := byLabel["0.00-0.50"]
+	if !ok {
+		t.Fatalf("no 0.00-0.50 band in the summary; bands present: %v", byLabel)
+	}
+	if low.Merged != 2 || low.Skipped != 1 {
+		t.Errorf("band %s: merged=%d skipped=%d, want 2/1", low.Label, low.Merged, low.Skipped)
+	}
+
+	// Every entry must land in exactly one band: the bounds must not overlap
+	// or leave a hole between 0.0 and 1.0.
+	total := 0
+	for _, b := range s.BandStats {
+		total += b.Merged + b.Skipped
+	}
+	if total != len(entries) {
+		t.Errorf("bands accounted for %d of %d entries", total, len(entries))
+	}
+
+	// A score exactly on a boundary belongs to the higher band only.
+	edge := Analyze([]Entry{{ClusterID: "x", Decision: "merge", Score: 0.50}})
+	for _, b := range edge.BandStats {
+		if b.Label == "0.00-0.50" && b.Merged > 0 {
+			t.Error("score 0.50 was counted in the 0.00-0.50 band; bounds overlap")
+		}
+	}
+	if len(edge.BandStats) != 1 || edge.BandStats[0].Label != "0.50-0.60" {
+		t.Errorf("score 0.50 landed in %v, want only the 0.50-0.60 band", edge.BandStats)
+	}
+}
