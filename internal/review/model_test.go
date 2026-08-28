@@ -68,6 +68,35 @@ func TestBuildClustersRejectsMismatchedReviewFile(t *testing.T) {
 	}
 }
 
+// Equal length does not prove alignment. A reordered or stale review.vcf with
+// the same contact count passed the length check and then handed every cluster
+// somebody else's people, and the TUI recorded the decision against the wrong
+// cluster id. resolve already refused this; the TUI must refuse it before a
+// keystroke is taken.
+func TestBuildClustersRejectsClusterIDMismatch(t *testing.T) {
+	report := makeReport([]float64{0.65, 0.82}) // 2 clusters of 2
+	contacts := makeContacts(4)
+	for i := range contacts {
+		if contacts[i].Extra == nil {
+			contacts[i].Extra = make(map[string][]string)
+		}
+		contacts[i].Extra["X-ROLODEX-CLUSTER"] = []string{report.Review[0].ClusterID}
+	}
+	// Contacts 2 and 3 now claim cluster 0 while the report puts them in
+	// cluster 1 — the shape a reordered review.vcf produces.
+	if _, err := BuildClusters(report, contacts); err == nil {
+		t.Error("review.vcf whose cluster tags disagree with report.json must be rejected")
+	}
+
+	// Correctly tagged contacts still build.
+	for i := range contacts {
+		contacts[i].Extra["X-ROLODEX-CLUSTER"] = []string{report.Review[i/2].ClusterID}
+	}
+	if _, err := BuildClusters(report, contacts); err != nil {
+		t.Errorf("correctly tagged review.vcf rejected: %v", err)
+	}
+}
+
 func TestBuildClustersSortOrder(t *testing.T) {
 	report := makeReport([]float64{0.65, 0.82, 0.71})
 	contacts := makeContacts(6)

@@ -96,6 +96,18 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) ([
 		contacts := append([]model.ParsedContact(nil), reviewContacts[contactIdx:contactIdx+clusterSize]...)
 		contactIdx += clusterSize
 
+		// Length alone does not prove alignment: a reordered or stale
+		// review.vcf with the same contact count passes the check above and
+		// then hands every cluster somebody else's people. The decision would
+		// be recorded against the wrong cluster id. resolve already refuses
+		// this; the TUI must refuse it before a keystroke is taken.
+		for _, c := range contacts {
+			if ids, ok := c.Extra["X-ROLODEX-CLUSTER"]; ok && len(ids) > 0 && ids[0] != rd.ClusterID {
+				return nil, fmt.Errorf("cluster ID mismatch: review.vcf contact has cluster %s but report expects %s (review.vcf may have been reordered)",
+					ids[0], rd.ClusterID)
+			}
+		}
+
 		// The parser restores Source from X-ROLODEX-SOURCE in review.vcf. If
 		// that is missing (older files, hand-edited input) fall back to the
 		// provenance the report recorded for the same position.

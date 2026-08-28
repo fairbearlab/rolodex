@@ -297,7 +297,16 @@ func TestTruncateMeasuresDisplayWidth(t *testing.T) {
 }
 
 func TestDisplayOrg(t *testing.T) {
-	cases := map[string]string{";FRIEND": "FRIEND", "Acme;Sales": "Acme, Sales", "Acme;;Team": "Acme, Team", "Acme": "Acme", "": ""}
+	cases := map[string]string{
+		";FRIEND": "FRIEND", "Acme;Sales": "Acme, Sales", "Acme;;Team": "Acme, Team",
+		"Acme": "Acme", "": "",
+		// The parser keeps values in wire form so a literal separator survives
+		// a write. Splitting on every semicolon showed the reviewer
+		// "Acme\, Inc." for one organization named "Acme; Inc." — misreported
+		// contact data at the moment of an irreversible merge decision.
+		`Acme\; Inc.`:     "Acme; Inc.",
+		`Acme\; Inc.;R&D`: "Acme; Inc., R&D",
+	}
 	for in, want := range cases {
 		if got := displayOrg(in); got != want {
 			t.Errorf("displayOrg(%q) = %q, want %q", in, got, want)

@@ -550,7 +550,7 @@ func formatAddress(a model.Address) string {
 // ", " and empty positional slots dropped (";Engineering" -> "Engineering").
 func displayOrg(org string) string {
 	var parts []string
-	for _, p := range strings.Split(org, ";") {
+	for _, p := range normalize.DisplayComponents(org, ';') {
 		if p = strings.TrimSpace(p); p != "" {
 			parts = append(parts, p)
 		}
