@@ -283,14 +283,19 @@ func sharedValues(a, b model.ParsedContact) map[string]bool {
 	for _, p := range nb.NormalizedPhones {
 		inB[p] = true
 	}
+	// Mark only values the scorer would accept as a shared identifier. A
+	// placeholder both contacts carry ("000-000-0000", "unknown") is equal on
+	// both cards but proves nothing, and ticking it told the reviewer the pair
+	// was confirmed while the score said the opposite — a contradictory cue on
+	// the screen where an irreversible merge is chosen.
 	shared := make(map[string]bool)
 	for _, e := range na.NormalizedEmails {
-		if inB[e] {
+		if inB[e] && normalize.PlausibleEmail(e) {
 			shared[e] = true
 		}
 	}
 	for _, p := range na.NormalizedPhones {
-		if inB[p] {
+		if inB[p] && normalize.PlausiblePhone(p) {
 			shared[p] = true
 		}
 	}

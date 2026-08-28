@@ -333,3 +333,56 @@ func TestBirthdayRejectsTrailingText(t *testing.T) {
 		}
 	}
 }
+
+func TestParseCanonicalBirthday(t *testing.T) {
+	cases := []struct {
+		in       string
+		year, md string
+		ok       bool
+	}{
+		{"1989-10-22", "1989", "10-22", true},
+		{"2000-02-29", "2000", "02-29", true},
+		{"--02-29", "", "02-29", true}, // no year: judged against a leap year
+		{"--10-22", "", "10-22", true},
+		// Look canonical, are not dates.
+		{"1989-02-31", "", "", false},
+		{"1999-02-29", "", "", false},
+		{"0000-01-01", "", "", false},
+		{"0000-00-00", "", "", false},
+		{"1989-13-45", "", "", false},
+		{"--02-31", "", "", false},
+		// Not canonical at all.
+		{"1989", "", "", false},
+		{"unknown", "", "", false},
+		{"", "", "", false},
+	}
+	for _, tc := range cases {
+		year, md, ok := ParseCanonicalBirthday(tc.in)
+		if ok != tc.ok || year != tc.year || md != tc.md {
+			t.Errorf("ParseCanonicalBirthday(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				tc.in, year, md, ok, tc.year, tc.md, tc.ok)
+		}
+	}
+}
+
+func TestPlausibleIdentifiers(t *testing.T) {
+	phones := map[string]bool{
+		"2125550199": true, "5551234567": true, "1234567": true,
+		"0": false, "12345": false, "000000000": false, "1111111": false, "": false,
+	}
+	for in, want := range phones {
+		if got := PlausiblePhone(in); got != want {
+			t.Errorf("PlausiblePhone(%q) = %v, want %v", in, got, want)
+		}
+	}
+	emails := map[string]bool{
+		"john@example.com": true, "a@b.co": true,
+		"unknown": false, "user@localhost": false, "@example.com": false,
+		"user@": false, "user@domain.": false, "": false,
+	}
+	for in, want := range emails {
+		if got := PlausibleEmail(in); got != want {
+			t.Errorf("PlausibleEmail(%q) = %v, want %v", in, got, want)
+		}
+	}
+}

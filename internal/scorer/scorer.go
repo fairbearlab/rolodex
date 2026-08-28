@@ -1,14 +1,13 @@
 package scorer
 
 import (
-	"regexp"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/xrash/smetrics"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 // Signal weights. Name/email/phone/org sum to 1.0; birthday is a bonus on
@@ -170,43 +169,9 @@ func expandFullName(name string) string {
 	return strings.Join(parts, " ")
 }
 
-// A shared identifier is what promotes an identical name straight to
-// auto_merge, so equality alone is not enough: the value has to be a plausible
-// identifier in the first place. Exports carry placeholders — "TEL:0",
-// "EMAIL:unknown", "TEL:000-000-0000" — and two contacts holding the same
-// placeholder share nothing. This is the same rule the birthday signal
-// already applies: only a well-formed value counts as evidence.
-
-// minPhoneDigits is the shortest real subscriber number. Anything below it is
-// a placeholder or a truncated field, not a number two people can share.
-const minPhoneDigits = 7
-
-func plausiblePhone(p string) bool {
-	if len(p) < minPhoneDigits {
-		return false
-	}
-	// "0000000000" and "1111111111" are placeholders, not numbers.
-	for i := 0; i < len(p); i++ {
-		if p[i] != p[0] {
-			return true
-		}
-	}
-	return false
-}
-
-func plausibleEmail(e string) bool {
-	at := strings.IndexByte(e, '@')
-	if at <= 0 || at == len(e)-1 {
-		return false
-	}
-	domain := e[at+1:]
-	dot := strings.IndexByte(domain, '.')
-	return dot > 0 && dot < len(domain)-1
-}
-
 func sharedEmail(a, b model.NormalizedContact) bool {
 	for _, ea := range a.NormalizedEmails {
-		if !plausibleEmail(ea) {
+		if !normalize.PlausibleEmail(ea) {
 			continue
 		}
 		for _, eb := range b.NormalizedEmails {
@@ -220,7 +185,7 @@ func sharedEmail(a, b model.NormalizedContact) bool {
 
 func sharedPhone(a, b model.NormalizedContact) bool {
 	for _, pa := range a.NormalizedPhones {
-		if !plausiblePhone(pa) {
+		if !normalize.PlausiblePhone(pa) {
 			continue
 		}
 		for _, pb := range b.NormalizedPhones {
@@ -238,30 +203,12 @@ func sharedOrg(a, b model.NormalizedContact) bool {
 	return orgA != "" && orgB != "" && orgA == orgB
 }
 
-// canonicalBirthdayRe matches the forms normalize.Birthday produces
-// (YYYY-MM-DD or --MM-DD). Only those are trusted as evidence in either
-// direction: anything else that survived normalization is free text.
-var canonicalBirthdayRe = regexp.MustCompile(`^(\d{4}|-)-(\d{2})-(\d{2})$`)
-
-// parseBirthday splits a canonical birthday into its year ("" when the year
-// is unknown) and month-day. ok is false for anything non-canonical,
-// including a placeholder that merely looks canonical ("0000-00-00"): the
-// normalizer passes those through untouched, so the range check is repeated
-// here rather than trusted.
+// parseBirthday defers to normalize, which owns what a real date is. This
+// used to be a second implementation with its own month/day bounds, and it
+// drifted: normalize learned to reject February 31 and this copy did not, so
+// an impossible birthday two contacts shared still counted as evidence.
 func parseBirthday(s string) (year, monthDay string, ok bool) {
-	m := canonicalBirthdayRe.FindStringSubmatch(s)
-	if m == nil {
-		return "", "", false
-	}
-	month, _ := strconv.Atoi(m[2])
-	day, _ := strconv.Atoi(m[3])
-	if month < 1 || month > 12 || day < 1 || day > 31 {
-		return "", "", false
-	}
-	if m[1] != "-" {
-		year = m[1]
-	}
-	return year, m[2] + "-" + m[3], true
+	return normalize.ParseCanonicalBirthday(s)
 }
 
 // sharedBirthday reports whether both contacts carry the same well-formed

@@ -319,3 +319,35 @@ func TestPlaceholderIdentifiersAreNotConfirmation(t *testing.T) {
 		t.Errorf("tier = %q, want auto_merge on a real shared email and phone", got.Tier)
 	}
 }
+
+// The scorer used to repeat normalize's month/day bounds instead of calling
+// it. When normalize learned about real calendar dates the copy did not, so
+// February 31 was rejected by the normalizer and then accepted here as
+// evidence to merge on. This asserts the END of that path — the tier — not
+// just the normalizer, which is what let the gap through the first time.
+func TestImpossibleBirthdayIsNotSharedEvidence(t *testing.T) {
+	for _, raw := range []string{
+		"1989-02-31", "1989-04-31", "1999-02-29", "0000-01-01", "0000-00-00",
+		"1989-13-45", "1989-10-22 or 23", "1989",
+	} {
+		a := parsed("John", "Smith", raw, nil, nil)
+		b := parsed("John", "Smith", raw, nil, nil)
+		got := tierOf(a, b)
+		if got.Features.SharedBirthday {
+			t.Errorf("SharedBirthday = true for %q; an impossible date is not a shared birthday", raw)
+		}
+		if got.Tier == model.TierAutoMerge {
+			t.Errorf("%q: tier = auto_merge with no phone or email, on a birthday that is not a date", raw)
+		}
+	}
+
+	// A real shared birthday is still evidence, including a leap day and the
+	// no-year form iCloud emits.
+	for _, raw := range []string{"1989-10-22", "2000-02-29", "--02-29"} {
+		a := parsed("John", "Smith", raw, nil, nil)
+		b := parsed("John", "Smith", raw, nil, nil)
+		if got := tierOf(a, b); !got.Features.SharedBirthday {
+			t.Errorf("SharedBirthday = false for %q, want a real date to still count", raw)
+		}
+	}
+}

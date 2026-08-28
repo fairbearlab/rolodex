@@ -326,6 +326,73 @@ func Unescape(s string) string {
 	return b.String()
 }
 
+// canonicalBirthdayRe matches the forms Birthday produces (YYYY-MM-DD or
+// --MM-DD). Anything else that survived normalization is free text.
+var canonicalBirthdayRe = regexp.MustCompile(`^(\d{4}|-)-(\d{2})-(\d{2})$`)
+
+// ParseCanonicalBirthday splits a canonical birthday into its year ("" when
+// the year is unknown) and month-day. ok is false for anything that is not a
+// real date, including a placeholder that merely looks canonical
+// ("0000-00-00", "1989-02-31") — Birthday passes those through untouched.
+//
+// This lives beside canonicalBirthday deliberately. The scorer used to repeat
+// the check with its own month/day bounds, and when canonicalBirthday learned
+// about real calendar dates the copy did not: February 31 was rejected by the
+// normalizer and then accepted by the scorer as evidence to merge on. One
+// definition, one answer.
+func ParseCanonicalBirthday(s string) (year, monthDay string, ok bool) {
+	m := canonicalBirthdayRe.FindStringSubmatch(s)
+	if m == nil {
+		return "", "", false
+	}
+	month, day := atoi(m[2]), atoi(m[3])
+	y := 2000 // a leap year, so --02-29 stays legal when no year is given
+	if m[1] != "-" {
+		y = atoi(m[1])
+		if y < 1 {
+			return "", "", false
+		}
+	}
+	if !validDate(y, month, day) {
+		return "", "", false
+	}
+	if m[1] != "-" {
+		year = m[1]
+	}
+	return year, m[2] + "-" + m[3], true
+}
+
+// minPhoneDigits is the shortest real subscriber number.
+const minPhoneDigits = 7
+
+// PlausiblePhone reports whether a normalized phone could be a real number.
+// A shared identifier is what promotes an identical name to auto_merge, so a
+// placeholder two contacts happen to share must not count: "0", a truncated
+// field, or "000-000-0000" are not numbers anyone can be reached on.
+func PlausiblePhone(p string) bool {
+	if len(p) < minPhoneDigits {
+		return false
+	}
+	for i := 0; i < len(p); i++ {
+		if p[i] != p[0] {
+			return true
+		}
+	}
+	return false
+}
+
+// PlausibleEmail reports whether a normalized email could be a real address.
+// "unknown" and "user@localhost" are not addresses two people can share.
+func PlausibleEmail(e string) bool {
+	at := strings.IndexByte(e, '@')
+	if at <= 0 || at == len(e)-1 {
+		return false
+	}
+	domain := e[at+1:]
+	dot := strings.IndexByte(domain, '.')
+	return dot > 0 && dot < len(domain)-1
+}
+
 // applePlaceholderYear is the year Apple Contacts stores for a birthday
 // entered without a year. iCloud exports it with X-APPLE-OMIT-YEAR=1604;
 // contacts synced onward to Google keep the year but lose the parameter.
