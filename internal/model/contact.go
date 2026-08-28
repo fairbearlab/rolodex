@@ -28,7 +28,7 @@ type ParsedContact struct {
 	Org   string
 	Title string
 
-	Birthday string // raw BDAY value
+	Birthday string // canonical YYYY-MM-DD or --MM-DD when recognizable, else raw BDAY value
 
 	Addresses []Address
 	Note      string

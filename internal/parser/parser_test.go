@@ -187,3 +187,32 @@ func TestParseRestoresProvenanceSource(t *testing.T) {
 		t.Errorf("single-source X-ROLODEX-SOURCE not preserved in Extra: %v", got)
 	}
 }
+
+func TestParseNormalizesOrgAndBirthday(t *testing.T) {
+	vcf := "BEGIN:VCARD\nVERSION:3.0\nFN:A\nN:A;;;;\nORG:Kunkels Drive-In;\nBDAY:1989-06-29\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:B\nN:B;;;;\nORG:Kunkels Drive-In\nBDAY:19890629\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:C\nN:C;;;;\nORG:;FRIEND\nBDAY;X-APPLE-OMIT-YEAR=1604:1604-10-26\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:D\nN:D;;;;\nBDAY:--1026\nEND:VCARD\n"
+	contacts, _, err := Parse(strings.NewReader(vcf), model.SourceICloud)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(contacts) != 4 {
+		t.Fatalf("expected 4 contacts, got %d", len(contacts))
+	}
+	if contacts[0].Org != "Kunkels Drive-In" || contacts[1].Org != "Kunkels Drive-In" {
+		t.Errorf("ORG not normalized: %q vs %q", contacts[0].Org, contacts[1].Org)
+	}
+	if contacts[2].Org != "FRIEND" {
+		t.Errorf("ORG with empty leading component = %q, want FRIEND", contacts[2].Org)
+	}
+	if contacts[0].Birthday != "1989-06-29" || contacts[1].Birthday != "1989-06-29" {
+		t.Errorf("BDAY not normalized: %q vs %q", contacts[0].Birthday, contacts[1].Birthday)
+	}
+	if contacts[2].Birthday != "--10-26" {
+		t.Errorf("iCloud omit-year BDAY = %q, want --10-26", contacts[2].Birthday)
+	}
+	if contacts[3].Birthday != "--10-26" {
+		t.Errorf("Google no-year BDAY = %q, want --10-26", contacts[3].Birthday)
+	}
+}

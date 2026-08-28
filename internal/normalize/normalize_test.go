@@ -109,3 +109,47 @@ func TestNormalizeContact(t *testing.T) {
 		t.Errorf("expected 1 unique phone, got %d: %v", len(nc.NormalizedPhones), nc.NormalizedPhones)
 	}
 }
+
+func TestNormalizeOrg(t *testing.T) {
+	cases := map[string]string{
+		"Kunkels Drive-In;":             "Kunkels Drive-In",
+		"Kunkels Drive-In":              "Kunkels Drive-In",
+		"Independent Insurance Agent;":  "Independent Insurance Agent",
+		";FRIEND":                       "FRIEND",
+		"Acme;Sales":                    "Acme;Sales",
+		"Acme; Sales ;":                 "Acme;Sales",
+		"  Acme  ":                      "Acme",
+		";":                             "",
+		"":                              "",
+		"https://example.com:8080/team": "https://example.com:8080/team",
+	}
+	for in, want := range cases {
+		if got := Org(in); got != want {
+			t.Errorf("Org(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestNormalizeBirthday(t *testing.T) {
+	cases := map[string]string{
+		"1989-10-22":           "1989-10-22",
+		"19891022":             "1989-10-22",
+		"--1022":               "--10-22",
+		"--10-22":              "--10-22",
+		"1989-10-22T00:00:00Z": "1989-10-22",
+		" 19891022 ":           "1989-10-22",
+		"October 22":           "October 22", // unrecognized: untouched
+		"":                     "",
+	}
+	for in, want := range cases {
+		if got := Birthday(in); got != want {
+			t.Errorf("Birthday(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := BirthdayWithoutYear("1604-10-26"); got != "--10-26" {
+		t.Errorf("BirthdayWithoutYear = %q, want --10-26", got)
+	}
+	if got := BirthdayWithoutYear("--10-26"); got != "--10-26" {
+		t.Errorf("BirthdayWithoutYear(no year) = %q, want unchanged", got)
+	}
+}

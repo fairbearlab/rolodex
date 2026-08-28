@@ -12,6 +12,7 @@ import (
 	vcard "github.com/emersion/go-vcard"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 // ParseFile reads a .vcf file and returns parsed contacts.
@@ -107,8 +108,8 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		})
 	}
 
-	// Org
-	if org := card.PreferredValue(vcard.FieldOrganization); org != "" {
+	// Org (structured; iCloud leaves an empty trailing unit, e.g. "Acme;")
+	if org := normalize.Org(card.PreferredValue(vcard.FieldOrganization)); org != "" {
 		c.Org = org
 	}
 
@@ -117,8 +118,14 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		c.Title = title
 	}
 
-	// Birthday
-	if bday := card.PreferredValue(vcard.FieldBirthday); bday != "" {
+	// Birthday, canonicalized to YYYY-MM-DD / --MM-DD so iCloud ("1989-10-22")
+	// and Google ("19891022") agree. iCloud marks a no-year birthday with a
+	// placeholder year and X-APPLE-OMIT-YEAR=<that year>.
+	if f := card.Preferred(vcard.FieldBirthday); f != nil && f.Value != "" {
+		bday := normalize.Birthday(f.Value)
+		if omit := f.Params.Get("X-APPLE-OMIT-YEAR"); omit != "" && strings.HasPrefix(bday, omit+"-") {
+			bday = normalize.BirthdayWithoutYear(bday)
+		}
 		c.Birthday = bday
 	}
 

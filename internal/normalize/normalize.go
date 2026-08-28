@@ -13,6 +13,8 @@ import (
 var (
 	nonDigitRe    = regexp.MustCompile(`\D`)
 	whitespaceRe  = regexp.MustCompile(`\s+`)
+	bdayFullRe    = regexp.MustCompile(`^(\d{4})-?(\d{2})-?(\d{2})(?:[T ].*)?$`)
+	bdayNoYearRe  = regexp.MustCompile(`^--(\d{2})-?(\d{2})$`)
 	titlePrefixes = []string{
 		"dr.", "dr", "mr.", "mr", "mrs.", "mrs", "ms.", "ms",
 		"prof.", "prof", "rev.", "rev", "sir", "dame",
@@ -129,4 +131,43 @@ func normalizePhones(phones []model.Phone) []string {
 		}
 	}
 	return result
+}
+
+// Org cleans a vCard ORG value. ORG is a structured field
+// (organization;unit;...) and iCloud emits an empty trailing unit —
+// "Acme;" — where Google emits "Acme". Empty components are dropped so the
+// two compare equal; non-empty units are kept, joined by ";".
+func Org(s string) string {
+	var parts []string
+	for _, p := range strings.Split(s, ";") {
+		if p = strings.TrimSpace(p); p != "" {
+			parts = append(parts, p)
+		}
+	}
+	return strings.Join(parts, ";")
+}
+
+// Birthday canonicalizes a BDAY value to YYYY-MM-DD, or --MM-DD when the
+// year is unknown. Recognized inputs: "1989-10-22", "19891022" (Google),
+// "--1022" / "--10-22" (no year), and any of these with a trailing time.
+// Anything else is returned trimmed but otherwise untouched.
+func Birthday(s string) string {
+	s = strings.TrimSpace(s)
+	if m := bdayFullRe.FindStringSubmatch(s); m != nil {
+		return m[1] + "-" + m[2] + "-" + m[3]
+	}
+	if m := bdayNoYearRe.FindStringSubmatch(s); m != nil {
+		return "--" + m[1] + "-" + m[2]
+	}
+	return s
+}
+
+// BirthdayWithoutYear drops the year from a canonical YYYY-MM-DD value,
+// for exports that mark the year as a placeholder (iCloud's
+// X-APPLE-OMIT-YEAR=1604). Values that are not canonical are returned as-is.
+func BirthdayWithoutYear(s string) string {
+	if m := bdayFullRe.FindStringSubmatch(s); m != nil {
+		return "--" + m[2] + "-" + m[3]
+	}
+	return s
 }
