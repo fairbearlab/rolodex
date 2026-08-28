@@ -28,7 +28,7 @@ Export your contacts as vCard 3.0 (.vcf) files from iCloud and Google, then run:
 rolodex run --icloud icloud.vcf --google google.vcf
 ```
 
-This merges your contacts, drops you into a terminal UI for uncertain matches, resolves everything on exit, and writes a clean `final.vcf`. One command, done.
+This merges your contacts, drops you into a terminal UI for uncertain matches, then resolves your decisions and writes a clean `final.vcf` once every pair has been decided. Quit with pending decisions and the workspace is preserved so you can resume instead of losing progress.
 
 Use `--report report.json` to save the full merge report, or `--keep` to preserve intermediate files alongside the output.
 
@@ -62,7 +62,7 @@ rolodex resolve --report report.json --review review.vcf --merged merged.vcf --o
 
 The **review** TUI walks through each uncertain pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip, `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress.
 
-At the end of a session, you get threshold suggestions based on your decisions, so future merges can auto-handle more pairs.
+At the end of a session, you get printed threshold suggestions based on your decisions (e.g. "lower auto_merge to 0.78"). They're informational only -- there's no flag to apply one; a maintainer would change the constant in source.
 
 ### Version
 
@@ -95,7 +95,7 @@ The first four sum to 1.0; birthday is a bonus and the total is capped at 1.0. B
 
 Tiers: **auto\_merge** (>= 0.85), **review** (0.60-0.85), **distinct** (< 0.60), with three rules layered on top of the score because real exports are sparse (most contacts carry a name and at most one identifier):
 
-* An identical name **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.65. "Identical" means the given and family names are equal (or one is a nickname of the other — Chris/Christopher, but not Eric/Erica and not two different diminutives like Ted/Ned), there is a family name and the given name is more than an initial (`Alex` / `Alex` or `J. Smith` / `J. Smith` are not identity — `J.R.` and `J R` count as initials too), middle names are compatible (a missing or matching initial is fine, including one Google folded into the given name), and generational suffixes agree (John Smith Jr. is not John Smith Sr., or John Smith). Names must also agree once accents are kept: `Nguyên` and `Nguyễn`, or `René` and `Rene`, go to review instead of auto-merging on a shared phone alone. Compatibility variants still count as one name — halfwidth kana and fullwidth Latin match as before.
+* An identical name **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.50-0.65 (0.65 with a shared phone or email, 0.50 with only a shared birthday). "Identical" means the given and family names are equal (or one is a nickname of the other — Chris/Christopher, but not Eric/Erica and not two different diminutives like Ted/Ned), there is a family name and the given name is more than an initial (`Alex` / `Alex` or `J. Smith` / `J. Smith` are not identity — `J.R.` and `J R` count as initials too), middle names are compatible (a missing or matching initial is fine, including one Google folded into the given name), and generational suffixes agree (John Smith Jr. is not John Smith Sr., or John Smith). Names must also agree once accents are kept: `Nguyên` and `Nguyễn`, or `René` and `Rene`, go to review instead of auto-merging on a shared phone alone. Compatibility variants still count as one name — halfwidth kana and fullwidth Latin match as before.
 * A near-identical name (similarity >= 0.95) on its own is **at least review**. Same-name pairs are never silently marked distinct; a shared org alone does not auto-merge them, because two people can share a common name and an employer. They are reviewed as **pairs**: same-name contacts are never chained into one cluster, so a common name in both exports does not become a single merge-all card.
 * Two well-formed birthdays that disagree **cap the pair at review**, whatever else matches. Same name and a shared household phone is exactly how a parent and child look; the birthdays are what tell them apart. If one birthday cannot be read, the pair is held at review rather than merged on a single identifier.
 
@@ -107,7 +107,7 @@ When contacts merge, single-value fields use **iCloud priority** -- the iCloud v
 
 Multi-value fields (emails, phones, addresses) are **unioned** -- duplicates are removed by normalized value, and both sources' unique entries are kept.
 
-All other vCard properties not explicitly modeled (e.g. `X-*` extension fields, `CATEGORIES`, `NICKNAME`) are preserved via a catch-all passthrough.
+All other vCard properties not explicitly modeled (e.g. `X-*` extension fields, `CATEGORIES`, `NICKNAME`) are preserved via a catch-all passthrough (values only -- parameters on an unmodeled field, and any control characters in it, are not preserved).
 
 Output vCards include provenance extension fields: `X-ROLODEX-SOURCE` (which sources contributed), `X-ROLODEX-SCORE` (confidence score), and `X-ROLODEX-REVIEW` (whether the contact was flagged for review).
 
@@ -117,7 +117,7 @@ Rolodex parses and merges these vCard 3.0 properties:
 
 N, FN, EMAIL, TEL, ORG, TITLE, BDAY, ADR, NOTE, URL, PHOTO
 
-All other properties present in the input are carried through to the output unchanged.
+All other properties present in the input are carried through to the output, with control and bidi-override characters stripped from every field at parse time.
 
 ## License
 
