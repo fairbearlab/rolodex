@@ -283,11 +283,12 @@ func splitUnescaped(s string, sep rune) []string {
 	return append(parts, b.String())
 }
 
-// DisplayComponents splits a structured value on unescaped separators and
-// unescapes each component for a human reader. The parser keeps values in wire
-// form so a literal separator survives a write, so "Acme\; Inc." is ONE
-// organization that should read "Acme; Inc." — splitting it naively showed the
-// reviewer "Acme\, Inc." while they decided whether to merge two records.
+// DisplayComponents splits a structured wire-form value on unescaped
+// separators and unescapes each component. The parser uses it to decode N and
+// ADR, and the review TUI to read ORG, which the model keeps in wire form: an
+// escaped "\;" is part of its component, so "Acme\; Inc." is ONE organization
+// that should read "Acme; Inc." — splitting it naively showed the reviewer
+// "Acme\, Inc." while they decided whether to merge two records.
 func DisplayComponents(s string, sep rune) []string {
 	parts := splitUnescaped(s, sep)
 	for i, p := range parts {
@@ -295,6 +296,16 @@ func DisplayComponents(s string, sep rune) []string {
 	}
 	return parts
 }
+
+// Escape encodes a decoded value for the wire: backslash, semicolon, comma
+// and newline become "\\", "\;", "\," and "\n" (RFC 6350 §3.4). It is the
+// inverse of Unescape and is applied per component, so the caller adds a
+// structured value's own separators after escaping.
+func Escape(s string) string {
+	return escaper.Replace(s)
+}
+
+var escaper = strings.NewReplacer(`\`, `\\`, ";", `\;`, ",", `\,`, "\n", `\n`)
 
 // Unescape resolves vCard backslash escapes in a single component value.
 func Unescape(s string) string {

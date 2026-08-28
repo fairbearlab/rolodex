@@ -25,6 +25,11 @@ type ParsedContact struct {
 	Emails []Email
 	Phones []Phone
 
+	// Org is the structured ORG value in wire form: units separated by ';'
+	// with escapes intact, so an escaped "\;" is part of its unit. It is one
+	// string in the model, and "Acme; Inc." decoded would be indistinguishable
+	// from the two units "Acme" and " Inc.". normalize.DisplayComponents reads
+	// it; the writer emits it as is. Every other modeled field is decoded.
 	Org   string
 	Title string
 
@@ -37,7 +42,8 @@ type ParsedContact struct {
 	Photo     []byte // raw PHOTO data
 	PhotoType string // e.g. "JPEG", "PNG"
 
-	// Catch-all for fields we don't explicitly model
+	// Catch-all for fields we don't explicitly model. Values are wire form
+	// and are written back verbatim.
 	Extra map[string][]string
 
 	// Raw vCard text for passthrough on malformed entries

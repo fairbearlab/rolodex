@@ -20,10 +20,9 @@ func (failingWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("simulated write failure")
 }
 
-// TestWriteReturnsErrorOnWriteFailure covers the io.WriteString error path:
-// Write now buffers and re-emits per contact (to collapse the doubled
-// semicolon escape), and a failure writing that buffer out must be reported,
-// not silently swallowed.
+// TestWriteReturnsErrorOnWriteFailure covers the write error path: Write
+// formats each contact into a buffer and emits it in one call, and a failure
+// writing that buffer out must be reported, not silently swallowed.
 func TestWriteReturnsErrorOnWriteFailure(t *testing.T) {
 	mc := model.MergedContact{
 		Contact: model.ParsedContact{GivenName: "A", FamilyName: "B", FormattedName: "A B"},

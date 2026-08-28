@@ -10,9 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	vcard "github.com/emersion/go-vcard"
-
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 // WriteFile writes merged contacts to a .vcf file atomically.
@@ -53,42 +52,82 @@ func WriteFile(path string, contacts []model.MergedContact) error {
 
 // Write writes merged contacts as vCard 3.0 to a writer.
 //
-// go-vcard's decoder leaves an escaped semicolon ("\;", the only way to put
-// a literal ';' inside a structured field such as ORG, N or ADR) in the
-// value undecoded, and its encoder then escapes the backslash, so every
-// rewrite would turn "Acme\; Inc." into "Acme\\; Inc." — which readers take
-// as organization "Acme\" with a unit "Inc.". The doubled form is collapsed
-// back after encoding. (A value that genuinely held a backslash before a
-// separator is indistinguishable after decoding, and comes out escaped.)
+// Lines are formatted here rather than by go-vcard's encoder. The model
+// holds decoded values (family name "O;Brien", note `C:\temp`), so every
+// value is escaped on the way out, and a structured value needs `\;` inside
+// a component — which that encoder cannot produce: it escapes every
+// backslash, so `\;` came out as `\\;`, and the whole-buffer rewrite that
+// undid it also turned a genuine backslash before a separator (family
+// `Smith\`, given "John") into an escaped semicolon, handing Apple and
+// Google one family name "Smith;John". ORG and unmodeled fields are already
+// wire form (see model.ParsedContact) and go out as they are. Property
+// order matches the old encoder: VERSION first, then by name, insertion
+// order within a name.
 func Write(w io.Writer, contacts []model.MergedContact) error {
 	var buf bytes.Buffer
-	enc := vcard.NewEncoder(&buf)
-
 	for _, mc := range contacts {
 		buf.Reset()
-		card := contactToCard(mc)
-		if err := enc.Encode(card); err != nil {
-			return fmt.Errorf("encoding contact %q: %w", mc.Contact.FormattedName, err)
-		}
-		out := strings.ReplaceAll(buf.String(), `\\;`, `\;`)
-		if _, err := io.WriteString(w, out); err != nil {
+		formatCard(&buf, contactProperties(mc))
+		if _, err := w.Write(buf.Bytes()); err != nil {
 			return fmt.Errorf("writing contact %q: %w", mc.Contact.FormattedName, err)
 		}
 	}
 	return nil
 }
 
-func contactToCard(mc model.MergedContact) vcard.Card {
-	c := mc.Contact
-	card := make(vcard.Card)
+// property is one content line: a name, ordered parameters, and a value
+// already in wire form.
+type property struct {
+	name   string
+	params [][2]string
+	value  string
+}
 
-	// VERSION
-	card.SetValue(vcard.FieldVersion, "3.0")
+func formatCard(buf *bytes.Buffer, props []property) {
+	sort.SliceStable(props, func(i, j int) bool { return props[i].name < props[j].name })
+	buf.WriteString("BEGIN:VCARD\r\nVERSION:3.0\r\n")
+	for _, p := range props {
+		buf.WriteString(p.name)
+		for _, kv := range p.params {
+			buf.WriteString(";" + kv[0] + "=" + escapeParam(kv[1]))
+		}
+		buf.WriteString(":" + p.value + "\r\n")
+	}
+	buf.WriteString("END:VCARD\r\n")
+}
+
+// escapeParam formats a parameter value the way go-vcard's encoder did, so
+// the output is unchanged for the TYPE and ENCODING parameters we emit.
+var paramEscaper = strings.NewReplacer(`\`, `\\`, "\n", `\n`, ",", `\,`)
+
+func escapeParam(v string) string {
+	return paramEscaper.Replace(v)
+}
+
+// structured joins decoded components into a wire-form structured value.
+func structured(components ...string) string {
+	escaped := make([]string, len(components))
+	for i, c := range components {
+		escaped[i] = normalize.Escape(c)
+	}
+	return strings.Join(escaped, ";")
+}
+
+func contactProperties(mc model.MergedContact) []property {
+	c := mc.Contact
+	var props []property
+	add := func(name, value string, params ...[2]string) {
+		props = append(props, property{name: name, params: params, value: value})
+	}
+	typed := func(t string) [][2]string {
+		if t == "" {
+			return nil
+		}
+		return [][2]string{{"TYPE", t}}
+	}
 
 	// N (structured name)
-	nValue := fmt.Sprintf("%s;%s;%s;%s;%s",
-		c.FamilyName, c.GivenName, c.MiddleName, c.Prefix, c.Suffix)
-	card.Set(vcard.FieldName, &vcard.Field{Value: nValue})
+	add("N", structured(c.FamilyName, c.GivenName, c.MiddleName, c.Prefix, c.Suffix))
 
 	// FN
 	fn := c.FormattedName
@@ -98,78 +137,58 @@ func contactToCard(mc model.MergedContact) vcard.Card {
 	if fn == "" {
 		fn = "Unknown"
 	}
-	card.SetValue(vcard.FieldFormattedName, fn)
+	add("FN", normalize.Escape(fn))
 
 	// EMAIL
 	for _, e := range c.Emails {
-		field := &vcard.Field{Value: e.Address}
-		if e.Type != "" {
-			field.Params = vcard.Params{"TYPE": {e.Type}}
-		}
-		card.Add(vcard.FieldEmail, field)
+		add("EMAIL", normalize.Escape(e.Address), typed(e.Type)...)
 	}
 
 	// TEL
 	for _, p := range c.Phones {
-		field := &vcard.Field{Value: p.Number}
-		if p.Type != "" {
-			field.Params = vcard.Params{"TYPE": {p.Type}}
-		}
-		card.Add(vcard.FieldTelephone, field)
+		add("TEL", normalize.Escape(p.Number), typed(p.Type)...)
 	}
 
-	// ORG
+	// ORG is kept in wire form by the parser and written back as is.
 	if c.Org != "" {
-		card.SetValue(vcard.FieldOrganization, c.Org)
+		add("ORG", c.Org)
 	}
 
 	// TITLE
 	if c.Title != "" {
-		card.SetValue(vcard.FieldTitle, c.Title)
+		add("TITLE", normalize.Escape(c.Title))
 	}
 
 	// BDAY
 	if c.Birthday != "" {
-		card.SetValue(vcard.FieldBirthday, c.Birthday)
+		add("BDAY", normalize.Escape(c.Birthday))
 	}
 
 	// ADR
 	for _, a := range c.Addresses {
-		adrValue := fmt.Sprintf("%s;%s;%s;%s;%s;%s;%s",
-			a.POBox, a.Extended, a.Street, a.City, a.Region, a.PostCode, a.Country)
-		field := &vcard.Field{Value: adrValue}
-		if a.Type != "" {
-			field.Params = vcard.Params{"TYPE": {a.Type}}
-		}
-		card.Add(vcard.FieldAddress, field)
+		add("ADR", structured(a.POBox, a.Extended, a.Street, a.City, a.Region, a.PostCode, a.Country), typed(a.Type)...)
 	}
 
 	// NOTE
 	if c.Note != "" {
-		card.SetValue(vcard.FieldNote, c.Note)
+		add("NOTE", normalize.Escape(c.Note))
 	}
 
 	// URL
 	if c.URL != "" {
-		card.SetValue(vcard.FieldURL, c.URL)
+		add("URL", normalize.Escape(c.URL))
 	}
 
 	// PHOTO
 	if len(c.Photo) > 0 {
-		encoded := base64.StdEncoding.EncodeToString(c.Photo)
-		field := &vcard.Field{
-			Value: encoded,
-			Params: vcard.Params{
-				"ENCODING": {"b"},
-			},
-		}
+		params := [][2]string{{"ENCODING", "b"}}
 		if c.PhotoType != "" {
-			field.Params["TYPE"] = []string{c.PhotoType}
+			params = append(params, [2]string{"TYPE", c.PhotoType})
 		}
-		card.Add(vcard.FieldPhoto, field)
+		add("PHOTO", base64.StdEncoding.EncodeToString(c.Photo), params...)
 	}
 
-	// Extra fields (passthrough) — sort keys for deterministic output
+	// Extra fields (passthrough, wire form) — sort keys for deterministic output
 	extraKeys := make([]string, 0, len(c.Extra))
 	for key := range c.Extra {
 		extraKeys = append(extraKeys, key)
@@ -177,7 +196,7 @@ func contactToCard(mc model.MergedContact) vcard.Card {
 	sort.Strings(extraKeys)
 	for _, key := range extraKeys {
 		for _, v := range c.Extra[key] {
-			card.Add(key, &vcard.Field{Value: v})
+			add(key, v)
 		}
 	}
 
@@ -187,19 +206,18 @@ func contactToCard(mc model.MergedContact) vcard.Card {
 		for i, s := range mc.Sources {
 			sourceStrs[i] = string(s)
 		}
-		card.SetValue("X-ROLODEX-SOURCE",
-			fmt.Sprintf("merged(%s)", strings.Join(sourceStrs, "+")))
+		add("X-ROLODEX-SOURCE", fmt.Sprintf("merged(%s)", strings.Join(sourceStrs, "+")))
 	} else if len(mc.Sources) == 1 {
-		card.SetValue("X-ROLODEX-SOURCE", string(mc.Sources[0]))
+		add("X-ROLODEX-SOURCE", string(mc.Sources[0]))
 	}
 
 	if mc.Score > 0 {
-		card.SetValue("X-ROLODEX-SCORE", fmt.Sprintf("%.2f", mc.Score))
+		add("X-ROLODEX-SCORE", fmt.Sprintf("%.2f", mc.Score))
 	}
 
 	if mc.ReviewFlag {
-		card.SetValue("X-ROLODEX-REVIEW", "true")
+		add("X-ROLODEX-REVIEW", "true")
 	}
 
-	return card
+	return props
 }
