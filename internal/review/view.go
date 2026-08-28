@@ -149,15 +149,23 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 		lines = append(lines, row(sourceLabel(a.Source, mixed), sourceLabel(b.Source, mixed)))
 		lines = append(lines, row(contactDisplayName(a), contactDisplayName(b)))
 
-		// Show matched fields
+		// One email and one phone per side: the value that matched, when
+		// there is one, marked the way the detailed cards mark it. Showing
+		// the first value put two different addresses under "Match: email"
+		// when the shared one was second on either side, and hid that the
+		// card was leaving values out.
+		shared := sharedValues(a, b)
 		if len(a.Emails) > 0 || len(b.Emails) > 0 {
-			lines = append(lines, row(firstEmail(a), firstEmail(b)))
+			lines = append(lines, row(compactEmail(a, shared), compactEmail(b, shared)))
 		}
 		if len(a.Phones) > 0 || len(b.Phones) > 0 {
-			lines = append(lines, row(firstPhone(a), firstPhone(b)))
+			lines = append(lines, row(compactPhone(a, shared), compactPhone(b, shared)))
 		}
 		if a.Org != "" || b.Org != "" {
 			lines = append(lines, row(displayOrg(a.Org), displayOrg(b.Org)))
+		}
+		if a.Birthday != "" || b.Birthday != "" {
+			lines = append(lines, row(orNone(a.Birthday), orNone(b.Birthday)))
 		}
 	}
 
@@ -182,6 +190,7 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 		lines = append(lines, "")
 		lines = append(lines, "  "+labelStyle.Render("Match: ")+strings.Join(matchParts, ", "))
 	}
+	lines = append(lines, "  "+labelStyle.Render("Score: ")+truncate(compactBreakdown(c), inner-11))
 
 	// Footer
 	lines = append(lines, "")
@@ -510,6 +519,74 @@ func contactDisplayName(c model.ParsedContact) string {
 		return c.Phones[0].Number
 	}
 	return "(unknown)"
+}
+
+// compactEmail is the one email the compact card shows for a contact: the
+// address the scorer matched on the other side if there is one, marked ✓,
+// else the first, with a count of the addresses not shown.
+func compactEmail(c model.ParsedContact, shared map[string]bool) string {
+	if len(c.Emails) == 0 {
+		return "(none)"
+	}
+	shown := c.Emails[0].Address
+	mark := "  "
+	for _, e := range c.Emails {
+		if shared[normalize.Email(e.Address)] {
+			shown, mark = e.Address, matchStyle.Render("✓ ")
+			break
+		}
+	}
+	return mark + shown + moreHint(len(c.Emails))
+}
+
+// compactPhone is compactEmail for phones.
+func compactPhone(c model.ParsedContact, shared map[string]bool) string {
+	if len(c.Phones) == 0 {
+		return "(none)"
+	}
+	shown := c.Phones[0].Number
+	mark := "  "
+	for _, p := range c.Phones {
+		if shared[normalize.Phone(p.Number)] {
+			shown, mark = p.Number, matchStyle.Render("✓ ")
+			break
+		}
+	}
+	return mark + displayPhone(shown) + moreHint(len(c.Phones))
+}
+
+// moreHint says how many values a one-line field is not showing.
+func moreHint(n int) string {
+	if n > 1 {
+		return fmt.Sprintf(" +%d", n-1)
+	}
+	return ""
+}
+
+// compactBreakdown is the score in one line: the name term and every shared
+// signal that added to it, with the weights the scorer used. The detailed
+// view has the full table; the compact card still has to show where the
+// number came from, because that number is what the reviewer merges on.
+func compactBreakdown(c *ReviewCluster) string {
+	f := c.Features
+	nameless := f.Nameless || (f.NameSimilarity == 0 && !hasDisplayName(c))
+	emailW, phoneW, orgW, bdayW := scorer.WeightEmail, scorer.WeightPhone, scorer.WeightOrg, scorer.WeightBirthday
+	var parts []string
+	if nameless {
+		emailW, phoneW, orgW, bdayW = scorer.WeightEmailNoName, scorer.WeightPhoneNoName, scorer.WeightOrgNoName, scorer.WeightBirthdayNoName
+	} else {
+		parts = append(parts, fmt.Sprintf("name %.2f x%.2f", f.NameSimilarity, scorer.WeightName))
+	}
+	for _, sig := range []struct {
+		hit   bool
+		label string
+		w     float64
+	}{{f.SharedEmail, "email", emailW}, {f.SharedPhone, "phone", phoneW}, {f.SharedOrg, "org", orgW}, {f.SharedBirthday, "birthday", bdayW}} {
+		if sig.hit {
+			parts = append(parts, fmt.Sprintf("%s +%.2f", sig.label, sig.w))
+		}
+	}
+	return strings.Join(parts, ", ") + fmt.Sprintf(" = %.2f", c.Decision.Score)
 }
 
 func firstEmail(c model.ParsedContact) string {

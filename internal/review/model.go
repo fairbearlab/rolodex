@@ -13,8 +13,11 @@ import (
 //
 // Pairs whose linear score reaches the review threshold carry a shared
 // identifier (phone or email) alongside a near-match name, so a one-glance
-// card is enough. Pairs below it were surfaced by the near-name rule with
-// no confirming identifier and need the full field-by-field view. Pairs
+// card is enough — provided the card shows that identifier: it puts the
+// matched email or phone on both sides (marked ✓, with a count of values
+// not shown), the birthdays, and a one-line score breakdown. Pairs below
+// the threshold were surfaced by the near-name rule with no confirming
+// identifier and need the full field-by-field view. Pairs
 // held in review by a birthday conflict always get the detailed view,
 // whatever their score: the compact card has no birthday row.
 const CompactThreshold = model.ThresholdReview
