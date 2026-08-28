@@ -19,21 +19,66 @@ type Result struct {
 
 // Merge takes normalized contacts and scored pairs, clusters them via union-find,
 // validates all pairs within each cluster, and produces merged output.
+//
+// Clustering is transitive on purpose: A shares a phone with B and B an email
+// with C, so A, B and C are one person. That transitivity is only safe on
+// edges that carry evidence. A pair held in review by the near-name floor
+// alone (same name, nothing else) is not evidence of identity, and unioning
+// on it collapses everyone who shares a common name into one cluster — six
+// unrelated "David Lee"s, six phones, six emails, one review card, and a
+// single merge keystroke destroys five of them. Those edges are applied
+// second, and only between two contacts that nothing else has claimed, so a
+// near-name pair is reviewed as a pair and a third namesake stays distinct
+// rather than being stacked onto a cluster it has no tie to.
 func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result {
 	n := len(contacts)
 	uf := newUnionFind(n)
 
-	// Build pair lookup by indices
+	// Build pair lookup by indices; union on every edge that carries a
+	// confirming identifier or clears the review score threshold.
 	pairMap := make(map[[2]int]model.ScoredPair)
+	attached := make([]bool, n)
+	var nearNameOnly []model.ScoredPair
 	for _, p := range pairs {
 		a, b := p.A, p.B
 		if a > b {
 			a, b = b, a
 		}
-		if p.Tier != model.TierDistinct {
-			uf.union(a, b)
-		}
 		pairMap[[2]int{a, b}] = p
+		switch {
+		case p.Tier == model.TierDistinct:
+		case isNearNameOnly(p):
+			nearNameOnly = append(nearNameOnly, p)
+		default:
+			uf.union(a, b)
+			attached[a], attached[b] = true, true
+		}
+	}
+
+	// Near-name-only edges pair up unattached contacts. Most similar names
+	// first, cross-source before same-source (the tool's job is to match the
+	// two exports), then index order, so the pairing is deterministic.
+	sort.SliceStable(nearNameOnly, func(i, j int) bool {
+		pi, pj := nearNameOnly[i], nearNameOnly[j]
+		if pi.Score != pj.Score {
+			return pi.Score > pj.Score
+		}
+		ci := contacts[pi.A].Parsed.Source != contacts[pi.B].Parsed.Source
+		cj := contacts[pj.A].Parsed.Source != contacts[pj.B].Parsed.Source
+		if ci != cj {
+			return ci
+		}
+		if pi.A != pj.A {
+			return pi.A < pj.A
+		}
+		return pi.B < pj.B
+	})
+	for _, p := range nearNameOnly {
+		if attached[p.A] || attached[p.B] {
+			continue
+		}
+		uf.union(p.A, p.B)
+		attached[p.A], attached[p.B] = true, true
 	}
 
 	// Get clusters with deterministic ordering
@@ -127,7 +172,24 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 	return result
 }
 
-// ClusterID generates a stable content-hash ID for a cluster.
+// isNearNameOnly reports whether a pair is in review on the strength of its
+// name alone: below the review score threshold with no shared phone, email
+// or birthday. Such an edge is a prompt for a human, not a link between
+// people, and Merge does not chain clusters through it.
+func isNearNameOnly(p model.ScoredPair) bool {
+	if p.Tier != model.TierReview || p.Score >= model.ThresholdReview {
+		return false
+	}
+	f := p.Features
+	return !f.SharedPhone && !f.SharedEmail && !f.SharedBirthday
+}
+
+// ClusterID generates a stable content-hash ID for a cluster. Every member's
+// index is part of the hash: a contact belongs to exactly one cluster per
+// run, so two clusters can never share an id. Hashing names alone let two
+// unrelated "Alex" pairs collide, and the review TUI then wrote one decision
+// onto both. The same input files yield the same indices, so ids are still
+// stable across re-runs.
 func ClusterID(contacts []model.NormalizedContact, indices []int) string {
 	// Sort indices for deterministic hash regardless of union-find traversal order
 	sorted := make([]int, len(indices))
@@ -136,8 +198,8 @@ func ClusterID(contacts []model.NormalizedContact, indices []int) string {
 	var parts []string
 	for _, idx := range sorted {
 		c := contacts[idx].Parsed
-		parts = append(parts, fmt.Sprintf("%s:%s:%s",
-			c.Source, c.FamilyName, c.GivenName))
+		parts = append(parts, fmt.Sprintf("%s:%d:%s:%s",
+			c.Source, idx, c.FamilyName, c.GivenName))
 	}
 	h := sha256.Sum256([]byte(strings.Join(parts, "|")))
 	return fmt.Sprintf("%x", h[:8])
