@@ -233,3 +233,32 @@ func TestParseIgnoresProvenanceOnIngest(t *testing.T) {
 		t.Errorf("read-back source = %q, want google (restored from X-ROLODEX-SOURCE)", contacts[0].Source)
 	}
 }
+
+// TestParseAppleOmitYearNonPlaceholderYear covers the X-APPLE-OMIT-YEAR
+// parameter path for a placeholder year other than Apple's usual 1604 (which
+// normalize.Birthday already strips on its own).
+func TestParseAppleOmitYearNonPlaceholderYear(t *testing.T) {
+	vcf := "BEGIN:VCARD\nVERSION:3.0\nFN:A\nN:A;;;;\nBDAY;X-APPLE-OMIT-YEAR=1900:1900-10-26\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:B\nN:B;;;;\nBDAY;X-APPLE-OMIT-YEAR=1900:1989-10-26\nEND:VCARD\n" +
+		"BEGIN:VCARD\nVERSION:3.0\nFN:C\nN:C;;;;\nBDAY:1989-10-26\nEND:VCARD\n"
+	contacts, _, err := Parse(strings.NewReader(vcf), model.SourceICloud)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(contacts) != 3 {
+		t.Fatalf("expected 3 contacts, got %d", len(contacts))
+	}
+	// The omit-year parameter matches the value's year: drop the year.
+	if contacts[0].Birthday != "--10-26" {
+		t.Errorf("omit-year birthday = %q, want --10-26", contacts[0].Birthday)
+	}
+	// The parameter names a different year than the value carries: the value
+	// is a real birthday and must keep its year.
+	if contacts[1].Birthday != "1989-10-26" {
+		t.Errorf("mismatched omit-year birthday = %q, want 1989-10-26", contacts[1].Birthday)
+	}
+	// No parameter at all: unchanged.
+	if contacts[2].Birthday != "1989-10-26" {
+		t.Errorf("plain birthday = %q, want 1989-10-26", contacts[2].Birthday)
+	}
+}
