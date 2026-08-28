@@ -182,10 +182,22 @@ func checkDistinctOutputs(icloudPath, googlePath, outPath, reviewPath, reportPat
 		seen[key] = flag
 		return nil
 	}
+	// Resolve symlinks as well as case. filepath.Abs cleans a path but follows
+	// nothing, so "--icloud real/icloud.vcf --out alias/icloud.vcf" through a
+	// symlinked directory looked like two files and the source export was
+	// overwritten. A path that does not exist yet still has a parent that
+	// usually does, so resolve the directory and keep the base name.
 	key := func(path string) (string, error) {
 		abs, err := filepath.Abs(path)
 		if err != nil {
 			return "", err
+		}
+		if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+			return strings.ToLower(resolved), nil
+		}
+		dir, base := filepath.Split(abs)
+		if resolvedDir, err := filepath.EvalSymlinks(filepath.Clean(dir)); err == nil {
+			return strings.ToLower(filepath.Join(resolvedDir, base)), nil
 		}
 		return strings.ToLower(abs), nil
 	}

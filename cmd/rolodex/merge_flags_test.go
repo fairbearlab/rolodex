@@ -225,3 +225,47 @@ func TestRunMergeRejectsAliasedAndInputPaths(t *testing.T) {
 		}
 	}
 }
+
+// TestRunMergeResolvesSymlinkedPaths pins the symlink half of the path guard.
+// filepath.Abs cleans a path but follows nothing, so an input reached through
+// a symlinked directory and an output named directly looked like two files —
+// and writer.WriteFile then replaced the source export.
+func TestRunMergeResolvesSymlinkedPaths(t *testing.T) {
+	dir := t.TempDir()
+	real := filepath.Join(dir, "real")
+	if err := os.MkdirAll(real, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(dir, "alias")
+	if err := os.Symlink(real, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	icloud := filepath.Join(real, "icloud.vcf")
+	google := filepath.Join(real, "google.vcf")
+	writeTestVCF(t, icloud, "Alpha", "alpha@example.com")
+	writeTestVCF(t, google, "Alpha", "alpha@example.com")
+	before, err := os.ReadFile(filepath.Clean(icloud))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// --out reaches the same file as --icloud through the symlinked directory.
+	err = runMerge([]string{
+		"--icloud", icloud,
+		"--google", google,
+		"--out", filepath.Join(alias, "icloud.vcf"),
+		"--review", filepath.Join(dir, "r.vcf"),
+	})
+	if err == nil {
+		t.Error("runMerge wrote over its own input through a symlinked directory")
+	}
+
+	after, readErr := os.ReadFile(filepath.Clean(icloud))
+	if readErr != nil {
+		t.Fatalf("source export destroyed: %v", readErr)
+	}
+	if string(after) != string(before) {
+		t.Error("source export was overwritten through a symlinked path")
+	}
+}
