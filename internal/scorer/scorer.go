@@ -260,9 +260,17 @@ func compatibleMiddle(ma, mb string) bool {
 	if ma == "" || mb == "" || ma == mb {
 		return true
 	}
-	ma, mb = strings.Trim(ma, "."), strings.Trim(mb, ".")
-	if len(ma) == 1 || len(mb) == 1 {
-		return ma[:1] == mb[:1]
+	// Compare runes, not bytes: a single-rune initial can be multi-byte
+	// ("Ö"), and byte-slicing would both miss that match and split the rune.
+	ra := []rune(strings.Trim(ma, "."))
+	rb := []rune(strings.Trim(mb, "."))
+	if len(ra) == 0 || len(rb) == 0 {
+		// A punctuation-only middle name ("." is a common export
+		// placeholder) carries no information — treat it as absent.
+		return true
+	}
+	if len(ra) == 1 || len(rb) == 1 {
+		return ra[0] == rb[0]
 	}
 	return false
 }

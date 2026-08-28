@@ -211,12 +211,15 @@ func renderDetailed(m ReviewModel, c *ReviewCluster) string {
 		rightCard := renderContactCard(b, cardW, shared, sourceLabel(b.Source, mixed))
 		body.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftCard, strings.Repeat(" ", cardGap), rightCard))
 	} else {
-		// Stacked cards for multi-contact clusters
+		// Stacked cards for multi-contact clusters. The "wins conflicts"
+		// label only means something when the cluster spans both sources;
+		// blocking pairs same-source duplicates too.
+		mixed := hasMixedSources(c.Contacts)
 		for i, contact := range c.Contacts {
 			if i > 0 {
 				body.WriteString("\n")
 			}
-			body.WriteString(renderContactCard(contact, inner-cardBorder, nil, sourceLabel(contact.Source, true)))
+			body.WriteString(renderContactCard(contact, inner-cardBorder, nil, sourceLabel(contact.Source, mixed)))
 		}
 	}
 
@@ -289,6 +292,16 @@ func sharedValues(a, b model.ParsedContact) map[string]bool {
 		}
 	}
 	return shared
+}
+
+// hasMixedSources reports whether a cluster spans more than one source.
+func hasMixedSources(contacts []model.ParsedContact) bool {
+	for i := 1; i < len(contacts); i++ {
+		if contacts[i].Source != contacts[0].Source {
+			return true
+		}
+	}
+	return false
 }
 
 // sourceLabel names a source for display. When the pair spans sources the
