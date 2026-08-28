@@ -1,6 +1,7 @@
 package merger
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/fairbearlab/rolodex/internal/model"
@@ -14,8 +15,8 @@ func namesake(src model.Source, given, family string, i int) model.NormalizedCon
 	return normalize.Contact(model.ParsedContact{
 		Source: src, GivenName: given, FamilyName: family,
 		FormattedName: given + " " + family,
-		Emails:        []model.Email{{Address: given + string(rune('a'+i)) + "@example.com"}},
-		Phones:        []model.Phone{{Number: "212555010" + string(rune('0'+i))}},
+		Emails:        []model.Email{{Address: given + strconv.Itoa(i) + "@example.com"}},
+		Phones:        []model.Phone{{Number: "212555010" + strconv.Itoa(i)}},
 	})
 }
 
@@ -176,8 +177,8 @@ func TestMergeNearNameOnlyPrefersHigherScoreOverCrossSource(t *testing.T) {
 		return normalize.Contact(model.ParsedContact{
 			Source: src, GivenName: given, FamilyName: "Lee",
 			FormattedName: given + " Lee",
-			Emails:        []model.Email{{Address: given + string(rune('a'+i)) + "@example.com"}},
-			Phones:        []model.Phone{{Number: "212555010" + string(rune('0'+i))}},
+			Emails:        []model.Email{{Address: given + strconv.Itoa(i) + "@example.com"}},
+			Phones:        []model.Phone{{Number: "212555010" + strconv.Itoa(i)}},
 		})
 	}
 	// 0 and 1 share the exact same name (same source): highest possible
