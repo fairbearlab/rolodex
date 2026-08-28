@@ -262,3 +262,104 @@ func TestParseAppleOmitYearNonPlaceholderYear(t *testing.T) {
 		t.Errorf("plain birthday = %q, want 1989-10-26", contacts[2].Birthday)
 	}
 }
+
+// A .vcf is untrusted input. Control characters in a field value are never
+// contact data and are dangerous twice: the review TUI writes values straight
+// to the terminal and truncates with an ANSI-aware helper that preserves
+// escape sequences, so a hostile name could clear and repaint the screen and
+// hide the card the reviewer is about to merge; and a bare CR survives the
+// writer (which escapes LF but not CR), forging a property line for any reader
+// that treats a lone CR as a line break.
+func TestParseStripsControlCharacters(t *testing.T) {
+	in := "BEGIN:VCARD\r\nVERSION:3.0\r\n" +
+		"FN:Bob\x1b[2J\x1b]0;pwned\x07\x1b[31mEVIL\r\n" +
+		"N:Doe;Bob\x1b[31m;;;\r\n" +
+		"NOTE:hi\rX-ROLODEX-REVIEW:true\r\n" +
+		"ORG:Acme\x1b[0m\r\n" +
+		"TEL;TYPE=WORK\x1b[0m:+1 555 0100\r\n" +
+		"EMAIL:a\x07@b.com\r\n" +
+		"END:VCARD\r\n"
+
+	contacts, _, err := Parse(strings.NewReader(in), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(contacts) != 1 {
+		t.Fatalf("got %d contacts, want 1", len(contacts))
+	}
+	c := contacts[0]
+
+	values := map[string]string{
+		"FormattedName": c.FormattedName,
+		"GivenName":     c.GivenName,
+		"Note":          c.Note,
+		"Org":           c.Org,
+		"phone type":    c.Phones[0].Type,
+		"email":         c.Emails[0].Address,
+	}
+	for field, v := range values {
+		for _, bad := range []struct {
+			name string
+			r    rune
+		}{{"ESC", 0x1b}, {"BEL", 0x07}, {"CR", '\r'}} {
+			if strings.ContainsRune(v, bad.r) {
+				t.Errorf("%s = %q still carries %s; it would reach the terminal and the .vcf writer",
+					field, v, bad.name)
+			}
+		}
+	}
+
+	// The surrounding text is kept — sanitizing must not discard the contact.
+	if !strings.Contains(c.FormattedName, "Bob") || !strings.Contains(c.FormattedName, "EVIL") {
+		t.Errorf("FormattedName = %q, want the printable text preserved", c.FormattedName)
+	}
+
+	// A legitimate multi-line NOTE survives: go-vcard decodes the "\n" escape
+	// into a real newline, and that is real contact data.
+	multi := "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:X\r\nN:X;;;;\r\nNOTE:line1\\nline2\r\nEND:VCARD\r\n"
+	cs, _, err := Parse(strings.NewReader(multi), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("Parse multiline: %v", err)
+	}
+	if !strings.Contains(cs[0].Note, "\n") {
+		t.Errorf("Note = %q, want the newline in a multi-line note preserved", cs[0].Note)
+	}
+}
+
+// Invisible and direction-changing characters must not reach the review card.
+// lipgloss scores them as zero width, so the TUI reserves no columns for them:
+// a right-to-left override in one card's name reorders the OTHER card's name
+// and email on the same rendered row, and the reviewer merges two people whose
+// cards were made to look alike. ZWJ and ZWNJ are kept — they are load-bearing
+// in Indic and Persian names and in emoji.
+func TestParseStripsBidiAndZeroWidth(t *testing.T) {
+	ch := func(r rune) string { return string(r) }
+	in := "BEGIN:VCARD\r\nVERSION:3.0\r\n" +
+		"FN:" + ch(0x202e) + "evil" + ch(0x2066) + "spoof" + ch(0xfeff) + "\r\n" +
+		"N:Doe;" + ch(0x202e) + "John" + ch(0x200b) + ";;;\r\n" +
+		"NOTE:ok" + ch(0x200d) + "joiner " + ch(0x200c) + "nonjoiner\r\n" +
+		"END:VCARD\r\n"
+
+	contacts, _, err := Parse(strings.NewReader(in), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	c := contacts[0]
+
+	for _, bad := range []struct {
+		name string
+		r    rune
+	}{
+		{"RLO", 0x202e}, {"isolate", 0x2066}, {"BOM", 0xfeff}, {"ZWSP", 0x200b},
+	} {
+		if strings.ContainsRune(c.FormattedName+c.GivenName, bad.r) {
+			t.Errorf("%s (U+%04X) reached the review card", bad.name, bad.r)
+		}
+	}
+	if c.FormattedName != "evilspoof" || c.GivenName != "John" {
+		t.Errorf("FormattedName=%q GivenName=%q, want the visible text preserved", c.FormattedName, c.GivenName)
+	}
+	if !strings.ContainsRune(c.Note, 0x200d) || !strings.ContainsRune(c.Note, 0x200c) {
+		t.Errorf("Note = %q, want ZWJ and ZWNJ preserved", c.Note)
+	}
+}

@@ -46,12 +46,86 @@ func Parse(r io.Reader, source model.Source) ([]model.ParsedContact, []model.War
 			continue
 		}
 
+		sanitizeCard(card)
 		c := cardToContact(card, source)
 		contacts = append(contacts, c)
 		idx++
 	}
 
 	return contacts, warnings, nil
+}
+
+// sanitizeCard strips control characters from every value and parameter in a
+// decoded card.
+//
+// A .vcf is untrusted input: it comes from whatever ended up in the user's
+// address book, including cards other people sent them. Control characters in
+// a field value are never meaningful contact data, and they are dangerous
+// twice over. The review TUI writes field values straight to the terminal and
+// truncates with an ANSI-aware helper that deliberately preserves escape
+// sequences, so a contact named "Bob\x1b[2J..." could clear the screen,
+// repaint it, and hide the other card — while the reviewer presses a key that
+// irreversibly merges two people. And a bare CR survives the vCard writer
+// (which escapes LF but not CR), so a value could forge an "X-ROLODEX-REVIEW"
+// line in the emitted .vcf for any reader that treats a lone CR as a line
+// break.
+//
+// TAB and LF are kept: go-vcard decodes the "\n" escape into a real newline
+// and a multi-line NOTE or ADR is legitimate.
+func sanitizeCard(card vcard.Card) {
+	for _, fields := range card {
+		for _, f := range fields {
+			if f == nil {
+				continue
+			}
+			f.Value = stripControl(f.Value)
+			for name, values := range f.Params {
+				for i, v := range values {
+					values[i] = stripControl(v)
+				}
+				f.Params[name] = values
+			}
+		}
+	}
+}
+
+// stripControl removes C0 and C1 control characters and DEL, keeping TAB and
+// LF. It returns s unchanged when there is nothing to strip.
+func stripControl(s string) string {
+	if strings.IndexFunc(s, isControl) < 0 {
+		return s
+	}
+	return strings.Map(func(r rune) rune {
+		if isControl(r) {
+			return -1
+		}
+		return r
+	}, s)
+}
+
+func isControl(r rune) bool {
+	if r == '\t' || r == '\n' {
+		return false
+	}
+	if r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+		return true
+	}
+	// Invisible and direction-changing characters. lipgloss scores these as
+	// zero width, so the TUI reserves no columns for them: a right-to-left
+	// override in one card's name reorders the other card's name and email on
+	// the same rendered row, and the reviewer merges two people whose cards
+	// were made to look alike. ZWJ and ZWNJ (U+200C-200D) are deliberately
+	// kept — they are load-bearing in Indic and Persian names and in emoji.
+	switch {
+	case r == 0x200b, // zero width space
+		r == 0x200e, r == 0x200f, // LTR/RTL marks
+		r >= 0x202a && r <= 0x202e, // embedding and override
+		r >= 0x2060 && r <= 0x2064, // word joiner, invisible operators
+		r >= 0x2066 && r <= 0x2069, // isolates
+		r == 0xfeff:                // BOM / zero width no-break space
+		return true
+	}
+	return false
 }
 
 func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
