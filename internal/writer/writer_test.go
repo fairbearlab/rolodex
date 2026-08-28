@@ -2,6 +2,7 @@ package writer
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -10,6 +11,44 @@ import (
 	"github.com/fairbearlab/rolodex/internal/model"
 	"github.com/fairbearlab/rolodex/internal/parser"
 )
+
+// failingWriter errors on every Write call, simulating a full disk or a
+// closed pipe partway through a multi-contact write.
+type failingWriter struct{}
+
+func (failingWriter) Write(p []byte) (int, error) {
+	return 0, errors.New("simulated write failure")
+}
+
+// TestWriteReturnsErrorOnWriteFailure covers the io.WriteString error path:
+// Write now buffers and re-emits per contact (to collapse the doubled
+// semicolon escape), and a failure writing that buffer out must be reported,
+// not silently swallowed.
+func TestWriteReturnsErrorOnWriteFailure(t *testing.T) {
+	mc := model.MergedContact{
+		Contact: model.ParsedContact{GivenName: "A", FamilyName: "B", FormattedName: "A B"},
+	}
+	err := Write(failingWriter{}, []model.MergedContact{mc})
+	if err == nil {
+		t.Fatal("expected an error when the underlying writer fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "writing contact") {
+		t.Errorf("error = %q, want it to name the failing contact", err.Error())
+	}
+}
+
+// TestWriteStopsAtFirstFailure: a writer that fails only after N bytes
+// (mid-second-contact) must still surface the error rather than continuing
+// to "succeed" on later contacts.
+func TestWriteStopsAtFirstFailure(t *testing.T) {
+	mc := func(name string) model.MergedContact {
+		return model.MergedContact{Contact: model.ParsedContact{GivenName: name, FormattedName: name}}
+	}
+	err := Write(failingWriter{}, []model.MergedContact{mc("First"), mc("Second")})
+	if err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+}
 
 func TestWriteBasicContact(t *testing.T) {
 	mc := model.MergedContact{
