@@ -351,3 +351,47 @@ func TestImpossibleBirthdayIsNotSharedEvidence(t *testing.T) {
 		}
 	}
 }
+
+// A birthday of January 1st is the date an export carries when nobody
+// entered one: 1970-01-01 (the Unix epoch), 1900-01-01 and 2000-01-01
+// (spreadsheet and form defaults), and Apple's 1604-01-01, which normalizes
+// to the no-year `--01-01`. sharedPhone and sharedEmail already refuse a
+// placeholder as evidence; sharedBirthday did not, and SharedBirthday is a
+// confirming identifier for the exact-name rule — so two "Chris Martin"s
+// with different phones, different emails and a shared 1970-01-01 scored
+// 0.500 and auto-merged with no review card. A January 1st is not evidence
+// in either direction: not a shared birthday, and not a conflict when both
+// sides carry it.
+func TestPlaceholderBirthdayIsNotConfirmation(t *testing.T) {
+	for _, raw := range []string{"1970-01-01", "1900-01-01", "2000-01-01", "1604-01-01", "--01-01", "1989-01-01"} {
+		a := parsed("Chris", "Martin", raw, []string{"chris.martin@work.example"}, []string{"317-555-1111"})
+		b := parsed("Chris", "Martin", raw, []string{"cmartin99@personal.example"}, []string{"415-555-2222"})
+		got := tierOf(a, b)
+		if got.Features.SharedBirthday {
+			t.Errorf("SharedBirthday = true for %q; a January 1st is a placeholder, not a shared birthday", raw)
+		}
+		if got.Features.BirthdayConflict || got.Features.BirthdayUnknown {
+			t.Errorf("%q on both sides: conflict=%v unknown=%v, want neither", raw, got.Features.BirthdayConflict, got.Features.BirthdayUnknown)
+		}
+		if got.Tier != model.TierReview {
+			t.Errorf("%q: tier = %q (score %.3f), want review — same name, no shared identifier", raw, got.Tier, got.Score)
+		}
+	}
+
+	// A January 1st against a different date is still a conflict: the
+	// placeholder side is unreadable as evidence, not as a date.
+	a := parsed("Chris", "Martin", "1970-01-01", nil, []string{"317-555-1111"})
+	b := parsed("Chris", "Martin", "1989-10-22", nil, []string{"317-555-1111"})
+	if got := tierOf(a, b); !got.Features.BirthdayConflict || got.Tier != model.TierReview {
+		t.Errorf("1970-01-01 vs 1989-10-22 on a shared phone: conflict=%v tier=%q, want a conflict held at review", got.Features.BirthdayConflict, got.Tier)
+	}
+
+	// Any other shared date, with or without a year, still confirms.
+	for _, raw := range []string{"1989-10-22", "--10-22", "1970-01-02", "2000-12-31"} {
+		a := parsed("Chris", "Martin", raw, []string{"chris.martin@work.example"}, []string{"317-555-1111"})
+		b := parsed("Chris", "Martin", raw, []string{"cmartin99@personal.example"}, []string{"415-555-2222"})
+		if got := tierOf(a, b); !got.Features.SharedBirthday || got.Tier != model.TierAutoMerge {
+			t.Errorf("%q: SharedBirthday=%v tier=%q, want a real shared birthday to confirm the exact name", raw, got.Features.SharedBirthday, got.Tier)
+		}
+	}
+}

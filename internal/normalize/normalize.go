@@ -388,6 +388,20 @@ func BirthdaysAgree(a, b string) bool {
 	return yearA == "" || yearB == "" || yearA == yearB
 }
 
+// PlausibleBirthday reports whether a canonical birthday could be evidence
+// that two contacts are one person. A January 1st — with any year or none —
+// is the date an export carries when nobody entered one: 1970-01-01 (the
+// Unix epoch), 1900-01-01 and 2000-01-01 (form and spreadsheet defaults),
+// and Apple's 1604-01-01, which arrives here as "--01-01". People are born
+// on January 1st, so a same-named pair that really shares one goes to
+// review instead of auto-merging; that costs a review card, never a person.
+// The same "only a well-formed value is evidence" rule as PlausiblePhone
+// and PlausibleEmail.
+func PlausibleBirthday(s string) bool {
+	_, md, ok := ParseCanonicalBirthday(s)
+	return ok && md != "01-01"
+}
+
 // PreferBirthday chooses the birthday for a merged contact. The priority
 // source's value wins, except that an empty value is filled from the other
 // side and a no-year date is completed by a full date it agrees with:

@@ -211,27 +211,32 @@ func parseBirthday(s string) (year, monthDay string, ok bool) {
 	return normalize.ParseCanonicalBirthday(s)
 }
 
-// sharedBirthday reports whether both contacts carry the same well-formed
-// birthday. A no-year value (--MM-DD) matches a full date with the same
-// month and day, since iCloud may omit the year that Google keeps. Two
-// equal raw strings are not enough: "1989" == "1989" or "unknown" ==
-// "unknown" is not a shared birthday, and this feature promotes an
-// identical name to auto_merge on its own. The comparison lives in
-// normalize so the merger and the report answer the same question.
+// sharedBirthday reports whether both contacts carry the same well-formed,
+// plausible birthday. A no-year value (--MM-DD) matches a full date with
+// the same month and day, since iCloud may omit the year that Google
+// keeps. Two equal raw strings are not enough: "1989" == "1989" or
+// "unknown" == "unknown" is not a shared birthday, and neither is a shared
+// placeholder — 1970-01-01 on both sides is a default, not a person — since
+// this feature promotes an identical name to auto_merge on its own, the
+// way sharedPhone and sharedEmail refuse "000-000-0000". The comparison
+// lives in normalize so the merger and the report answer the same question.
 func sharedBirthday(a, b model.NormalizedContact) bool {
-	return normalize.BirthdaysAgree(a.Parsed.Birthday, b.Parsed.Birthday)
+	return normalize.BirthdaysAgree(a.Parsed.Birthday, b.Parsed.Birthday) &&
+		normalize.PlausibleBirthday(a.Parsed.Birthday)
 }
 
 // birthdayConflict reports whether both contacts carry a well-formed birthday
 // and the two disagree. Two people with the same name and a shared household
-// phone are told apart by exactly this.
+// phone are told apart by exactly this. It compares the dates directly, not
+// through sharedBirthday: two placeholders that agree are no evidence, but
+// they are not a disagreement either.
 func birthdayConflict(a, b model.NormalizedContact) bool {
 	_, _, okA := parseBirthday(a.Parsed.Birthday)
 	_, _, okB := parseBirthday(b.Parsed.Birthday)
 	if !okA || !okB {
 		return false
 	}
-	return !sharedBirthday(a, b)
+	return !normalize.BirthdaysAgree(a.Parsed.Birthday, b.Parsed.Birthday)
 }
 
 // birthdayUnknown reports whether both contacts carry a birthday but at

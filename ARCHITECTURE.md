@@ -107,7 +107,7 @@ Computes a weighted composite score for each candidate pair:
 - **Shared email** (0.25): Binary — any normalized email in common that is also plausible (a non-empty local part and a domain with a dot); `unknown@` or a bare local part is never evidence.
 - **Shared phone** (0.25): Binary — any normalized phone in common that is also plausible (7+ digits, not all the same digit); placeholders like `0` or `000-000-0000` are never evidence.
 - **Shared org** (0.10): Exact match on lowercased org field (the parser has already dropped iCloud's empty trailing `;` component).
-- **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date. Both sides must be canonical, in-range dates; equal free text is not a match.
+- **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date. Both sides must be canonical, in-range dates; equal free text is not a match, and neither is a January 1st (any year, or the no-year `--01-01` Apple's placeholder becomes) — the date exports carry when nobody entered one.
 
 Contacts missing a given name use adjusted weights (0.45/0.45/0.10/0.10) and require 2+ matching identifiers for auto-merge.
 

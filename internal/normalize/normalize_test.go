@@ -429,3 +429,28 @@ func TestPreferBirthday(t *testing.T) {
 		}
 	}
 }
+
+func TestPlausibleBirthday(t *testing.T) {
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"1989-10-22", true},
+		{"--10-22", true},
+		{"1970-01-02", true},
+		{"2000-02-29", true},
+		{"1970-01-01", false},
+		{"1900-01-01", false},
+		{"2000-01-01", false},
+		{"1989-01-01", false},
+		{"--01-01", false}, // Apple's 1604-01-01 after the year is dropped
+		{"1989-02-31", false},
+		{"1989", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := PlausibleBirthday(tc.in); got != tc.want {
+			t.Errorf("PlausibleBirthday(%q) = %v, want %v", tc.in, got, tc.want)
+		}
+	}
+}
