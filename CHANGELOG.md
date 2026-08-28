@@ -38,6 +38,10 @@ Duplicate detection that works on sparse real-world exports, and a review TUI th
 * **A derived `review.vcf` is never deleted.** When a run produced nothing to review it removed the review path — which now defaults next to `--out`, so `merge --out ~/Documents/merged.vcf` deleted `~/Documents/review.vcf`, a file rolodex never wrote.
 * **Malformed entries are reported.** A truncated card was skipped and its contact silently absent from every output, with the "contacts loaded" count taken after the loss. `merge` and `run` now name the skipped entries on stderr, as `audit` already did.
 * Organizations containing a literal semicolon render as `Acme; Inc.` in the review card instead of `Acme\, Inc.` — the card is what a merge decision is made on.
+* **A placeholder is not a shared identifier.** Any two equal strings counted as a shared phone or email, so two contacts both carrying `TEL:0`, `000-000-0000` or `EMAIL:unknown` were treated as confirmed and auto-merged on the name alone. A phone now needs seven digits that are not all the same, and an email needs a local part and a dotted domain — the same "only a well-formed value is evidence" rule the birthday signal follows.
+* **A birthday cannot smuggle in trailing text.** The ISO pattern accepted anything after the date, so `1989-10-22 or 23` was read as a firm `1989-10-22`. Only a real time suffix is allowed now; `1989-10-22T00:00:00Z` and `1989-10-22 00:00:00` still normalize.
+* `merge` resolves symlinks before comparing paths, so an input reached through a symlinked directory can no longer be overwritten by an output named directly.
+* `rolodex --version` reports the release it was built from. `cmd/rolodex/version.txt` is embedded into the binary and had drifted from `VERSION`; `make version-check` now fails the build if the two disagree.
 
 ## \[0.3.0] - 2026-04-11
 
