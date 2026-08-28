@@ -50,11 +50,25 @@ var generationalSuffixes = map[string]string{
 // an export folded it in there ("Smith Jr."). Credentials such as MD or PhD
 // are not generational and are ignored: they never distinguish two people.
 func GenerationalSuffix(c model.ParsedContact) string {
-	for _, field := range []string{c.Suffix, c.FamilyName, c.GivenName} {
-		for _, w := range strings.Fields(strings.ToLower(field)) {
-			if g, ok := generationalSuffixes[strings.Trim(w, ".,")]; ok {
-				return g
-			}
+	// The dedicated N suffix component is a suffix by definition, so any
+	// token in it counts ("Jr.", "MD, Jr.").
+	for _, w := range strings.Fields(strings.ToLower(c.Suffix)) {
+		if g, ok := generationalSuffixes[strings.Trim(w, ".,")]; ok {
+			return g
+		}
+	}
+	// In the name fields only a TRAILING token counts, and only when a name
+	// precedes it. A field that is nothing but the token is the name itself:
+	// a contact whose given name is the initial "V" is not a fifth-generation
+	// namesake, and treating it as one silently blocks every match against
+	// the same person recorded with a full given name.
+	for _, field := range []string{c.FamilyName, c.GivenName} {
+		words := strings.Fields(strings.ToLower(field))
+		if len(words) < 2 {
+			continue
+		}
+		if g, ok := generationalSuffixes[strings.Trim(words[len(words)-1], ".,")]; ok {
+			return g
 		}
 	}
 	return ""
