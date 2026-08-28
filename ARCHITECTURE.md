@@ -82,14 +82,14 @@ ParsedContact → NormalizedContact → ScoredPair → MergedContact
 | `ScoredPair` | A candidate match between two contacts with a composite score, per-feature breakdown (`ScoreFeatures`), and tier classification |
 | `MergedContact` | Final output contact with source provenance, score, and review flag |
 | `Cluster` | A group of contacts connected by scored pairs (used by union-find) |
-| `Tier` | Classification enum: `auto_merge` (>= 0.85, or identical name + shared phone/email/birthday; never with conflicting birthdays), `review` (0.60-0.85, or a near-identical name alone; a birthday conflict caps a pair here but never raises it), `distinct` (< 0.60) |
+| `Tier` | Classification enum: `auto_merge` (>= 0.85, or identical name + shared phone/email/birthday; never with conflicting birthdays, and not on one identifier when a birthday is present but unreadable), `review` (0.60-0.85, or a near-identical name alone; a birthday conflict caps a pair here but never raises it), `distinct` (< 0.60) |
 | `Report` | JSON report structure: summary stats, merge decisions, review decisions, distinct entries, warnings |
 
 ## Package details
 
 ### parser
 
-Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR` and the Apple placeholder year `1604` are all recognized). A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, audit); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
+Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR`, the Apple placeholder year `1604`, and hand-typed slash, dotted and month-name forms are all recognized; anything else passes through untouched and the scorer treats it as unreadable). An escaped `\;` inside `ORG` is kept as part of its component. A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, audit); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
 
 ### normalize
 
@@ -107,15 +107,15 @@ Computes a weighted composite score for each candidate pair:
 - **Shared email** (0.25): Binary — any normalized email in common.
 - **Shared phone** (0.25): Binary — any normalized phone in common.
 - **Shared org** (0.10): Exact match on lowercased org field (the parser has already dropped iCloud's empty trailing `;` component).
-- **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date.
+- **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date. Both sides must be canonical, in-range dates; equal free text is not a match.
 
 Contacts missing a given name use adjusted weights (0.45/0.45/0.10/0.10) and require 2+ matching identifiers for auto-merge.
 
-Pairs are classified into tiers by score threshold, with rules layered on top (`scorer.Classify`) because real exports are sparse and the linear score rarely reaches 0.85 on its own: an identical name (`NameExact`: given and family equal, or one a nickname of the other; compatible middle names; equal generational suffixes) plus a shared phone, email or birthday is `auto_merge`; a near-identical name (Jaro-Winkler >= 0.95, which also admits Eric/Erica) alone is floored at `review` so same-name pairs are surfaced to a human rather than dropped; and two well-formed birthdays that disagree (`BirthdayConflict`) cap any pair at `review`.
+Pairs are classified into tiers by score threshold, with rules layered on top (`scorer.Classify`) because real exports are sparse and the linear score rarely reaches 0.85 on its own: an identical name (`NameExact`: given and family equal, or one a nickname of the other; a family name present; a given name longer than an initial; compatible middle names, with trailing given-name tokens read as the middle name when the middle slot is empty; equal generational suffixes) plus a shared phone, email or birthday is `auto_merge`; a near-identical name (Jaro-Winkler >= 0.95, which also admits Eric/Erica) alone is floored at `review` so same-name pairs are surfaced to a human rather than dropped; and two well-formed birthdays that disagree (`BirthdayConflict`) cap any pair at `review`. When both contacts carry a birthday but one is unreadable (`BirthdayUnknown`), the conflict check cannot run, so the single-identifier exact-name rule does not fire and the pair falls through to the score thresholds — the guard fails closed.
 
 ### merger
 
-Clusters connected contacts using a union-find (disjoint set) data structure. Two contacts in the same cluster are transitively related — if A matches B and B matches C, all three form one cluster.
+Clusters connected contacts using a union-find (disjoint set) data structure. Two contacts in the same cluster are transitively related — if A matches B and B matches C, all three form one cluster. Transitivity applies only to edges that carry evidence (a shared identifier, or a score at the review threshold). A pair that is in review on its name alone is applied afterwards and only between two contacts nothing else has claimed, so same-name contacts are reviewed as pairs rather than collapsed into one cluster per common name; a third namesake with no tie stays distinct. Cluster ids hash each member's source, index and name, so they are unique within a run and stable across re-runs of the same inputs.
 
 Before auto-merging a cluster, every internal pair is validated. If any pair is review-tier, distinct, or unscored (not blocked together), the entire cluster is demoted to review.
 

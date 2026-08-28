@@ -238,3 +238,15 @@ func TestBirthdayConflictForcesDetailedView(t *testing.T) {
 		t.Errorf("detailed view should explain the hold:\n%s", out)
 	}
 }
+
+func TestBirthdayUnknownForcesDetailedView(t *testing.T) {
+	report := makeReport([]float64{0.65})
+	report.Review[0].Features = model.ScoreFeatures{NameSimilarity: 1, NameExact: true, SharedPhone: true, BirthdayUnknown: true}
+	m := ReviewModel{Clusters: mustBuild(t, report, makeContacts(2)), PairStart: time.Now(), Width: 100, Height: 60}
+	if m.ActiveViewMode() != ViewDetailed {
+		t.Error("a pair held by an unreadable birthday must get the detailed view, which is the only one showing birthdays")
+	}
+	if out := m.View(); !strings.Contains(out, "could not be read") {
+		t.Errorf("detailed view should explain the hold:\n%s", out)
+	}
+}
