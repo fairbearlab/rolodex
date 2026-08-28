@@ -142,6 +142,29 @@ func TestRenderDetailedMarksSharedValuesAndNormalizesPhones(t *testing.T) {
 	}
 }
 
+func TestSourceLabelOnlyMarksWinnerAcrossSources(t *testing.T) {
+	c := pairCluster()
+	m := ReviewModel{Clusters: []ReviewCluster{c}, Width: 100, Height: 60}
+	if out := renderDetailed(m, &m.Clusters[0]); strings.Count(out, "wins conflicts") != 1 {
+		t.Errorf("mixed pair should mark exactly one winner:\n%s", out)
+	}
+	if out := renderCompact(m, &m.Clusters[0]); strings.Count(out, "wins conflicts") != 1 {
+		t.Errorf("mixed pair (compact) should mark exactly one winner:\n%s", out)
+	}
+
+	same := pairCluster()
+	same.Contacts[0].Source = model.SourceICloud
+	m = ReviewModel{Clusters: []ReviewCluster{same}, Width: 100, Height: 60}
+	for _, out := range []string{renderDetailed(m, &m.Clusters[0]), renderCompact(m, &m.Clusters[0])} {
+		if strings.Contains(out, "wins conflicts") {
+			t.Errorf("same-source pair must not claim a conflict winner:\n%s", out)
+		}
+		if strings.Count(out, "icloud") != 2 {
+			t.Errorf("same-source pair should still label both cards:\n%s", out)
+		}
+	}
+}
+
 func TestProgressCounterUsesCurrentIndex(t *testing.T) {
 	clusters := []ReviewCluster{pairCluster(), pairCluster(), pairCluster()}
 	clusters[1].Resolved = "merge"

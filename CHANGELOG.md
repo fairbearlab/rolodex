@@ -1,5 +1,25 @@
 # Changelog
 
+## \[Unreleased]
+
+Duplicate detection that works on sparse real-world exports, and a review TUI that renders.
+
+### Changed
+
+* **Scoring rules for sparse contacts.** The linear score is still used for ranking, but two rules now sit on top of the tier thresholds: an effectively identical name (similarity >= 0.95) plus a shared phone, email or birthday is `auto_merge`, and an identical name on its own is floored at `review` instead of `distinct`. Previously "same name + same phone" scored 0.65 and always needed a human, and "same name, nothing else" (0.40) was silently dropped. On the author's exports this moves auto-merges from 7 to 26 and the review queue from 4 to 36 clusters, out of 559 candidate pairs. As a consequence nickname pairs with a shared identifier (Bob/Robert Smith + same email) now auto-merge rather than land in review.
+* **Birthday is a scoring signal** (0.10 bonus, total capped at 1.0). `BDAY` is normalized at parse time so `1989-10-22`, `19891022`, `--1022` and Apple's placeholder year `1604` compare correctly.
+* **Compact review card threshold** lowered from 0.78 to 0.60. Nothing in the review tier can reach 0.78 any more (those pairs auto-merge); pairs at 0.60+ have a shared identifier and get the one-glance card, exact-name-only pairs get the full diff.
+* `rolodex merge` defaults `--review` to `review.vcf` next to `--out` instead of the current directory.
+
+### Fixed
+
+* **Review TUI layout.** Side-by-side cards were 2 columns wider than their container, so every line hard-wrapped into interleaved borders and blank lines. Widths are now derived from the lipgloss border/padding semantics, the 72-column cap is raised to 120, and the title no longer wraps `Score:` onto its own line.
+* **Review cards are labelled `icloud` / `google`** (the iCloud card is on the left and marked as the conflict winner) instead of both reading `review`. The parser restores `Source` from `X-ROLODEX-SOURCE`, with the report's provenance as a fallback.
+* Review progress counter now tracks the current cluster rather than the resolved count, so it is right after undo and on a partially-resolved report.
+* Score-breakdown weight column aligns across rows; phones are displayed in one canonical form and values shared between the two cards are marked.
+* The detailed view's save-error line was built after the content and never shown.
+* iCloud's `ORG:Acme;` (empty structured unit) no longer produces a false `ORG` conflict against Google's `ORG:Acme`, and no longer prevents org matching. Same for `BDAY` values that differed only by format.
+
 ## \[0.3.0] - 2026-04-11
 
 One command to merge, review, and resolve your contacts. Plus a new audit command to find contacts you can't actually reach.

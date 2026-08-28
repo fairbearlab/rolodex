@@ -8,16 +8,21 @@ import (
 	"github.com/fairbearlab/rolodex/internal/model"
 )
 
+// Signal weights. Name/email/phone/org sum to 1.0; birthday is a bonus on
+// top and the total is capped at 1.0. The linear score ranks pairs; tier
+// assignment also applies the exact-name rules in Classify.
 const (
-	weightName  = 0.40
-	weightEmail = 0.25
-	weightPhone = 0.25
-	weightOrg   = 0.10
+	WeightName     = 0.40
+	WeightEmail    = 0.25
+	WeightPhone    = 0.25
+	WeightOrg      = 0.10
+	WeightBirthday = 0.10
 
 	// Weights when name is missing — two shared identifiers should reach auto_merge
-	weightEmailNoName = 0.45
-	weightPhoneNoName = 0.45
-	weightOrgNoName   = 0.10
+	WeightEmailNoName    = 0.45
+	WeightPhoneNoName    = 0.45
+	WeightOrgNoName      = 0.10
+	WeightBirthdayNoName = 0.10
 )
 
 // Score computes candidate pair scores for all blocked pairs.
@@ -25,7 +30,7 @@ func Score(contacts []model.NormalizedContact, pairs [][2]int) []model.ScoredPai
 	result := make([]model.ScoredPair, 0, len(pairs))
 	for _, p := range pairs {
 		score, features := scorePair(contacts[p[0]], contacts[p[1]])
-		tier := classify(score)
+		tier := Classify(score, features)
 		result = append(result, model.ScoredPair{
 			A:        p[0],
 			B:        p[1],
@@ -45,31 +50,29 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 	emailMatch := sharedEmail(a, b)
 	phoneMatch := sharedPhone(a, b)
 	orgMatch := sharedOrg(a, b)
+	bdayMatch := sharedBirthday(a, b)
 
 	if !hasName {
 		// Nameless contact: redistribute weights
 		// Require at least two matching identifiers to reach auto_merge
 		score := 0.0
-		if emailMatch {
-			score += weightEmailNoName
-		}
-		if phoneMatch {
-			score += weightPhoneNoName
-		}
-		if orgMatch {
-			score += weightOrgNoName
-		}
-
-		// Count matching identifiers
 		matchCount := 0
-		if emailMatch {
-			matchCount++
+		for _, sig := range []struct {
+			hit bool
+			w   float64
+		}{
+			{emailMatch, WeightEmailNoName},
+			{phoneMatch, WeightPhoneNoName},
+			{orgMatch, WeightOrgNoName},
+			{bdayMatch, WeightBirthdayNoName},
+		} {
+			if sig.hit {
+				score += sig.w
+				matchCount++
+			}
 		}
-		if phoneMatch {
-			matchCount++
-		}
-		if orgMatch {
-			matchCount++
+		if score > 1.0 {
+			score = 1.0
 		}
 		// Need at least 2 matching identifiers for auto_merge
 		if matchCount < 2 && score >= model.ThresholdAutoMerge {
@@ -80,6 +83,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 			SharedEmail:    emailMatch,
 			SharedPhone:    phoneMatch,
 			SharedOrg:      orgMatch,
+			SharedBirthday: bdayMatch,
 		}
 		return score, features
 	}
@@ -97,15 +101,18 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 
 	nameSim := nameSimilarity(fullA, fullB)
 
-	score := nameSim * weightName
+	score := nameSim * WeightName
 	if emailMatch {
-		score += weightEmail
+		score += WeightEmail
 	}
 	if phoneMatch {
-		score += weightPhone
+		score += WeightPhone
 	}
 	if orgMatch {
-		score += weightOrg
+		score += WeightOrg
+	}
+	if bdayMatch {
+		score += WeightBirthday
 	}
 
 	if score > 1.0 {
@@ -116,6 +123,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 		SharedEmail:    emailMatch,
 		SharedPhone:    phoneMatch,
 		SharedOrg:      orgMatch,
+		SharedBirthday: bdayMatch,
 	}
 	return score, features
 }
@@ -174,11 +182,44 @@ func sharedOrg(a, b model.NormalizedContact) bool {
 	return orgA != "" && orgB != "" && orgA == orgB
 }
 
-func classify(score float64) model.Tier {
+// sharedBirthday reports whether both contacts carry the same canonical
+// birthday. A no-year value (--MM-DD) matches a full date with the same
+// month and day, since iCloud may omit the year that Google keeps.
+func sharedBirthday(a, b model.NormalizedContact) bool {
+	ba, bb := a.Parsed.Birthday, b.Parsed.Birthday
+	if ba == "" || bb == "" {
+		return false
+	}
+	if ba == bb {
+		return true
+	}
+	noYearA, noYearB := strings.HasPrefix(ba, "--"), strings.HasPrefix(bb, "--")
+	if noYearA == noYearB {
+		return false
+	}
+	if noYearA {
+		return strings.HasSuffix(bb, ba[1:]) // "--06-29" -> "-06-29"
+	}
+	return strings.HasSuffix(ba, bb[1:])
+}
+
+// Classify assigns a tier from the linear score and the feature breakdown.
+//
+// The score thresholds apply first. On top of them, an effectively identical
+// name (similarity >= model.ThresholdExactName) plus one confirming
+// identifier — shared phone, email or birthday — is auto_merge even though
+// the linear score (0.40 + 0.25 = 0.65) cannot reach the auto_merge
+// threshold. An identical name with no confirming identifier is floored at
+// review rather than distinct: common names from two sources may be two
+// people, which is exactly what the review tier is for.
+func Classify(score float64, f model.ScoreFeatures) model.Tier {
+	exact := f.ExactName()
 	switch {
 	case score >= model.ThresholdAutoMerge:
 		return model.TierAutoMerge
-	case score >= model.ThresholdReview:
+	case exact && (f.SharedPhone || f.SharedEmail || f.SharedBirthday):
+		return model.TierAutoMerge
+	case score >= model.ThresholdReview || exact:
 		return model.TierReview
 	default:
 		return model.TierDistinct

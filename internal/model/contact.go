@@ -83,6 +83,12 @@ type ScoreFeatures struct {
 	SharedEmail    bool    `json:"shared_email"`
 	SharedPhone    bool    `json:"shared_phone"`
 	SharedOrg      bool    `json:"shared_org"`
+	SharedBirthday bool    `json:"shared_birthday,omitempty"`
+}
+
+// ExactName reports whether the pair's names are effectively identical.
+func (f ScoreFeatures) ExactName() bool {
+	return f.NameSimilarity >= ThresholdExactName
 }
 
 // ScoredPair represents a candidate match between two contacts.
@@ -103,9 +109,19 @@ const (
 )
 
 // Thresholds for tier classification.
+//
+// The linear score alone rarely reaches ThresholdAutoMerge on real exports,
+// where most contacts carry only a name and one identifier. Two rules sit on
+// top of the score thresholds (see scorer.Classify):
+//
+//   - an effectively identical name (similarity >= ThresholdExactName) plus a
+//     shared phone, email or birthday is auto_merge
+//   - an effectively identical name on its own is at least review, so
+//     same-name pairs are surfaced to a human instead of silently dropped
 const (
 	ThresholdAutoMerge = 0.85
 	ThresholdReview    = 0.60
+	ThresholdExactName = 0.95
 )
 
 // MergedContact is the output of the merge stage.

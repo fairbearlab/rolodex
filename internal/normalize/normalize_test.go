@@ -137,6 +137,8 @@ func TestNormalizeBirthday(t *testing.T) {
 		"--1022":               "--10-22",
 		"--10-22":              "--10-22",
 		"1989-10-22T00:00:00Z": "1989-10-22",
+		"1604-10-26":           "--10-26", // Apple placeholder year
+		"16041026":             "--10-26",
 		" 19891022 ":           "1989-10-22",
 		"October 22":           "October 22", // unrecognized: untouched
 		"":                     "",

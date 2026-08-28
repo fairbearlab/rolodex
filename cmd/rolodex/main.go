@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -134,7 +135,7 @@ func runMerge(args []string) error {
 	icloudPath := fs.String("icloud", "", "path to iCloud .vcf export")
 	googlePath := fs.String("google", "", "path to Google .vcf export")
 	outPath := fs.String("out", "merged.vcf", "output path for merged contacts")
-	reviewPath := fs.String("review", "review.vcf", "output path for review-tier contacts")
+	reviewPath := fs.String("review", "", "output path for review-tier contacts (default: review.vcf next to --out)")
 	reportPath := fs.String("report", "", "output path for JSON report")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -142,6 +143,9 @@ func runMerge(args []string) error {
 
 	if *icloudPath == "" || *googlePath == "" {
 		return fmt.Errorf("both --icloud and --google flags are required")
+	}
+	if *reviewPath == "" {
+		*reviewPath = filepath.Join(filepath.Dir(*outPath), "review.vcf")
 	}
 
 	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath)

@@ -8,8 +8,13 @@ import (
 	"github.com/fairbearlab/rolodex/internal/model"
 )
 
-// CompactThreshold is the score above which compact mode is used.
-const CompactThreshold = 0.78
+// CompactThreshold is the score at or above which the compact card is used.
+//
+// Pairs whose linear score reaches the review threshold carry a shared
+// identifier (phone or email) alongside a near-match name, so a one-glance
+// card is enough. Pairs below it were surfaced by the exact-name rule with
+// no confirming identifier and need the full field-by-field view.
+const CompactThreshold = model.ThresholdReview
 
 // ViewMode controls which layout to render.
 type ViewMode int

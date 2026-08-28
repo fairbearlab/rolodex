@@ -65,8 +65,10 @@ func TestScoreNicknameMatch(t *testing.T) {
 	}
 }
 
-func TestScoreNicknameReviewTier(t *testing.T) {
-	// Bob and Robert with only shared email should land in review tier, not distinct
+func TestScoreNicknameSharedEmailAutoMerges(t *testing.T) {
+	// Bob and Robert expand to the same name; with a shared email that is
+	// an exact-name + identifier match and auto-merges (the linear score
+	// alone is only 0.65).
 	a := makeContact("bob", "smith", []string{"bob@gmail.com"}, nil, "")
 	b := makeContact("robert", "smith", []string{"bob@gmail.com"}, nil, "")
 
@@ -74,8 +76,8 @@ func TestScoreNicknameReviewTier(t *testing.T) {
 	pairs := [][2]int{{0, 1}}
 	scored := Score(contacts, pairs)
 
-	if scored[0].Tier != model.TierReview {
-		t.Errorf("tier = %q (score=%.3f), want review for Bob/Robert + shared email only",
+	if scored[0].Tier != model.TierAutoMerge {
+		t.Errorf("tier = %q (score=%.3f), want auto_merge for Bob/Robert + shared email",
 			scored[0].Tier, scored[0].Score)
 	}
 }
@@ -161,5 +163,117 @@ func TestExpandName(t *testing.T) {
 				t.Errorf("expandName(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func withBirthday(c model.NormalizedContact, bday string) model.NormalizedContact {
+	c.Parsed.Birthday = bday
+	return c
+}
+
+// TestClassifyTiers pins the tier for the pair shapes that real exports
+// actually produce: most contacts carry a name and at most one identifier.
+func TestClassifyTiers(t *testing.T) {
+	cases := []struct {
+		name     string
+		a, b     model.NormalizedContact
+		wantTier model.Tier
+		minScore float64 // sanity check on the linear score
+	}{
+		{
+			name:     "exact name + shared phone only",
+			a:        makeContact("chris", "fielding", nil, []string{"3175559876"}, ""),
+			b:        makeContact("chris", "fielding", nil, []string{"3175559876"}, "Continental Aeronautics"),
+			wantTier: model.TierAutoMerge, minScore: 0.65,
+		},
+		{
+			name:     "exact name + shared email only",
+			a:        makeContact("ahmed", "mady", []string{"a@example.com"}, nil, ""),
+			b:        makeContact("ahmed", "mady", []string{"a@example.com"}, nil, ""),
+			wantTier: model.TierAutoMerge, minScore: 0.65,
+		},
+		{
+			name:     "exact name + shared birthday only",
+			a:        withBirthday(makeContact("jimmy", "schuler", nil, nil, ""), "1989-06-29"),
+			b:        withBirthday(makeContact("jimmy", "schuler", nil, nil, ""), "1989-06-29"),
+			wantTier: model.TierAutoMerge, minScore: 0.50,
+		},
+		{
+			name:     "exact name + no-year birthday matching full date",
+			a:        withBirthday(makeContact("jimmy", "schuler", nil, nil, ""), "--06-29"),
+			b:        withBirthday(makeContact("jimmy", "schuler", nil, nil, ""), "1989-06-29"),
+			wantTier: model.TierAutoMerge, minScore: 0.50,
+		},
+		{
+			name:     "exact name + shared org only stays in review",
+			a:        makeContact("jimmy", "schuler", nil, nil, "Kunkels Drive-In"),
+			b:        makeContact("jimmy", "schuler", nil, nil, "Kunkels Drive-In"),
+			wantTier: model.TierReview, minScore: 0.50,
+		},
+		{
+			name:     "exact name, nothing else: floored into review, not distinct",
+			a:        makeContact("john", "smith", nil, nil, ""),
+			b:        makeContact("john", "smith", nil, nil, ""),
+			wantTier: model.TierReview, minScore: 0.40,
+		},
+		{
+			name:     "exact name, different birthdays, nothing else: review (not auto)",
+			a:        withBirthday(makeContact("john", "smith", nil, nil, ""), "1980-01-01"),
+			b:        withBirthday(makeContact("john", "smith", nil, nil, ""), "1975-05-05"),
+			wantTier: model.TierReview, minScore: 0.40,
+		},
+		{
+			name:     "near-miss name + shared phone: below exact threshold, linear review",
+			a:        makeContact("chris", "fielding", nil, []string{"5551234567"}, ""),
+			b:        makeContact("kris", "fielding", nil, []string{"5551234567"}, ""),
+			wantTier: model.TierReview, minScore: 0.60,
+		},
+		{
+			name:     "fuzzy name only: still distinct",
+			a:        makeContact("jon", "smith", nil, nil, ""),
+			b:        makeContact("joan", "smithers", nil, nil, ""),
+			wantTier: model.TierDistinct, minScore: 0,
+		},
+		{
+			name:     "different people, same last name, shared org: distinct",
+			a:        makeContact("alice", "smith", nil, nil, "Acme"),
+			b:        makeContact("zed", "smith", nil, nil, "Acme"),
+			wantTier: model.TierDistinct, minScore: 0,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			scored := Score([]model.NormalizedContact{tc.a, tc.b}, [][2]int{{0, 1}})
+			got := scored[0]
+			if got.Tier != tc.wantTier {
+				t.Errorf("tier = %q (score=%.3f, features=%+v), want %q", got.Tier, got.Score, got.Features, tc.wantTier)
+			}
+			if got.Score < tc.minScore {
+				t.Errorf("score = %.3f, want >= %.2f", got.Score, tc.minScore)
+			}
+		})
+	}
+}
+
+func TestSharedBirthday(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"1989-06-29", "1989-06-29", true},
+		{"--06-29", "1989-06-29", true},
+		{"1989-06-29", "--06-29", true},
+		{"--06-29", "--06-29", true},
+		{"1989-06-29", "1990-06-29", false},
+		{"--06-29", "--06-30", false},
+		{"", "1989-06-29", false},
+		{"", "", false},
+	}
+	for _, tc := range cases {
+		a := withBirthday(makeContact("a", "b", nil, nil, ""), tc.a)
+		b := withBirthday(makeContact("a", "b", nil, nil, ""), tc.b)
+		if got := sharedBirthday(a, b); got != tc.want {
+			t.Errorf("sharedBirthday(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
 	}
 }

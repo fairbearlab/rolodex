@@ -147,13 +147,22 @@ func Org(s string) string {
 	return strings.Join(parts, ";")
 }
 
+// applePlaceholderYear is the year Apple Contacts stores for a birthday
+// entered without a year. iCloud exports it with X-APPLE-OMIT-YEAR=1604;
+// contacts synced onward to Google keep the year but lose the parameter.
+const applePlaceholderYear = "1604"
+
 // Birthday canonicalizes a BDAY value to YYYY-MM-DD, or --MM-DD when the
 // year is unknown. Recognized inputs: "1989-10-22", "19891022" (Google),
-// "--1022" / "--10-22" (no year), and any of these with a trailing time.
-// Anything else is returned trimmed but otherwise untouched.
+// "--1022" / "--10-22" (no year), the Apple placeholder year 1604, and any
+// of these with a trailing time. Anything else is returned trimmed but
+// otherwise untouched.
 func Birthday(s string) string {
 	s = strings.TrimSpace(s)
 	if m := bdayFullRe.FindStringSubmatch(s); m != nil {
+		if m[1] == applePlaceholderYear {
+			return "--" + m[2] + "-" + m[3]
+		}
 		return m[1] + "-" + m[2] + "-" + m[3]
 	}
 	if m := bdayNoYearRe.FindStringSubmatch(s); m != nil {

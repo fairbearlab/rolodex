@@ -169,6 +169,7 @@ func computeBands(entries []Entry) []BandStat {
 		{Label: "0.78-1.00", LowBound: 0.78, HighBound: 1.01},
 		{Label: "0.60-0.78", LowBound: 0.60, HighBound: 0.78},
 		{Label: "0.50-0.60", LowBound: 0.50, HighBound: 0.60},
+		{Label: "0.00-0.50", LowBound: 0.00, HighBound: 0.50}, // exact-name floor pairs
 	}
 
 	for _, e := range entries {

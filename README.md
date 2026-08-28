@@ -87,10 +87,16 @@ rolodex version
 | Shared email                   | 0.25   |
 | Shared phone                   | 0.25   |
 | Shared org                     | 0.10   |
+| Shared birthday                | 0.10   |
 
-Tiers: **auto\_merge** (> 0.85), **review** (0.60-0.85), **distinct** (< 0.60)
+The first four sum to 1.0; birthday is a bonus and the total is capped at 1.0. Birthdays compare after normalization, so `1989-10-22`, `19891022` and a no-year `--10-22` all agree.
 
-When either contact lacks a given name, weights shift to 0.45 email / 0.45 phone / 0.10 org, and at least two matching identifiers are required for auto-merge.
+Tiers: **auto\_merge** (>= 0.85), **review** (0.60-0.85), **distinct** (< 0.60), with two rules layered on top of the score because real exports are sparse (most contacts carry a name and at most one identifier):
+
+* An effectively identical name (similarity >= 0.95, after nickname expansion) **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.65.
+* An effectively identical name on its own is **at least review**. Same-name pairs are never silently marked distinct; a shared org alone does not auto-merge them, because two people can share a common name and an employer.
+
+When either contact lacks a given name, weights shift to 0.45 email / 0.45 phone / 0.10 org / 0.10 birthday, and at least two matching identifiers are required for auto-merge.
 
 ## Merge behavior
 

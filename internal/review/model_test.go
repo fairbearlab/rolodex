@@ -80,7 +80,9 @@ func TestBuildClustersTieBreaker(t *testing.T) {
 }
 
 func TestActiveViewMode(t *testing.T) {
-	report := makeReport([]float64{0.82, 0.65})
+	// One pair at the review threshold (shared identifier -> compact) and
+	// one below it (exact-name floor -> detailed).
+	report := makeReport([]float64{0.65, 0.40})
 	contacts := makeContacts(4)
 	clusters := BuildClusters(report, contacts)
 
@@ -92,13 +94,13 @@ func TestActiveViewMode(t *testing.T) {
 
 	// High score -> compact
 	if m.ActiveViewMode() != ViewCompact {
-		t.Error("expected compact mode for score 0.82")
+		t.Error("expected compact mode for score 0.65")
 	}
 
 	// Move to low score cluster
 	m.CurrentIndex = 1
 	if m.ActiveViewMode() != ViewDetailed {
-		t.Error("expected detailed mode for score 0.65")
+		t.Error("expected detailed mode for score 0.40")
 	}
 
 	// Override should take precedence

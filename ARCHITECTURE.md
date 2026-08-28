@@ -82,14 +82,14 @@ ParsedContact → NormalizedContact → ScoredPair → MergedContact
 | `ScoredPair` | A candidate match between two contacts with a composite score, per-feature breakdown (`ScoreFeatures`), and tier classification |
 | `MergedContact` | Final output contact with source provenance, score, and review flag |
 | `Cluster` | A group of contacts connected by scored pairs (used by union-find) |
-| `Tier` | Classification enum: `auto_merge` (>= 0.85), `review` (0.60-0.85), `distinct` (< 0.60) |
+| `Tier` | Classification enum: `auto_merge` (>= 0.85, or exact name + shared phone/email/birthday), `review` (0.60-0.85, or exact name alone), `distinct` (< 0.60) |
 | `Report` | JSON report structure: summary stats, merge decisions, review decisions, distinct entries, warnings |
 
 ## Package details
 
 ### parser
 
-Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
+Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty structured components (iCloud emits `Acme;`) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR` and the Apple placeholder year `1604` are all recognized). A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source`. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
 
 ### normalize
 
@@ -106,11 +106,12 @@ Computes a weighted composite score for each candidate pair:
 - **Name similarity** (0.40): Jaro-Winkler distance on full name strings, with nickname expansion (~120 mappings like Bob/Robert, Bill/William). The higher of direct and nickname-expanded scores is used.
 - **Shared email** (0.25): Binary — any normalized email in common.
 - **Shared phone** (0.25): Binary — any normalized phone in common.
-- **Shared org** (0.10): Exact match on lowercased org field.
+- **Shared org** (0.10): Exact match on lowercased org field (the parser has already dropped iCloud's empty trailing `;` component).
+- **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date.
 
-Contacts missing a given name use adjusted weights (0.45/0.45/0.10) and require 2+ matching identifiers for auto-merge.
+Contacts missing a given name use adjusted weights (0.45/0.45/0.10/0.10) and require 2+ matching identifiers for auto-merge.
 
-Pairs are classified into tiers by score threshold.
+Pairs are classified into tiers by score threshold, with two rules layered on top (`scorer.Classify`) because real exports are sparse and the linear score rarely reaches 0.85 on its own: an effectively identical name (similarity >= 0.95) plus a shared phone, email or birthday is `auto_merge`; an effectively identical name alone is floored at `review` so same-name pairs are surfaced to a human rather than dropped.
 
 ### merger
 
@@ -135,7 +136,7 @@ Generates a JSON report (`model.Report`) with:
 
 ### review
 
-Interactive terminal UI built on BubbleTea. Loads review clusters from `report.json` and `review.vcf`, sorted by score descending. Adaptive pacing shows a compact card for high-confidence pairs (score >= 0.78) and a full field-by-field diff for ambiguous pairs. Supports merge (`m`), skip (`s`), undo (`u`), detail toggle (`d`), and quit (`q`). Decisions are saved to `report.json` after every keypress, so sessions can be interrupted and resumed.
+Interactive terminal UI built on BubbleTea. Loads review clusters from `report.json` and `review.vcf`, sorted by score descending. Adaptive pacing shows a compact card for pairs whose score reaches the review threshold (>= 0.60, meaning a shared phone or email backs the name match) and a full field-by-field diff, with the iCloud card on the left labelled as the conflict winner, for pairs surfaced by the exact-name rule alone. Supports merge (`m`), skip (`s`), undo (`u`), detail toggle (`d`), and quit (`q`). Decisions are saved to `report.json` after every keypress, so sessions can be interrupted and resumed.
 
 ### resolve
 
