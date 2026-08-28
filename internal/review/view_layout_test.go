@@ -236,3 +236,74 @@ func TestRenderDetailedShowsSaveError(t *testing.T) {
 type errString string
 
 func (e errString) Error() string { return string(e) }
+
+func TestRenderDetailedFitsWideGlyphs(t *testing.T) {
+	c := pairCluster()
+	c.Contacts[0].FormattedName = "田中太郎田中太郎田中太郎田中太郎田中太郎"
+	c.Contacts[0].Org = "株式会社日本電気通信システム研究所;開発部"
+	c.Contacts[1].FormattedName = "Zoë 🎉 Ünal-Østergaard Longname Here"
+	for _, width := range []int{60, 80, 100} {
+		m := ReviewModel{Clusters: []ReviewCluster{c}, Width: width, Height: 60}
+		lines := assertBoxFits(t, renderDetailed(m, &m.Clusters[0]), width)
+		top, bottom := -1, -1
+		for i, l := range lines {
+			if strings.Count(l, "┌") == 2 {
+				top = i
+			}
+			if bottom == -1 && strings.Contains(l, "└") {
+				bottom = i
+			}
+		}
+		if top == -1 || bottom <= top {
+			t.Fatalf("width %d: could not locate cards", width)
+		}
+		for i := top + 1; i < bottom; i++ {
+			if strings.Count(lines[i], "│") != 6 {
+				t.Errorf("width %d: wide glyphs wrapped a card line %d: %q", width, i, lines[i])
+			}
+		}
+		out := renderCompact(m, &m.Clusters[0])
+		assertBoxFits(t, out, width)
+	}
+}
+
+func TestTruncateMeasuresDisplayWidth(t *testing.T) {
+	if got := truncate("田中太郎", 5); lipgloss.Width(got) > 5 {
+		t.Errorf("truncate(CJK, 5) = %q, width %d > 5", got, lipgloss.Width(got))
+	}
+	if got := truncate("田中太郎", 8); got != "田中太郎" {
+		t.Errorf("truncate(CJK, 8) = %q, want unchanged", got)
+	}
+	if got := truncate("abcdefgh", 6); got != "abc..." {
+		t.Errorf("truncate(ascii, 6) = %q, want abc...", got)
+	}
+	if got := padRight("田中", 6); lipgloss.Width(got) != 6 {
+		t.Errorf("padRight(CJK, 6) width = %d, want 6", lipgloss.Width(got))
+	}
+}
+
+func TestDisplayOrg(t *testing.T) {
+	cases := map[string]string{";FRIEND": "FRIEND", "Acme;Sales": "Acme, Sales", "Acme;;Team": "Acme, Team", "Acme": "Acme", "": ""}
+	for in, want := range cases {
+		if got := displayOrg(in); got != want {
+			t.Errorf("displayOrg(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestScoreBreakdownUsesScorerNamelessFlag(t *testing.T) {
+	// FN-only contact: display name exists, but the scorer used the nameless
+	// table (no given name). The breakdown must follow the scorer.
+	c := pairCluster()
+	c.Features = model.ScoreFeatures{Nameless: true, SharedEmail: true, SharedPhone: true}
+	out := renderScoreBreakdown(&c)
+	if !strings.Contains(out, "x0.45") || strings.Contains(out, "x0.40") {
+		t.Errorf("expected nameless weight table:\n%s", out)
+	}
+
+	c.Features = model.ScoreFeatures{NameSimilarity: 1, NameExact: true, SharedPhone: true, BirthdayConflict: true}
+	out = renderScoreBreakdown(&c)
+	if !strings.Contains(out, "birthdays differ") || !strings.Contains(out, "Held for review") {
+		t.Errorf("expected birthday conflict callout:\n%s", out)
+	}
+}

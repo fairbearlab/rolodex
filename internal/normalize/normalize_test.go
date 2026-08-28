@@ -115,8 +115,9 @@ func TestNormalizeOrg(t *testing.T) {
 		"Kunkels Drive-In;":             "Kunkels Drive-In",
 		"Kunkels Drive-In":              "Kunkels Drive-In",
 		"Independent Insurance Agent;":  "Independent Insurance Agent",
-		";FRIEND":                       "FRIEND",
+		";FRIEND":                       ";FRIEND", // department, no company: position kept
 		"Acme;Sales":                    "Acme;Sales",
+		"Acme;;Team":                    "Acme;;Team",
 		"Acme; Sales ;":                 "Acme;Sales",
 		"  Acme  ":                      "Acme",
 		";":                             "",

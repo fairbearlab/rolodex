@@ -133,16 +133,20 @@ func normalizePhones(phones []model.Phone) []string {
 	return result
 }
 
-// Org cleans a vCard ORG value. ORG is a structured field
-// (organization;unit;...) and iCloud emits an empty trailing unit —
-// "Acme;" — where Google emits "Acme". Empty components are dropped so the
-// two compare equal; non-empty units are kept, joined by ";".
+// Org cleans a vCard ORG value. ORG is a positional structured field
+// (organization;unit;sub-unit...) and iCloud emits an empty trailing unit —
+// "Acme;" — where Google emits "Acme". Trailing empty components are
+// dropped so the two compare equal. Leading and interior empties are kept
+// because they carry position: Apple writes ";Engineering" for a contact
+// with a department but no company, and collapsing it would promote the
+// department into the company slot on round-trip.
 func Org(s string) string {
-	var parts []string
-	for _, p := range strings.Split(s, ";") {
-		if p = strings.TrimSpace(p); p != "" {
-			parts = append(parts, p)
-		}
+	parts := strings.Split(s, ";")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	for len(parts) > 0 && parts[len(parts)-1] == "" {
+		parts = parts[:len(parts)-1]
 	}
 	return strings.Join(parts, ";")
 }

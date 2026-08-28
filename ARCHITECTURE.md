@@ -82,14 +82,14 @@ ParsedContact → NormalizedContact → ScoredPair → MergedContact
 | `ScoredPair` | A candidate match between two contacts with a composite score, per-feature breakdown (`ScoreFeatures`), and tier classification |
 | `MergedContact` | Final output contact with source provenance, score, and review flag |
 | `Cluster` | A group of contacts connected by scored pairs (used by union-find) |
-| `Tier` | Classification enum: `auto_merge` (>= 0.85, or exact name + shared phone/email/birthday), `review` (0.60-0.85, or exact name alone), `distinct` (< 0.60) |
+| `Tier` | Classification enum: `auto_merge` (>= 0.85, or identical name + shared phone/email/birthday; never with conflicting birthdays), `review` (0.60-0.85, near-identical name alone, or any birthday conflict), `distinct` (< 0.60) |
 | `Report` | JSON report structure: summary stats, merge decisions, review decisions, distinct entries, warnings |
 
 ## Package details
 
 ### parser
 
-Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty structured components (iCloud emits `Acme;`) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR` and the Apple placeholder year `1604` are all recognized). A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source`. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
+Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR` and the Apple placeholder year `1604` are all recognized). A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source`. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
 
 ### normalize
 
@@ -111,7 +111,7 @@ Computes a weighted composite score for each candidate pair:
 
 Contacts missing a given name use adjusted weights (0.45/0.45/0.10/0.10) and require 2+ matching identifiers for auto-merge.
 
-Pairs are classified into tiers by score threshold, with two rules layered on top (`scorer.Classify`) because real exports are sparse and the linear score rarely reaches 0.85 on its own: an effectively identical name (similarity >= 0.95) plus a shared phone, email or birthday is `auto_merge`; an effectively identical name alone is floored at `review` so same-name pairs are surfaced to a human rather than dropped.
+Pairs are classified into tiers by score threshold, with rules layered on top (`scorer.Classify`) because real exports are sparse and the linear score rarely reaches 0.85 on its own: an identical name (`NameExact`: equal after normalization, directly or via nickname expansion) plus a shared phone, email or birthday is `auto_merge`; a near-identical name (Jaro-Winkler >= 0.95, which also admits Eric/Erica) alone is floored at `review` so same-name pairs are surfaced to a human rather than dropped; and two well-formed birthdays that disagree (`BirthdayConflict`) cap any pair at `review`.
 
 ### merger
 

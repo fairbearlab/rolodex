@@ -203,8 +203,8 @@ func TestParseNormalizesOrgAndBirthday(t *testing.T) {
 	if contacts[0].Org != "Kunkels Drive-In" || contacts[1].Org != "Kunkels Drive-In" {
 		t.Errorf("ORG not normalized: %q vs %q", contacts[0].Org, contacts[1].Org)
 	}
-	if contacts[2].Org != "FRIEND" {
-		t.Errorf("ORG with empty leading component = %q, want FRIEND", contacts[2].Org)
+	if contacts[2].Org != ";FRIEND" {
+		t.Errorf("ORG with empty leading component = %q, want ;FRIEND (position preserved)", contacts[2].Org)
 	}
 	if contacts[0].Birthday != "1989-06-29" || contacts[1].Birthday != "1989-06-29" {
 		t.Errorf("BDAY not normalized: %q vs %q", contacts[0].Birthday, contacts[1].Birthday)
@@ -214,5 +214,22 @@ func TestParseNormalizesOrgAndBirthday(t *testing.T) {
 	}
 	if contacts[3].Birthday != "--10-26" {
 		t.Errorf("Google no-year BDAY = %q, want --10-26", contacts[3].Birthday)
+	}
+}
+
+func TestParseIgnoresProvenanceOnIngest(t *testing.T) {
+	// A provider export that carries a stale X-ROLODEX-SOURCE (a rolodex
+	// output re-imported and re-exported) must keep the flag's label.
+	vcf := "BEGIN:VCARD\nVERSION:3.0\nFN:A\nN:A;;;;\nX-ROLODEX-SOURCE:google\nEND:VCARD\n"
+	contacts, _, err := Parse(strings.NewReader(vcf), model.SourceICloud)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if contacts[0].Source != model.SourceICloud {
+		t.Errorf("ingest source = %q, want icloud (flag is authoritative)", contacts[0].Source)
+	}
+	contacts, _, _ = Parse(strings.NewReader(vcf), model.SourceUnknown)
+	if contacts[0].Source != model.SourceGoogle {
+		t.Errorf("read-back source = %q, want google (restored from X-ROLODEX-SOURCE)", contacts[0].Source)
 	}
 }

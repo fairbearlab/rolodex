@@ -93,8 +93,9 @@ The first four sum to 1.0; birthday is a bonus and the total is capped at 1.0. B
 
 Tiers: **auto\_merge** (>= 0.85), **review** (0.60-0.85), **distinct** (< 0.60), with two rules layered on top of the score because real exports are sparse (most contacts carry a name and at most one identifier):
 
-* An effectively identical name (similarity >= 0.95, after nickname expansion) **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.65.
-* An effectively identical name on its own is **at least review**. Same-name pairs are never silently marked distinct; a shared org alone does not auto-merge them, because two people can share a common name and an employer.
+* An identical name (equal after normalization, directly or via nickname expansion — Chris/Christopher, not Eric/Erica) **plus** a shared phone, email or birthday is **auto\_merge**, even though the linear score for that shape is only 0.65.
+* A near-identical name (similarity >= 0.95) on its own is **at least review**. Same-name pairs are never silently marked distinct; a shared org alone does not auto-merge them, because two people can share a common name and an employer.
+* Two well-formed birthdays that disagree **cap the pair at review**, whatever else matches. Same name and a shared household phone is exactly how a parent and child look; the birthdays are what tell them apart.
 
 When either contact lacks a given name, weights shift to 0.45 email / 0.45 phone / 0.10 org / 0.10 birthday, and at least two matching identifiers are required for auto-merge.
 

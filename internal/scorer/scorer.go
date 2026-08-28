@@ -1,6 +1,7 @@
 package scorer
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/xrash/smetrics"
@@ -51,6 +52,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 	phoneMatch := sharedPhone(a, b)
 	orgMatch := sharedOrg(a, b)
 	bdayMatch := sharedBirthday(a, b)
+	bdayConflict := birthdayConflict(a, b)
 
 	if !hasName {
 		// Nameless contact: redistribute weights
@@ -79,11 +81,13 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 			score = model.ThresholdAutoMerge - 0.01
 		}
 		features := model.ScoreFeatures{
-			NameSimilarity: 0,
-			SharedEmail:    emailMatch,
-			SharedPhone:    phoneMatch,
-			SharedOrg:      orgMatch,
-			SharedBirthday: bdayMatch,
+			NameSimilarity:   0,
+			SharedEmail:      emailMatch,
+			SharedPhone:      phoneMatch,
+			SharedOrg:        orgMatch,
+			SharedBirthday:   bdayMatch,
+			BirthdayConflict: bdayConflict,
+			Nameless:         true,
 		}
 		return score, features
 	}
@@ -100,6 +104,7 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 	}
 
 	nameSim := nameSimilarity(fullA, fullB)
+	nameExact := fullA == fullB || expandFullName(fullA) == expandFullName(fullB)
 
 	score := nameSim * WeightName
 	if emailMatch {
@@ -119,11 +124,13 @@ func scorePair(a, b model.NormalizedContact) (float64, model.ScoreFeatures) {
 		score = 1.0
 	}
 	features := model.ScoreFeatures{
-		NameSimilarity: nameSim,
-		SharedEmail:    emailMatch,
-		SharedPhone:    phoneMatch,
-		SharedOrg:      orgMatch,
-		SharedBirthday: bdayMatch,
+		NameSimilarity:   nameSim,
+		NameExact:        nameExact,
+		SharedEmail:      emailMatch,
+		SharedPhone:      phoneMatch,
+		SharedOrg:        orgMatch,
+		SharedBirthday:   bdayMatch,
+		BirthdayConflict: bdayConflict,
 	}
 	return score, features
 }
@@ -203,23 +210,40 @@ func sharedBirthday(a, b model.NormalizedContact) bool {
 	return strings.HasSuffix(ba, bb[1:])
 }
 
+// canonicalBirthdayRe matches the forms normalize.Birthday produces
+// (YYYY-MM-DD or --MM-DD); only those are trusted enough to call a conflict.
+var canonicalBirthdayRe = regexp.MustCompile(`^(\d{4}|-)-\d{2}-\d{2}$`)
+
+// birthdayConflict reports whether both contacts carry a well-formed birthday
+// and the two disagree. Two people with the same name and a shared household
+// phone are told apart by exactly this.
+func birthdayConflict(a, b model.NormalizedContact) bool {
+	ba, bb := a.Parsed.Birthday, b.Parsed.Birthday
+	if !canonicalBirthdayRe.MatchString(ba) || !canonicalBirthdayRe.MatchString(bb) {
+		return false
+	}
+	return !sharedBirthday(a, b)
+}
+
 // Classify assigns a tier from the linear score and the feature breakdown.
 //
-// The score thresholds apply first. On top of them, an effectively identical
-// name (similarity >= model.ThresholdExactName) plus one confirming
-// identifier — shared phone, email or birthday — is auto_merge even though
-// the linear score (0.40 + 0.25 = 0.65) cannot reach the auto_merge
-// threshold. An identical name with no confirming identifier is floored at
-// review rather than distinct: common names from two sources may be two
-// people, which is exactly what the review tier is for.
+// The score thresholds apply first. On top of them, an identical name
+// (NameExact: equal after normalization, directly or via nickname expansion)
+// plus one confirming identifier — shared phone, email or birthday — is
+// auto_merge even though the linear score for that shape (0.40 + 0.25 =
+// 0.65) cannot reach the auto_merge threshold. A merely near-identical
+// name (Jaro-Winkler >= ThresholdNearName, which Eric/Erica also clears) is
+// floored at review rather than distinct, as is an identical name with no
+// confirming identifier: common names from two sources may be two people,
+// which is exactly what the review tier is for. Two well-formed birthdays
+// that disagree cap any pair at review.
 func Classify(score float64, f model.ScoreFeatures) model.Tier {
-	exact := f.ExactName()
+	confirmed := f.SharedPhone || f.SharedEmail || f.SharedBirthday
+	autoMerge := score >= model.ThresholdAutoMerge || (f.NameExact && confirmed)
 	switch {
-	case score >= model.ThresholdAutoMerge:
+	case autoMerge && !f.BirthdayConflict:
 		return model.TierAutoMerge
-	case exact && (f.SharedPhone || f.SharedEmail || f.SharedBirthday):
-		return model.TierAutoMerge
-	case score >= model.ThresholdReview || exact:
+	case autoMerge || score >= model.ThresholdReview || f.NearName():
 		return model.TierReview
 	default:
 		return model.TierDistinct

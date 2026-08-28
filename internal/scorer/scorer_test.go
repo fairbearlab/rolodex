@@ -277,3 +277,102 @@ func TestSharedBirthday(t *testing.T) {
 		}
 	}
 }
+
+// TestClassifyPrecisionGuards pins the cases the adversarial review found:
+// "exact" must mean identical, not Jaro-Winkler >= 0.95, and a contradicting
+// birthday must always route to a human.
+func TestClassifyPrecisionGuards(t *testing.T) {
+	cases := []struct {
+		name     string
+		a, b     model.NormalizedContact
+		wantTier model.Tier
+	}{
+		{
+			name:     "Eric/Erica on a shared household phone: near name, not exact -> review",
+			a:        makeContact("eric", "johnson", nil, []string{"3175551212"}, ""),
+			b:        makeContact("erica", "johnson", nil, []string{"3175551212"}, ""),
+			wantTier: model.TierReview,
+		},
+		{
+			name:     "Paul/Paula on a shared email -> review",
+			a:        makeContact("paul", "nguyen", []string{"nguyens@example.com"}, nil, ""),
+			b:        makeContact("paula", "nguyen", []string{"nguyens@example.com"}, nil, ""),
+			wantTier: model.TierReview,
+		},
+		{
+			name:     "identical name, shared phone, different birthdays -> review",
+			a:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "1970-01-01"),
+			b:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "1995-12-31"),
+			wantTier: model.TierReview,
+		},
+		{
+			name:     "no-year birthday disagreeing with a full date -> review",
+			a:        withBirthday(makeContact("ann", "lee", nil, []string{"3175554444"}, ""), "--06-29"),
+			b:        withBirthday(makeContact("ann", "lee", nil, []string{"3175554444"}, ""), "1990-07-04"),
+			wantTier: model.TierReview,
+		},
+		{
+			name: "even a full-score pair is held when birthdays disagree",
+			a: withBirthday(makeContact("john", "smith", []string{"js@example.com"},
+				[]string{"3175554444"}, "Acme"), "1970-01-01"),
+			b: withBirthday(makeContact("john", "smith", []string{"js@example.com"},
+				[]string{"3175554444"}, "Acme"), "1995-12-31"),
+			wantTier: model.TierReview,
+		},
+		{
+			name:     "unparseable birthday is not a conflict",
+			a:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "October 22"),
+			b:        withBirthday(makeContact("john", "smith", nil, []string{"3175554444"}, ""), "1995-12-31"),
+			wantTier: model.TierAutoMerge,
+		},
+		{
+			name:     "Will/Liam on a shared phone: liam is not a nickname, different names -> distinct",
+			a:        makeContact("will", "smith", nil, []string{"3175550000"}, ""),
+			b:        makeContact("liam", "smith", nil, []string{"3175550000"}, ""),
+			wantTier: model.TierDistinct,
+		},
+		{
+			name:     "Chris/Christopher on a shared phone: exact after expansion -> auto_merge",
+			a:        makeContact("chris", "petry", nil, []string{"3175550000"}, ""),
+			b:        makeContact("christopher", "petry", nil, []string{"3175550000"}, ""),
+			wantTier: model.TierAutoMerge,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Score([]model.NormalizedContact{tc.a, tc.b}, [][2]int{{0, 1}})[0]
+			if got.Tier != tc.wantTier {
+				t.Errorf("tier = %q (score=%.3f, features=%+v), want %q", got.Tier, got.Score, got.Features, tc.wantTier)
+			}
+			if tc.wantTier == model.TierAutoMerge && got.Features.BirthdayConflict {
+				t.Error("auto_merge must never carry a birthday conflict")
+			}
+		})
+	}
+}
+
+func TestNameExactFeature(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"chris", "christopher", true},
+		{"eric", "erica", false},
+		{"jon", "john", true}, // both expand to john
+		{"will", "liam", false},
+	}
+	for _, tc := range cases {
+		got := Score([]model.NormalizedContact{
+			makeContact(tc.a, "x", nil, nil, ""), makeContact(tc.b, "x", nil, nil, ""),
+		}, [][2]int{{0, 1}})[0].Features
+		if got.NameExact != tc.want {
+			t.Errorf("NameExact(%s, %s) = %v (sim %.3f), want %v", tc.a, tc.b, got.NameExact, got.NameSimilarity, tc.want)
+		}
+	}
+	nameless := Score([]model.NormalizedContact{
+		makeContact("", "", []string{"a@b.c"}, nil, ""), makeContact("", "", []string{"a@b.c"}, nil, ""),
+	}, [][2]int{{0, 1}})[0].Features
+	if !nameless.Nameless {
+		t.Error("nameless pair should record Nameless=true for the TUI")
+	}
+}

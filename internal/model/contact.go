@@ -80,15 +80,26 @@ type NormalizedContact struct {
 // ScoreFeatures holds per-feature scores for a scored pair.
 type ScoreFeatures struct {
 	NameSimilarity float64 `json:"name_similarity"`
-	SharedEmail    bool    `json:"shared_email"`
-	SharedPhone    bool    `json:"shared_phone"`
-	SharedOrg      bool    `json:"shared_org"`
-	SharedBirthday bool    `json:"shared_birthday,omitempty"`
+	// NameExact is true when the normalized full names are identical, directly
+	// or after nickname expansion. Stricter than NameSimilarity >= 0.95, which
+	// Jaro-Winkler also awards to Eric/Erica or Paul/Paula.
+	NameExact   bool `json:"name_exact,omitempty"`
+	SharedEmail bool `json:"shared_email"`
+	SharedPhone bool `json:"shared_phone"`
+	SharedOrg   bool `json:"shared_org"`
+	// SharedBirthday is true when both birthdays are present and agree;
+	// BirthdayConflict when both are present, well-formed and disagree.
+	SharedBirthday   bool `json:"shared_birthday,omitempty"`
+	BirthdayConflict bool `json:"birthday_conflict,omitempty"`
+	// Nameless is true when the pair was scored with the nameless weight table
+	// (either contact lacks a given name).
+	Nameless bool `json:"nameless,omitempty"`
 }
 
-// ExactName reports whether the pair's names are effectively identical.
-func (f ScoreFeatures) ExactName() bool {
-	return f.NameSimilarity >= ThresholdExactName
+// NearName reports whether the pair's names are near-identical: enough to
+// deserve a human look, not enough to merge on.
+func (f ScoreFeatures) NearName() bool {
+	return f.NameSimilarity >= ThresholdNearName
 }
 
 // ScoredPair represents a candidate match between two contacts.
@@ -114,14 +125,17 @@ const (
 // where most contacts carry only a name and one identifier. Two rules sit on
 // top of the score thresholds (see scorer.Classify):
 //
-//   - an effectively identical name (similarity >= ThresholdExactName) plus a
-//     shared phone, email or birthday is auto_merge
-//   - an effectively identical name on its own is at least review, so
-//     same-name pairs are surfaced to a human instead of silently dropped
+//   - an identical name (ScoreFeatures.NameExact) plus a shared phone, email
+//     or birthday is auto_merge
+//   - a near-identical name (similarity >= ThresholdNearName) on its own is at
+//     least review, so same-name pairs are surfaced to a human instead of
+//     silently dropped
+//   - two well-formed birthdays that disagree cap the pair at review: that is
+//     the strongest "two different people" signal an export carries
 const (
 	ThresholdAutoMerge = 0.85
 	ThresholdReview    = 0.60
-	ThresholdExactName = 0.95
+	ThresholdNearName  = 0.95
 )
 
 // MergedContact is the output of the merge stage.

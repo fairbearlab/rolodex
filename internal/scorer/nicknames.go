@@ -5,18 +5,20 @@ import "strings"
 // nicknames maps diminutives to their canonical form.
 // All keys are lowercase.
 var nicknames = map[string]string{
-	"bob":     "robert",
-	"bobby":   "robert",
-	"rob":     "robert",
-	"robbie":  "robert",
-	"robby":   "robert",
-	"bert":    "robert",
-	"bill":    "william",
-	"billy":   "william",
-	"will":    "william",
-	"willy":   "william",
-	"willie":  "william",
-	"liam":    "william",
+	"bob":    "robert",
+	"bobby":  "robert",
+	"rob":    "robert",
+	"robbie": "robert",
+	"robby":  "robert",
+	"bert":   "robert",
+	"bill":   "william",
+	"billy":  "william",
+	"will":   "william",
+	"willy":  "william",
+	"willie": "william",
+	// "liam" is deliberately absent: it is a standalone given name in
+	// current usage, and a Will/Liam pair on one household phone would
+	// otherwise auto-merge.
 	"mike":    "michael",
 	"mikey":   "michael",
 	"mick":    "michael",

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/fairbearlab/rolodex/internal/model"
 	"github.com/fairbearlab/rolodex/internal/normalize"
@@ -137,7 +138,7 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 	// Two columns: left column fixed, right column takes the rest.
 	colW := max((inner-4)/2, 10)
 	row := func(l, r string) string {
-		return fmt.Sprintf("  %-*s  %s", colW, truncate(l, colW), truncate(r, colW))
+		return "  " + padRight(truncate(l, colW), colW) + "  " + truncate(r, colW)
 	}
 
 	// Contact names side-by-side
@@ -156,7 +157,7 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 			lines = append(lines, row(firstPhone(a), firstPhone(b)))
 		}
 		if a.Org != "" || b.Org != "" {
-			lines = append(lines, row(a.Org, b.Org))
+			lines = append(lines, row(displayOrg(a.Org), displayOrg(b.Org)))
 		}
 	}
 
@@ -358,7 +359,7 @@ func renderContactCard(c model.ParsedContact, w int, shared map[string]bool, lab
 		lines = append(lines, field("Phone", "(none)"))
 	}
 
-	lines = append(lines, field("Org", truncate(orNone(c.Org), textW-5)))
+	lines = append(lines, field("Org", truncate(orNone(displayOrg(c.Org)), textW-5)))
 	lines = append(lines, field("Title", truncate(orNone(c.Title), textW-7)))
 	lines = append(lines, field("Birthday", truncate(orNone(c.Birthday), textW-10)))
 
@@ -385,7 +386,9 @@ func displayPhone(raw string) string {
 
 func renderScoreBreakdown(c *ReviewCluster) string {
 	f := c.Features
-	nameless := f.NameSimilarity == 0 && !hasDisplayName(c)
+	// The scorer records which weight table it used; older reports without
+	// the flag fall back to the display-name heuristic.
+	nameless := f.Nameless || (f.NameSimilarity == 0 && !hasDisplayName(c))
 
 	// One formatter for every row so the weight column lines up.
 	row := func(label, value string, weight float64) string {
@@ -413,11 +416,18 @@ func renderScoreBreakdown(c *ReviewCluster) string {
 	lines = append(lines, row("Email", shared(f.SharedEmail, "shared email", "no shared emails"), emailWeight))
 	lines = append(lines, row("Phone", shared(f.SharedPhone, "shared phone", "no shared phones"), phoneWeight))
 	lines = append(lines, row("Org", shared(f.SharedOrg, "shared org", "no shared org"), orgWeight))
-	lines = append(lines, row("Birthday", shared(f.SharedBirthday, "shared birthday", "no shared birthday"), bdayWeight))
+	bdayVal := shared(f.SharedBirthday, "shared birthday", "no shared birthday")
+	if f.BirthdayConflict {
+		bdayVal = "0.00 (birthdays differ)"
+	}
+	lines = append(lines, row("Birthday", bdayVal, bdayWeight))
 
 	// Say why the pair is here when the score alone would not have put it here.
-	if !nameless && f.ExactName() && c.Decision.Score < model.ThresholdReview {
-		lines = append(lines, "    "+labelStyle.Render("Surfaced because the names match exactly."))
+	switch {
+	case f.BirthdayConflict:
+		lines = append(lines, "    "+warningStyle.Render("Held for review: the two birthdays disagree."))
+	case !nameless && f.NearName() && c.Decision.Score < model.ThresholdReview:
+		lines = append(lines, "    "+labelStyle.Render("Surfaced because the names match."))
 	}
 
 	return strings.Join(lines, "\n")
@@ -516,16 +526,38 @@ func formatAddress(a model.Address) string {
 	return strings.Join(nonEmpty, ", ")
 }
 
+// displayOrg renders a structured ORG value for a human: units joined with
+// ", " and empty positional slots dropped (";Engineering" -> "Engineering").
+func displayOrg(org string) string {
+	var parts []string
+	for _, p := range strings.Split(org, ";") {
+		if p = strings.TrimSpace(p); p != "" {
+			parts = append(parts, p)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// padRight pads s with spaces to width terminal columns (not runes, so
+// double-width scripts still line up).
+func padRight(s string, width int) string {
+	if pad := width - lipgloss.Width(s); pad > 0 {
+		return s + strings.Repeat(" ", pad)
+	}
+	return s
+}
+
+// truncate limits s to maxLen terminal columns, measuring display width so
+// CJK and other double-width glyphs do not overflow the card and wrap.
 func truncate(s string, maxLen int) string {
 	if maxLen <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) <= maxLen {
+	if lipgloss.Width(s) <= maxLen {
 		return s
 	}
 	if maxLen <= 3 {
-		return string(runes[:maxLen])
+		return ansi.Truncate(s, maxLen, "")
 	}
-	return string(runes[:maxLen-3]) + "..."
+	return ansi.Truncate(s, maxLen, "...")
 }

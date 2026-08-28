@@ -61,11 +61,17 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	}
 
 	// Provenance written by an earlier rolodex run (review.vcf / merged.vcf).
-	// A single known source overrides the caller's label so the review TUI can
-	// tell which card is which. The field is also kept in Extra: merged
-	// provenance like "merged(icloud+google)" is read from there by resolve.
-	if src := provenanceSource(card); src != "" {
-		c.Source = src
+	// On read-back paths the caller only has a generic label ("review",
+	// "merged", unknown) and a single known source restores which card is
+	// which. On the ingest path the --icloud/--google flag is authoritative,
+	// so a stray X-ROLODEX-SOURCE in a re-exported file must not relabel the
+	// contact (that would also hide it from conflict reporting). The field is
+	// kept in Extra either way: merged provenance like "merged(icloud+google)"
+	// is read from there by resolve.
+	if source != model.SourceICloud && source != model.SourceGoogle {
+		if src := provenanceSource(card); src != "" {
+			c.Source = src
+		}
 	}
 
 	// Structured name (N field)
