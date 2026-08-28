@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fairbearlab/rolodex/internal/blocker"
 	"github.com/fairbearlab/rolodex/internal/merger"
@@ -123,6 +125,18 @@ func sameFile(a, b string) bool {
 	return os.SameFile(fa, fb)
 }
 
+// isRolodexReviewFile reports whether path holds a review.vcf written by
+// rolodex. Every card the merger routes to review carries X-ROLODEX-REVIEW,
+// so its presence separates our own stale artifact from a file that merely
+// shares the default name. An unreadable or empty file is not ours.
+func isRolodexReviewFile(path string) bool {
+	data, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	return bytes.Contains(data, []byte("X-ROLODEX-REVIEW:true"))
+}
+
 func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string, reviewDerived bool) error {
 	pr, err := runPipeline(icloudPath, googlePath)
 	if err != nil {
@@ -136,21 +150,24 @@ func merge(icloudPath, googlePath, outPath, reviewPath, reportPath string, revie
 		return fmt.Errorf("writing merged output: %w", err)
 	}
 
-	// Write review.vcf (always write to avoid stale files from prior runs)
+	// Write review.vcf, or remove a stale one from a previous run: report.json
+	// would say "review": [] while review.vcf still held the old contacts, and
+	// resolve then refused the pair as misaligned.
 	if len(result.Review) > 0 {
 		fmt.Printf("Writing %d review contacts → %s\n", len(result.Review), reviewPath)
 		if err := writer.WriteFile(reviewPath, result.Review); err != nil {
 			return fmt.Errorf("writing review output: %w", err)
 		}
-	} else if !reviewDerived && !sameFile(reviewPath, outPath) {
-		// Clear a stale review.vcf from a previous run, but only at a path the
-		// user named. --review defaults to a path derived from --out, and
-		// deleting that meant "merge --out ~/Documents/merged.vcf" removed
-		// ~/Documents/review.vcf — a file this run never created and the user
-		// never mentioned. The sameFile check is a second line of defence: on
-		// a case-insensitive filesystem "--out Merged.vcf --review merged.vcf"
-		// are one file, and removing it here deleted the merged output that
-		// had just been written.
+	} else if !sameFile(reviewPath, outPath) && (!reviewDerived || isRolodexReviewFile(reviewPath)) {
+		// A path the user named is theirs to clear. --review defaults to a
+		// path derived from --out, and deleting whatever sat there meant
+		// "merge --out ~/Documents/merged.vcf" removed ~/Documents/review.vcf
+		// — a file this run never created and the user never mentioned. So a
+		// derived path is only cleared when the file is one rolodex wrote.
+		// The sameFile check is a second line of defence behind
+		// checkDistinctPaths: on a case-insensitive filesystem "--out
+		// Merged.vcf --review merged.vcf" are one file, and removing it here
+		// deleted the merged output that had just been written.
 		_ = os.Remove(reviewPath)
 	}
 
