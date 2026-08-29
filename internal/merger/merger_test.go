@@ -192,3 +192,51 @@ func TestMergePrefersFullBirthdayOverYearless(t *testing.T) {
 		})
 	}
 }
+
+// A merged card keeps one UID, the priority (iCloud) card's, so a re-import
+// updates that record instead of creating a third contact carrying two UID
+// lines. Every other unmodeled field is still unioned.
+func TestMergeKeepsOneUID(t *testing.T) {
+	contacts := []model.NormalizedContact{
+		{Parsed: model.ParsedContact{Source: model.SourceICloud, GivenName: "Alice", FamilyName: "Smith",
+			Extra: map[string][]string{"UID": {"icloud-uid"}, "CATEGORIES": {"a"}}}},
+		{Parsed: model.ParsedContact{Source: model.SourceGoogle, GivenName: "Alice", FamilyName: "Smith",
+			Extra: map[string][]string{"UID": {"google-uid"}, "CATEGORIES": {"b"}}}},
+	}
+	pairs := []model.ScoredPair{{A: 0, B: 1, Score: 0.90, Tier: model.TierAutoMerge}}
+
+	merged := Merge(contacts, pairs).Merged[0]
+	if got := merged.Contact.Extra["UID"]; len(got) != 1 || got[0] != "icloud-uid" {
+		t.Errorf("UID = %v, want [icloud-uid]", got)
+	}
+	if got := merged.Contact.Extra["CATEGORIES"]; len(got) != 2 {
+		t.Errorf("CATEGORIES = %v, want both values unioned", got)
+	}
+
+	// A priority card without a UID adopts the other card's.
+	contacts[0].Parsed.Extra = map[string][]string{}
+	merged = Merge(contacts, pairs).Merged[0]
+	if got := merged.Contact.Extra["UID"]; len(got) != 1 || got[0] != "google-uid" {
+		t.Errorf("UID = %v, want [google-uid]", got)
+	}
+}
+
+// A photo given as a URI fills an empty photo slot like image bytes do.
+func TestMergeFillsPhotoURI(t *testing.T) {
+	contacts := []model.NormalizedContact{
+		{Parsed: model.ParsedContact{Source: model.SourceICloud, GivenName: "Alice", FamilyName: "Smith"}},
+		{Parsed: model.ParsedContact{Source: model.SourceGoogle, GivenName: "Alice", FamilyName: "Smith", PhotoURI: "https://example.com/a.jpg"}},
+	}
+	pairs := []model.ScoredPair{{A: 0, B: 1, Score: 0.90, Tier: model.TierAutoMerge}}
+	if got := Merge(contacts, pairs).Merged[0].Contact.PhotoURI; got != "https://example.com/a.jpg" {
+		t.Errorf("PhotoURI = %q, want Google's", got)
+	}
+	// Image bytes beat a reference, whichever card carries them.
+	contacts[0].Parsed.PhotoURI = "https://example.com/i.jpg"
+	contacts[1].Parsed.PhotoURI = ""
+	contacts[1].Parsed.Photo = []byte{0xff, 0xd8}
+	merged := Merge(contacts, pairs).Merged[0].Contact
+	if len(merged.Photo) != 2 || merged.PhotoURI != "" {
+		t.Errorf("Photo = %v PhotoURI = %q, want the bytes and no URI", merged.Photo, merged.PhotoURI)
+	}
+}

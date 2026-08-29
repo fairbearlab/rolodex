@@ -349,9 +349,17 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		if base.URL == "" && c.URL != "" {
 			base.URL = c.URL
 		}
-		if len(base.Photo) == 0 && len(c.Photo) > 0 {
-			base.Photo = c.Photo
-			base.PhotoType = c.PhotoType
+		// Image bytes beat a reference (a link can 404); a reference fills
+		// an empty slot.
+		if len(base.Photo) == 0 {
+			if len(c.Photo) > 0 {
+				base.Photo = c.Photo
+				base.PhotoURI = ""
+				base.PhotoType = c.PhotoType
+			} else if base.PhotoURI == "" && c.PhotoURI != "" {
+				base.PhotoURI = c.PhotoURI
+				base.PhotoType = c.PhotoType
+			}
 		}
 
 		// Union addresses by content (not type — two HOME addresses with different
@@ -369,6 +377,15 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 			base.Extra = make(map[string][]string)
 		}
 		for k, vals := range c.Extra {
+			// A card has one UID. The priority card's identity is the one
+			// the merged card keeps, so a re-import updates that record
+			// instead of creating a third contact with two UID lines.
+			if strings.EqualFold(k, "UID") {
+				if len(base.Extra[k]) == 0 && len(vals) > 0 {
+					base.Extra[k] = []string{vals[0]}
+				}
+				continue
+			}
 			existing := base.Extra[k]
 			seen := make(map[string]bool, len(existing))
 			for _, v := range existing {

@@ -51,6 +51,24 @@ func Parse(r io.Reader, source model.Source) ([]model.ParsedContact, []model.War
 			continue
 		}
 
+		// A card with no END:VCARD does not fail to decode: go-vcard keeps
+		// reading into it until the next END, so it swallows the following
+		// card whole (its BEGIN line lands in the card as a property) and
+		// comes back with a stranger's fields grafted on. That is corrupt
+		// data, not a contact, and it is the one malformation the decoder
+		// reports nothing about.
+		if absorbed := len(card["BEGIN"]); absorbed > 0 {
+			warnings = append(warnings, model.Warning{
+				Source:  source,
+				Index:   idx,
+				Message: fmt.Sprintf("malformed vCard entry: missing END:VCARD; this card and the %d card(s) it absorbed were skipped", absorbed),
+			})
+			// The absorbed cards were physical entries too; keep later
+			// indices pointing at the right card in the file.
+			idx += 1 + absorbed
+			continue
+		}
+
 		sanitizeCard(card)
 		c := cardToContact(card, source)
 		contacts = append(contacts, c)
@@ -259,23 +277,39 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		photo := photos[0]
 		c.PhotoType = photo.Params.Get("TYPE")
 		encoding := photo.Params.Get("ENCODING")
-		if strings.EqualFold(encoding, "b") || strings.EqualFold(encoding, "BASE64") {
+		value := strings.TrimSpace(photo.Value)
+		lower := strings.ToLower(value)
+		switch {
+		case strings.EqualFold(encoding, "b") || strings.EqualFold(encoding, "BASE64"):
 			decoded, err := base64.StdEncoding.DecodeString(photo.Value)
 			if err == nil {
 				c.Photo = decoded
 			}
-		} else if photo.Value != "" {
+		case strings.EqualFold(photo.Params.Get("VALUE"), "uri") ||
+			strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") ||
+			strings.HasPrefix(lower, "data:"):
+			// A reference, not image bytes. It used to be stored as the
+			// bytes of the URI string and written back base64-encoded under
+			// ENCODING=b: every Google photo became an unreadable blob. Kept
+			// in wire form: a URI is not escaped text, and the writer emits
+			// it verbatim.
+			c.PhotoURI = value
+		case value != "":
 			c.Photo = []byte(photo.Value)
 		}
 	}
 
 	// Collect extra fields we don't explicitly model. Values stay in wire
 	// form and the writer emits them verbatim, so an unmodeled property
-	// round-trips byte for byte whatever its escaping conventions.
+	// round-trips byte for byte whatever its escaping conventions. UID is
+	// among them on purpose: it is the identity a CardDAV account matches
+	// on re-import, and a card written without it comes back as a duplicate.
+	// PRODID and REV describe the file that was read, not the one rolodex
+	// writes, and are dropped.
 	modeled := map[string]bool{
 		"VERSION": true, "N": true, "FN": true, "EMAIL": true, "TEL": true,
 		"ORG": true, "TITLE": true, "BDAY": true, "ADR": true, "NOTE": true,
-		"URL": true, "PHOTO": true, "BEGIN": true, "END": true, "UID": true,
+		"URL": true, "PHOTO": true, "BEGIN": true, "END": true,
 		"PRODID": true, "REV": true,
 	}
 	for key, fields := range card {
@@ -363,4 +397,43 @@ func parseAddress(field *vcard.Field) model.Address {
 		return model.Address{}
 	}
 	return addr
+}
+
+// Provenance returns where a contact came from, as recorded by the writer in
+// X-ROLODEX-SOURCE ("icloud", "google", or "merged(icloud+google)") when the
+// card was read back from rolodex output, or the parser-assigned Source when
+// the field is absent or does not name sources rolodex writes. resolve and
+// prune use it to restore the sources the writer then stamps again.
+func Provenance(c model.ParsedContact) []model.Source {
+	if vals, ok := c.Extra["X-ROLODEX-SOURCE"]; ok && len(vals) > 0 {
+		if sources := parseProvenance(vals[0]); len(sources) > 0 {
+			return sources
+		}
+	}
+	return []model.Source{c.Source}
+}
+
+// parseProvenance reads "icloud", "google" or "merged(icloud+google)". The
+// field is untrusted input on a read-back path (prune reads any .vcf), so a
+// value rolodex never writes is not carried into the output as fact: the
+// result is nil and the caller falls back to the parser-assigned source.
+func parseProvenance(raw string) []model.Source {
+	raw = strings.TrimSpace(raw)
+	inner := raw
+	if strings.HasPrefix(raw, "merged(") && strings.HasSuffix(raw, ")") {
+		inner = raw[len("merged(") : len(raw)-1]
+	}
+	var sources []model.Source
+	seen := make(map[model.Source]bool, 2)
+	for _, part := range strings.Split(inner, "+") {
+		s := model.Source(strings.TrimSpace(part))
+		if s != model.SourceICloud && s != model.SourceGoogle {
+			return nil
+		}
+		if !seen[s] {
+			seen[s] = true
+			sources = append(sources, s)
+		}
+	}
+	return sources
 }

@@ -250,40 +250,6 @@ func TestRunMalformedReportJSON(t *testing.T) {
 	}
 }
 
-func TestExtractProvenanceMerged(t *testing.T) {
-	c := model.ParsedContact{
-		Extra: map[string][]string{"X-ROLODEX-SOURCE": {"merged(icloud+google)"}},
-	}
-	sources := extractProvenance(c)
-	if len(sources) != 2 {
-		t.Fatalf("want 2 sources, got %d: %v", len(sources), sources)
-	}
-	if sources[0] != model.SourceICloud {
-		t.Errorf("sources[0] = %q, want 'icloud'", sources[0])
-	}
-	if sources[1] != model.SourceGoogle {
-		t.Errorf("sources[1] = %q, want 'google'", sources[1])
-	}
-}
-
-func TestExtractProvenanceSingle(t *testing.T) {
-	c := model.ParsedContact{
-		Extra: map[string][]string{"X-ROLODEX-SOURCE": {"icloud"}},
-	}
-	sources := extractProvenance(c)
-	if len(sources) != 1 || sources[0] != model.SourceICloud {
-		t.Errorf("expected [icloud], got %v", sources)
-	}
-}
-
-func TestExtractProvenanceFallback(t *testing.T) {
-	c := model.ParsedContact{Source: model.SourceGoogle}
-	sources := extractProvenance(c)
-	if len(sources) != 1 || sources[0] != model.SourceGoogle {
-		t.Errorf("expected fallback to [google], got %v", sources)
-	}
-}
-
 func TestRunClusterIDMismatch(t *testing.T) {
 	tmpDir := t.TempDir()
 	reportPath := filepath.Join(tmpDir, "report.json")
@@ -336,5 +302,17 @@ func TestMergeReviewClusterPrefersFullBirthdayOverYearless(t *testing.T) {
 	got := mergeReviewCluster(contacts).Contact.Birthday
 	if got != "1989-10-22" {
 		t.Errorf("merged birthday = %q, want the full date 1989-10-22", got)
+	}
+}
+
+// A review cluster merged by hand keeps one UID, the iCloud card's, as the
+// automatic merger does.
+func TestMergeReviewClusterKeepsOneUID(t *testing.T) {
+	contacts := []model.ParsedContact{
+		{Source: model.SourceGoogle, FormattedName: "A", Extra: map[string][]string{"UID": {"google-uid"}}},
+		{Source: model.SourceICloud, FormattedName: "A", Extra: map[string][]string{"UID": {"icloud-uid"}}},
+	}
+	if got := mergeReviewCluster(contacts).Contact.Extra["UID"]; len(got) != 1 || got[0] != "icloud-uid" {
+		t.Errorf("UID = %v, want [icloud-uid]", got)
 	}
 }

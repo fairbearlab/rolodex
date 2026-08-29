@@ -31,7 +31,7 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 	// Build output: start with all merged contacts (with restored provenance)
 	var output []model.MergedContact
 	for _, c := range mergedContacts {
-		sources := extractProvenance(c)
+		sources := parser.Provenance(c)
 		output = append(output, model.MergedContact{
 			Contact: c,
 			Sources: sources,
@@ -77,7 +77,7 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 		default:
 			// "pending" or unknown: keep all contacts as-is (safe default)
 			for _, c := range clusterContacts {
-				sources := extractProvenance(c)
+				sources := parser.Provenance(c)
 				output = append(output, model.MergedContact{
 					Contact: c,
 					Sources: sources,
@@ -110,34 +110,13 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 	return nil
 }
 
-// extractProvenance reads the X-ROLODEX-SOURCE extra field to restore real
-// source provenance that was written by the writer. Falls back to the
-// parser-assigned Source if the field is missing.
-func extractProvenance(c model.ParsedContact) []model.Source {
-	if vals, ok := c.Extra["X-ROLODEX-SOURCE"]; ok && len(vals) > 0 {
-		raw := vals[0]
-		// Format is either "icloud", "google", or "merged(icloud+google)"
-		if strings.HasPrefix(raw, "merged(") && strings.HasSuffix(raw, ")") {
-			inner := raw[len("merged(") : len(raw)-1]
-			parts := strings.Split(inner, "+")
-			sources := make([]model.Source, len(parts))
-			for i, p := range parts {
-				sources[i] = model.Source(strings.TrimSpace(p))
-			}
-			return sources
-		}
-		return []model.Source{model.Source(raw)}
-	}
-	return []model.Source{c.Source}
-}
-
 // mergeReviewCluster merges a slice of review contacts into one contact
 // using iCloud-priority for single-value fields and union for multi-value fields.
 func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 	if len(contacts) == 1 {
 		return model.MergedContact{
 			Contact: contacts[0],
-			Sources: extractProvenance(contacts[0]),
+			Sources: parser.Provenance(contacts[0]),
 		}
 	}
 
@@ -148,7 +127,7 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		if found {
 			break
 		}
-		sources := extractProvenance(c)
+		sources := parser.Provenance(c)
 		for _, s := range sources {
 			if s == model.SourceICloud {
 				baseIdx = i
@@ -163,7 +142,7 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 	var allSources []model.Source
 	sourceSet := make(map[model.Source]bool)
 	for _, c := range contacts {
-		for _, s := range extractProvenance(c) {
+		for _, s := range parser.Provenance(c) {
 			if !sourceSet[s] {
 				sourceSet[s] = true
 				allSources = append(allSources, s)
@@ -234,9 +213,16 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		if base.URL == "" && c.URL != "" {
 			base.URL = c.URL
 		}
-		if len(base.Photo) == 0 && len(c.Photo) > 0 {
-			base.Photo = c.Photo
-			base.PhotoType = c.PhotoType
+		// Image bytes beat a reference; a reference fills an empty slot.
+		if len(base.Photo) == 0 {
+			if len(c.Photo) > 0 {
+				base.Photo = c.Photo
+				base.PhotoURI = ""
+				base.PhotoType = c.PhotoType
+			} else if base.PhotoURI == "" && c.PhotoURI != "" {
+				base.PhotoURI = c.PhotoURI
+				base.PhotoType = c.PhotoType
+			}
 		}
 
 		// Union addresses by content
@@ -253,6 +239,13 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 			base.Extra = make(map[string][]string)
 		}
 		for k, vals := range c.Extra {
+			// A card has one UID; the priority card's is kept (see merger).
+			if strings.EqualFold(k, "UID") {
+				if len(base.Extra[k]) == 0 && len(vals) > 0 {
+					base.Extra[k] = []string{vals[0]}
+				}
+				continue
+			}
 			existing := base.Extra[k]
 			seen := make(map[string]bool, len(existing))
 			for _, v := range existing {
