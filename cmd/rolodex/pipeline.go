@@ -33,7 +33,7 @@ type PipelineResult struct {
 // every output, but the "N contacts loaded" line is counted AFTER the loss, so
 // nothing on screen revealed it — a truncated export (an interrupted download,
 // a full disk) silently shrank the address book and the command exited 0.
-// audit already surfaces these; the merge pipeline did not.
+// prune surfaces these too; the merge pipeline did not.
 func reportParseWarnings(path string, warnings []model.Warning) {
 	if len(warnings) == 0 {
 		return

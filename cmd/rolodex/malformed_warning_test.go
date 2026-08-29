@@ -34,7 +34,7 @@ func captureStderr(t *testing.T, fn func()) string {
 // download, a full disk) used to shrink the address book silently. The
 // decoder skipped the broken card, the "N contacts loaded" line was counted
 // after the loss, and the command exited 0. The pipeline must name the
-// skipped entries on stderr, as audit already did.
+// skipped entries on stderr, as prune does.
 func TestRunMergeReportsMalformedEntries(t *testing.T) {
 	dir := t.TempDir()
 	icloud := filepath.Join(dir, "icloud.vcf")

@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/fairbearlab/rolodex/internal/audit"
 	"github.com/fairbearlab/rolodex/internal/model"
 	"github.com/fairbearlab/rolodex/internal/parser"
+	"github.com/fairbearlab/rolodex/internal/prune"
 )
 
 func TestFullPipeline(t *testing.T) {
@@ -281,33 +284,33 @@ END:VCARD
 	}
 }
 
-// --- audit integration tests ---
+// --- prune integration tests ---
 
-func TestAuditOnTestdata(t *testing.T) {
+func TestPruneOnTestdata(t *testing.T) {
 	contacts, _, err := parser.ParseFile("../../testdata/icloud.vcf", model.SourceICloud)
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
 
-	result := audit.Audit(contacts, audit.AuditOptions{})
+	result := prune.Split(contacts, prune.Options{ReachableBy: prune.DefaultChannels})
 	if result.Total != 5 {
 		t.Errorf("total = %d, want 5", result.Total)
 	}
 	// Charlie Williams has only email (reachable)
 	// All iCloud contacts have at least email or phone
-	if result.UnreachableCount != 0 {
-		t.Errorf("expected 0 unreachable in icloud testdata, got %d", result.UnreachableCount)
+	if len(result.Removed) != 0 {
+		t.Errorf("expected 0 unreachable in icloud testdata, got %d", len(result.Removed))
 	}
 }
 
-func TestAuditMissingFile(t *testing.T) {
-	err := runAuditCmd("/nonexistent/file.vcf", "text", false)
+func TestPruneMissingFile(t *testing.T) {
+	err := runPrune([]string{"/nonexistent/file.vcf"}, &bytes.Buffer{})
 	if err == nil {
 		t.Error("expected error for missing file")
 	}
 }
 
-func TestAuditInvalidFormat(t *testing.T) {
+func TestPruneInvalidFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	vcf := filepath.Join(tmpDir, "test.vcf")
 	if err := os.WriteFile(vcf, []byte(`BEGIN:VCARD
@@ -319,13 +322,13 @@ END:VCARD
 		t.Fatalf("failed to write test VCF: %v", err)
 	}
 
-	err := runAuditCmd(vcf, "csv", false)
+	err := runPrune([]string{vcf, "--format", "csv"}, &bytes.Buffer{})
 	if err == nil {
 		t.Error("expected error for invalid format")
 	}
 }
 
-func TestAuditFlagsAfterPath(t *testing.T) {
+func TestPruneFlagsAfterPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	vcf := filepath.Join(tmpDir, "test.vcf")
 	if err := os.WriteFile(vcf, []byte(`BEGIN:VCARD
@@ -339,21 +342,56 @@ END:VCARD
 	}
 
 	// Flags after the file path should still be parsed
-	err := runAuditCmdFlags([]string{vcf, "--format", "json"})
+	var stdout bytes.Buffer
+	err := runPrune([]string{vcf, "--format", "json"}, &stdout)
 	if err != nil {
-		t.Fatalf("audit with flags after path failed: %v", err)
+		t.Fatalf("prune with flags after path failed: %v", err)
+	}
+	if !strings.HasPrefix(stdout.String(), "{") {
+		t.Errorf("--format json after the path was ignored:\n%s", stdout.String())
 	}
 
 	// --format=value syntax should also work
-	err = runAuditCmdFlags([]string{vcf, "--format=json"})
+	err = runPrune([]string{vcf, "--format=json"}, &bytes.Buffer{})
 	if err != nil {
-		t.Fatalf("audit with --format=json after path failed: %v", err)
+		t.Fatalf("prune with --format=json after path failed: %v", err)
+	}
+
+	// --out after the path must not be mistaken for a dry run
+	kept := filepath.Join(tmpDir, "kept.vcf")
+	if err := runPrune([]string{vcf, "--out", kept}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("prune with --out after path failed: %v", err)
+	}
+	if _, err := os.Stat(kept); err != nil {
+		t.Errorf("--out after the path was ignored: %v", err)
 	}
 
 	// Extra positional args should be rejected
-	err = runAuditCmdFlags([]string{vcf, "extra.vcf"})
+	err = runPrune([]string{vcf, "extra.vcf"}, &bytes.Buffer{})
 	if err == nil {
 		t.Error("expected error for extra positional args")
+	}
+}
+
+// audit is gone; the message says where it went.
+func TestAuditCommandRemoved(t *testing.T) {
+	err := dispatch("audit", []string{"x.vcf"})
+	if err == nil {
+		t.Fatal("audit should fail")
+	}
+	want := `audit was replaced by "rolodex prune"; run it without --out for a report`
+	if err.Error() != want {
+		t.Errorf("error = %q, want %q", err.Error(), want)
+	}
+	usage := captureStderr(t, printUsage)
+	if !strings.Contains(usage, "prune    Split a .vcf into reachable and unreachable contacts") {
+		t.Errorf("usage does not list prune:\n%s", usage)
+	}
+	if strings.Contains(usage, "audit") {
+		t.Errorf("usage still lists audit:\n%s", usage)
+	}
+	if err := dispatch("no-such-command", nil); !errors.Is(err, errUnknownCommand) {
+		t.Errorf("unknown command error = %v", err)
 	}
 }
 
