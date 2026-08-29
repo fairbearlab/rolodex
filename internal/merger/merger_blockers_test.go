@@ -296,3 +296,60 @@ func TestMergeRecordsOddNamesakeAsDeferred(t *testing.T) {
 		t.Errorf("deferred sides = %v, want the contact left out of cluster %v on its own side", result.Deferred[0].Sides, result.Clusters[0].Indices)
 	}
 }
+
+// Deferred edges are what a reviewer reads to decide whether a namesake is
+// worth a look, so the highest-scoring pair has to come first, and two edges
+// that collapse onto the same (cluster, cluster) pair must keep the stronger
+// score whatever order they arrive in. Five namesakes, hand-scored: 0-1 and
+// 2-3 pair up; 4 is left over; the three cross edges are all deferred.
+func TestMergeDeferredEdgesOrderedByScore(t *testing.T) {
+	contacts := []model.NormalizedContact{
+		namesake(model.SourceICloud, "David", "Lee", 0),
+		namesake(model.SourceGoogle, "David", "Lee", 1),
+		namesake(model.SourceICloud, "David", "Lee", 2),
+		namesake(model.SourceGoogle, "David", "Lee", 3),
+		namesake(model.SourceGoogle, "David", "Lee", 4),
+	}
+	near := func(a, b int, score float64) model.ScoredPair {
+		return model.ScoredPair{A: a, B: b, Score: score, Tier: model.TierReview,
+			Features: model.ScoreFeatures{NameSimilarity: 1}}
+	}
+	// Deliberately not in score order.
+	pairs := []model.ScoredPair{
+		near(1, 4, 0.40), near(0, 2, 0.45), near(2, 3, 0.48), near(3, 4, 0.42), near(0, 1, 0.50),
+	}
+	result := Merge(contacts, pairs)
+	if len(result.Clusters) != 2 {
+		t.Fatalf("clusters = %+v, want the two applied pairs", result.Clusters)
+	}
+
+	var got []string
+	for _, d := range result.Deferred {
+		got = append(got, fmt.Sprintf("%.2f %v|%v", d.Score, d.Sides[0], d.Sides[1]))
+	}
+	want := []string{"0.45 [0 1]|[2 3]", "0.42 [2 3]|[4]", "0.40 [0 1]|[4]"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("deferred = %v, want %v (highest score first)", got, want)
+	}
+}
+
+// deferredEdges must not depend on its caller having sorted the edges: when
+// two edges land on one (cluster, cluster) key, the higher score is kept
+// whichever is seen first.
+func TestDeferredEdgesKeepHigherScoreInAnyOrder(t *testing.T) {
+	uf := newUnionFind(4)
+	uf.union(0, 1)
+	uf.union(2, 3)
+	groups := uf.clusters()
+	lower := model.ScoredPair{A: 1, B: 3, Score: 0.38, Tier: model.TierReview}
+	higher := model.ScoredPair{A: 0, B: 2, Score: 0.45, Tier: model.TierReview}
+	for name, edges := range map[string][]model.ScoredPair{
+		"higher first": {higher, lower},
+		"lower first":  {lower, higher},
+	} {
+		d := deferredEdges(edges, uf, groups)
+		if len(d) != 1 || d[0].Score != 0.45 {
+			t.Errorf("%s: deferred = %+v, want one entry at 0.45", name, d)
+		}
+	}
+}

@@ -21,6 +21,8 @@ func TestWriteEscapesValuesForReaders(t *testing.T) {
 			FamilyName: "O;Brien", GivenName: "Sean", FormattedName: "Sean O;Brien",
 			Addresses: []model.Address{{Type: "HOME", Street: "1 Main; Apt 2", City: "Town"}},
 			Note:      "x;y, z\nnext",
+			Title:     "VP, Sales; EMEA",
+			URL:       `https://x.test/a;b\c`,
 			Org:       `Acme\; Inc.;R\\D`,
 			Extra:     map[string][]string{"X-CUSTOM": {`a\;b\,c\\d`}},
 		}, Sources: []model.Source{model.SourceICloud}},
@@ -40,6 +42,8 @@ func TestWriteEscapesValuesForReaders(t *testing.T) {
 		`FN:Sean O\;Brien`,
 		`ADR;TYPE=HOME:;;1 Main\; Apt 2;Town;;;`,
 		`NOTE:x\;y\, z\nnext`,
+		`TITLE:VP\, Sales\; EMEA`,
+		`URL:https://x.test/a\;b\\c`,
 		`ORG:Acme\; Inc.;R\\D`,
 		`X-CUSTOM:a\;b\,c\\d`,
 		`N:Smith\\;John;;;`,
@@ -58,7 +62,7 @@ func TestWriteEscapesValuesForReaders(t *testing.T) {
 	for i, c := range contacts {
 		got, want := again[i], c.Contact
 		if got.FamilyName != want.FamilyName || got.GivenName != want.GivenName || got.FormattedName != want.FormattedName ||
-			got.Note != want.Note || got.Org != want.Org {
+			got.Note != want.Note || got.Org != want.Org || got.Title != want.Title || got.URL != want.URL {
 			t.Errorf("contact %d changed in the round trip:\n got %+v\nwant %+v", i, got, want)
 		}
 		if len(want.Addresses) > 0 && (len(got.Addresses) != 1 || got.Addresses[0] != want.Addresses[0]) {

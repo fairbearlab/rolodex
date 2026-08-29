@@ -307,6 +307,29 @@ func TestUnescape(t *testing.T) {
 	}
 }
 
+// Escape is the inverse of Unescape: every value the writer emits goes
+// through it, so a decoded ';' or '\\' must come back out as the RFC 6350
+// escape and survive a round trip.
+func TestEscape(t *testing.T) {
+	cases := map[string]string{
+		"no escapes":   `no escapes`,
+		"a;b":          `a\;b`,
+		`a\b`:          `a\\b`,
+		"line\nbreak":  `line\nbreak`,
+		"a,b":          `a\,b`,
+		`C:\;temp`:     `C:\\\;temp`,
+		"VP, Sales; E": `VP\, Sales\; E`,
+	}
+	for in, want := range cases {
+		if got := Escape(in); got != want {
+			t.Errorf("Escape(%q) = %q, want %q", in, got, want)
+		}
+		if back := Unescape(Escape(in)); back != in {
+			t.Errorf("Unescape(Escape(%q)) = %q, want the input back", in, back)
+		}
+	}
+}
+
 // The ISO tail is a time, not "anything at all". The optional group matched
 // arbitrary trailing text, so "1989-10-22 or 23" yielded a date the caller
 // then trusted as confirming evidence.
