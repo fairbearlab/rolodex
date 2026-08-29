@@ -3,13 +3,13 @@ package reporter
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/fairbearlab/rolodex/internal/merger"
 	"github.com/fairbearlab/rolodex/internal/model"
 	"github.com/fairbearlab/rolodex/internal/normalize"
+	"github.com/fairbearlab/rolodex/internal/writer"
 )
 
 // Generate creates a JSON report from the merge result.
@@ -201,15 +201,8 @@ func WriteFile(path string, report model.Report) error {
 	if err != nil {
 		return fmt.Errorf("marshaling report: %w", err)
 	}
-	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+	if err := writer.WriteBytes(path, data); err != nil {
 		return fmt.Errorf("writing report: %w", err)
-	}
-	// Remove existing file first — os.Rename doesn't overwrite on Windows
-	_ = os.Remove(path)
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("renaming report: %w", err)
 	}
 	return nil
 }

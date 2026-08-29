@@ -6,6 +6,7 @@ dist/
 # Test output
 *.vcf.tmp
 report.json.tmp
+.*.tmp
 coverage.out
 
 # Local runs against real exports in the repo root (contact data)

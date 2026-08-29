@@ -3,7 +3,6 @@ package review
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/fairbearlab/rolodex/internal/calibration"
 	"github.com/fairbearlab/rolodex/internal/resolve"
+	"github.com/fairbearlab/rolodex/internal/writer"
 )
 
 // Run launches the interactive review TUI. It returns true if all clusters
@@ -94,14 +94,8 @@ func writeReport(path string, report any) error {
 	if err != nil {
 		return fmt.Errorf("marshaling report: %w", err)
 	}
-	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+	if err := writer.WriteBytes(path, data); err != nil {
 		return fmt.Errorf("writing report: %w", err)
-	}
-	_ = os.Remove(path) // pre-remove for Windows compatibility
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("renaming report: %w", err)
 	}
 	return nil
 }
