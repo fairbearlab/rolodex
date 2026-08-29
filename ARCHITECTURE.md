@@ -9,7 +9,7 @@ cmd/rolodex/
   main.go              CLI entry point, command routing
   pipeline.go          Core merge pipeline (runPipeline), shared by merge and run
   run.go               Unified workflow: merge → review → resolve in one command
-  audit.go             Contact quality audit (find unreachable contacts)
+  prune.go             Split a .vcf into reachable and unreachable contacts
 internal/
   model/               Shared data types (ParsedContact, ScoredPair, Report, etc.)
   parser/              vCard 3.0 parsing
@@ -22,13 +22,13 @@ internal/
   review/              Interactive TUI for uncertain matches
   resolve/             Apply review decisions, write final output
   calibration/         Decision logging and threshold analysis
-  audit/               Contact quality checks (reachability)
+  prune/               Reachability rules and the kept/removed split
 testdata/              Test fixtures (icloud.vcf, google.vcf)
 ```
 
 ## Data flow
 
-The tool has six commands (`run`, `merge`, `review`, `resolve`, `audit`, `version`). The `run` command is the recommended workflow, wrapping merge/review/resolve into a single invocation:
+The tool has six commands (`run`, `merge`, `review`, `resolve`, `prune`, `version`). The `run` command is the recommended workflow, wrapping merge/review/resolve into a single invocation:
 
 ```text
                           run command (unified)
@@ -38,10 +38,11 @@ The tool has six commands (`run`, `merge`, `review`, `resolve`, `audit`, `versio
                 ├─→ runPipeline() ─→ temp dir ─→ TUI (if review pairs) ─→ resolve ─→ final.vcf
   google.vcf ──┘                                                          └─→ calibration.jsonl
 
-                          audit command
+                          prune command
                           =============
 
-  any .vcf ──→ Parse ──→ Check reachability ──→ text/json report
+  any .vcf ──→ Parse ──→ Split by reachability ─┬─→ text/json report (dry run)
+                                                 └─→ kept.vcf + removed.vcf (--out)
 
 
                      individual commands (merge → review → resolve)
@@ -63,7 +64,7 @@ The tool has six commands (`run`, `merge`, `review`, `resolve`, `audit`, `versio
 
 **`run` command:** Manages a temp directory for intermediates, calls `runPipeline()` for the core merge logic, launches the TUI if there are review-tier pairs, then resolves automatically. Calibration data is saved alongside the output. The `--keep` flag preserves intermediates.
 
-**`audit` command:** Works on any VCF file independently. Flags contacts with no email and no phone as unreachable.
+**`prune` command:** Works on any VCF file independently. Splits it into contacts that can be reached (a plausible email or phone, or a deliverable address — street, PO box or postcode — by default; URL opt-in) and the rest. Without `--out` it is a dry run that prints the report; with `--out` it writes the kept set there and the unreachable set to `removed.vcf` beside it, never deleting anything.
 
 **Individual commands:** `merge`, `review`, and `resolve` are still available for users who want granular control. Both `merge` and `run` call the shared `runPipeline()` function.
 
@@ -89,7 +90,7 @@ ParsedContact → NormalizedContact → ScoredPair → MergedContact
 
 ### parser
 
-Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR`, the Apple placeholder year `1604`, and hand-typed slash, dotted and month-name forms are all recognized; anything else passes through untouched and the scorer treats it as unreadable). Values are decoded by the parser itself (go-vcard's decoder resolves `\\` but not `\;`, so it is handed a form in which its unescaping is a no-op): `N` and `ADR` split on unescaped separators only, so `N:O\;Brien;Sean;;;` is family `O;Brien`. `ORG` alone is kept in wire form (escapes intact; `normalize.DisplayComponents` reads it) because it is one string in the model, and unmodeled fields pass through as wire form. The writer formats lines itself and escapes every decoded value on the way out. A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, audit); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Every decoded field value and parameter is stripped of C0/C1 control characters, DEL, and bidi/invisible characters (RTL/LTR overrides, zero-width space, BOM) — a .vcf is untrusted input, and these could otherwise repaint the review terminal or forge a line in the written output; TAB, LF, and the zero-width joiners used in Indic/Persian names and emoji are kept. Unmodeled vCard properties are stored in `Extra` for round-tripping (control/bidi stripping above still applies; parameters on unmodeled fields are not preserved). Malformed entries produce warnings instead of aborting the parse.
+Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos (a `PHOTO` given as a URI is kept as one, `PhotoURI`, not read as image bytes). `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR`, the Apple placeholder year `1604`, and hand-typed slash, dotted and month-name forms are all recognized; anything else passes through untouched and the scorer treats it as unreadable). Values are decoded by the parser itself (go-vcard's decoder resolves `\\` but not `\;`, so it is handed a form in which its unescaping is a no-op): `N` and `ADR` split on unescaped separators only, so `N:O\;Brien;Sean;;;` is family `O;Brien`. `ORG` alone is kept in wire form (escapes intact; `normalize.DisplayComponents` reads it) because it is one string in the model, and unmodeled fields pass through as wire form. The writer formats lines itself and escapes every decoded value on the way out. A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, prune); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Every decoded field value and parameter is stripped of C0/C1 control characters, DEL, and bidi/invisible characters (RTL/LTR overrides, zero-width space, BOM) — a .vcf is untrusted input, and these could otherwise repaint the review terminal or forge a line in the written output; TAB, LF, and the zero-width joiners used in Indic/Persian names and emoji are kept. Unmodeled vCard properties are stored in `Extra` for round-tripping (control/bidi stripping above still applies; parameters on unmodeled fields are not preserved); `UID` is deliberately unmodeled so it passes through, while `PRODID` and `REV` are dropped because they describe the file that was read. Malformed entries produce warnings instead of aborting the parse. A card with no `END:VCARD` is one such entry: go-vcard would decode it as a single card with the following card's fields grafted on and report nothing, so the parser skips it with a warning naming how many cards it absorbed.
 
 ### normalize
 
@@ -123,7 +124,7 @@ Merge logic for auto-merge clusters uses **iCloud priority**: single-value field
 
 ### writer
 
-Encodes `MergedContact` slices as vCard 3.0 using `emersion/go-vcard`. Adds provenance extension fields: `X-ROLODEX-SOURCE`, `X-ROLODEX-SCORE`, `X-ROLODEX-REVIEW`. File writes are atomic (write to temp file, fsync, rename) to prevent corrupt output on crash.
+Encodes `MergedContact` slices as vCard 3.0 using `emersion/go-vcard`. Adds provenance extension fields: `X-ROLODEX-SOURCE`, `X-ROLODEX-SCORE`, `X-ROLODEX-REVIEW`. File writes are staged: `Stage` writes to an exclusively created, randomly named dot-file beside the destination and fsyncs it, `Commit` renames it into place, `Abort` discards it — so a crash never leaves a partial output, a symlink planted at a predictable staging path is never written through, and a command that writes several files (`prune`) commits all of them or none. A destination that is a directory is refused. `X-ROLODEX-SOURCE` is stamped only for `icloud`/`google` provenance (the read-back labels `merged`/`review` and `unknown` are not provenance), and a stale copy read back in `Extra` is dropped rather than doubled.
 
 ### reporter
 
@@ -146,9 +147,9 @@ Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if
 
 Logs every review decision to a JSONL file with cluster ID, score, per-feature scores, view mode, decision, and response time. At the end of a review session, analyzes the log to suggest threshold adjustments — e.g., if the user merged everything above 0.78, suggests lowering the auto-merge threshold to 0.78 so those pairs skip review next time. These are printed suggestions only; the thresholds (`model.ThresholdAutoMerge`, `model.ThresholdReview`) are constants with no flag to apply a suggestion automatically.
 
-### audit
+### prune
 
-Checks contact quality by scanning for unreachable contacts (no email and no phone). Takes `[]model.ParsedContact` and returns `AuditResult` with a list of `UnreachableContact` entries, each annotated with what the contact does have (org, title, address). Used by the `audit` CLI command.
+Splits `[]model.ParsedContact` into reachable and unreachable sets under one definition (`Reachable`): any enabled channel present, where email and phone go through the same plausibility gates the scorer uses and an address counts when it has a street, PO box, extended line or postcode. `Split` returns both sets in input order plus a `Removed` record per unreachable contact (index, name, and which of email, phone, org, title, address, URL, birthday, note, photo it has — an email or phone listed here is one that did not count) for the report. `ParseChannels` reads `--reachable-by`. Used by the `prune` CLI command, which restores each card's provenance with `parser.Provenance` so the writer stamps it once.
 
 ## Key design decisions
 
