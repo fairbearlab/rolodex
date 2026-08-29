@@ -1,6 +1,7 @@
 package review
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -8,8 +9,18 @@ import (
 	"github.com/fairbearlab/rolodex/internal/model"
 )
 
-// CompactThreshold is the score above which compact mode is used.
-const CompactThreshold = 0.78
+// CompactThreshold is the score at or above which the compact card is used.
+//
+// Pairs whose linear score reaches the review threshold carry a shared
+// identifier (phone or email) alongside a near-match name, so a one-glance
+// card is enough — provided the card shows that identifier: it puts the
+// matched email or phone on both sides (marked ✓, with a count of values
+// not shown), the birthdays, and a one-line score breakdown. Pairs below
+// the threshold were surfaced by the near-name rule with no confirming
+// identifier and need the full field-by-field view. Pairs
+// held in review by a birthday conflict always get the detailed view,
+// whatever their score: the compact card has no birthday row.
+const CompactThreshold = model.ThresholdReview
 
 // ViewMode controls which layout to render.
 type ViewMode int
@@ -67,16 +78,46 @@ type ReviewModel struct {
 // BuildClusters constructs ReviewClusters from a report and review contacts.
 // Clusters are sorted by score desc, then cluster_id asc (deterministic tie-breaker).
 // Review contacts in the slice correspond sequentially to report.Review clusters.
-func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []ReviewCluster {
+//
+// The two files must agree exactly. If review.vcf is short, the position
+// of every later cluster is wrong and the reviewer would decide on the
+// wrong people; if it is long, the report is stale. Either is fatal here,
+// as it already is in resolve.
+func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) ([]ReviewCluster, error) {
 	var clusters []ReviewCluster
 	contactIdx := 0
 
 	for _, rd := range report.Review {
 		clusterSize := len(rd.Contacts)
-		var contacts []model.ParsedContact
-		if contactIdx+clusterSize <= len(reviewContacts) {
-			contacts = reviewContacts[contactIdx : contactIdx+clusterSize]
-			contactIdx += clusterSize
+		if clusterSize == 0 {
+			return nil, fmt.Errorf("review cluster %s has zero contacts — report.json may be corrupt", rd.ClusterID)
+		}
+		if contactIdx+clusterSize > len(reviewContacts) {
+			return nil, fmt.Errorf("report references more review contacts than exist in review.vcf (cluster %s needs %d, %d left)",
+				rd.ClusterID, clusterSize, len(reviewContacts)-contactIdx)
+		}
+		contacts := append([]model.ParsedContact(nil), reviewContacts[contactIdx:contactIdx+clusterSize]...)
+		contactIdx += clusterSize
+
+		// Length alone does not prove alignment: a reordered or stale
+		// review.vcf with the same contact count passes the check above and
+		// then hands every cluster somebody else's people. The decision would
+		// be recorded against the wrong cluster id. resolve already refuses
+		// this; the TUI must refuse it before a keystroke is taken.
+		for _, c := range contacts {
+			if ids, ok := c.Extra["X-ROLODEX-CLUSTER"]; ok && len(ids) > 0 && ids[0] != rd.ClusterID {
+				return nil, fmt.Errorf("cluster ID mismatch: review.vcf contact has cluster %s but report expects %s (review.vcf may have been reordered)",
+					ids[0], rd.ClusterID)
+			}
+		}
+
+		// The parser restores Source from X-ROLODEX-SOURCE in review.vcf. If
+		// that is missing (older files, hand-edited input) fall back to the
+		// provenance the report recorded for the same position.
+		for i := range contacts {
+			if !isKnownSource(contacts[i].Source) && i < len(rd.Contacts) && isKnownSource(rd.Contacts[i].Source) {
+				contacts[i].Source = rd.Contacts[i].Source
+			}
 		}
 
 		clusters = append(clusters, ReviewCluster{
@@ -88,6 +129,11 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []
 		})
 	}
 
+	if contactIdx < len(reviewContacts) {
+		return nil, fmt.Errorf("review.vcf has %d contacts but report only references %d — report.json is stale",
+			len(reviewContacts), contactIdx)
+	}
+
 	// Sort: score desc, then cluster_id asc for stability
 	sort.SliceStable(clusters, func(i, j int) bool {
 		if clusters[i].Decision.Score != clusters[j].Decision.Score {
@@ -96,7 +142,11 @@ func BuildClusters(report model.Report, reviewContacts []model.ParsedContact) []
 		return clusters[i].ClusterID < clusters[j].ClusterID
 	})
 
-	return clusters
+	return clusters, nil
+}
+
+func isKnownSource(s model.Source) bool {
+	return s == model.SourceICloud || s == model.SourceGoogle
 }
 
 // CurrentCluster returns the cluster currently being reviewed, or nil if done.
@@ -134,6 +184,12 @@ func (m *ReviewModel) ActiveViewMode() ViewMode {
 	}
 	// Multi-contact clusters always use detailed view
 	if len(c.Contacts) > 2 {
+		return ViewDetailed
+	}
+	// A birthday conflict is the reason the pair is here, and an unreadable
+	// birthday is what kept it out of auto_merge; only the detailed view
+	// shows the birthdays.
+	if c.Features.BirthdayConflict || c.Features.BirthdayUnknown {
 		return ViewDetailed
 	}
 	if c.Decision.Score >= CompactThreshold {

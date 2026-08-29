@@ -18,34 +18,34 @@ import (
 var ErrReviewPaused = errors.New("review paused with pending decisions")
 
 func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) error {
-	// Reject overlapping output paths to avoid silent overwrites.
-	absOut, _ := filepath.Abs(outPath)
-	absCalibration, _ := filepath.Abs(filepath.Join(filepath.Dir(outPath), "calibration.jsonl"))
-
-	// When --keep is enabled, merged.vcf and review.vcf in the output
-	// directory are also reserved (they get copied from the temp workspace).
-	absMergedKeep, _ := filepath.Abs(filepath.Join(filepath.Dir(outPath), "merged.vcf"))
-	absReviewKeep, _ := filepath.Abs(filepath.Join(filepath.Dir(outPath), "review.vcf"))
-
-	if reportSavePath != "" {
-		absReport, _ := filepath.Abs(reportSavePath)
-		if absOut == absReport {
-			return fmt.Errorf("--report and --out cannot point to the same file (%s)", outPath)
+	// Refuse to write on top of an input or to aim two writes at one file.
+	// The pipeline reads both exports before it writes anything, so without
+	// this "--out icloud.vcf" quietly replaced the iCloud export with the
+	// resolved output. calibration.jsonl is appended beside --out, and --keep
+	// copies merged.vcf and review.vcf there too. --out may itself be the
+	// --keep merged.vcf: that copy is skipped below, so it is not a collision.
+	outDir := filepath.Dir(outPath)
+	inputs := []pathFlag{{"--icloud", icloudPath}, {"--google", googlePath}}
+	outputs := []pathFlag{
+		{"--out", outPath},
+		{"--report", reportSavePath},
+		{"calibration.jsonl beside --out", filepath.Join(outDir, "calibration.jsonl")},
+	}
+	if keep {
+		outKey, err := pathKey(outPath)
+		if err != nil {
+			return fmt.Errorf("resolving --out path %q: %w", outPath, err)
 		}
-		if absReport == absCalibration {
-			return fmt.Errorf("--report cannot point to %s (reserved for calibration data)", reportSavePath)
-		}
-		if keep {
-			if absReport == absMergedKeep {
-				return fmt.Errorf("--report cannot point to %s (reserved by --keep for merged contacts)", reportSavePath)
+		for _, name := range []string{"merged.vcf", "review.vcf"} {
+			kept := filepath.Join(outDir, name)
+			if k, err := pathKey(kept); err == nil && k == outKey {
+				continue
 			}
-			if absReport == absReviewKeep {
-				return fmt.Errorf("--report cannot point to %s (reserved by --keep for review contacts)", reportSavePath)
-			}
+			outputs = append(outputs, pathFlag{"--keep " + name, kept})
 		}
 	}
-	if absOut == absCalibration {
-		return fmt.Errorf("--out cannot point to %s (reserved for calibration data)", outPath)
+	if err := checkDistinctPaths(inputs, outputs); err != nil {
+		return err
 	}
 
 	// Validate output paths before running the pipeline

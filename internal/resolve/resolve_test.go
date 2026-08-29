@@ -322,3 +322,19 @@ func TestRunClusterIDMismatch(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+// TestMergeReviewClusterPrefersFullBirthdayOverYearless mirrors the merger's
+// rule for clusters merged by a reviewer's decision: iCloud's yearless
+// `--10-22` must not win over Google's `1989-10-22`.
+func TestMergeReviewClusterPrefersFullBirthdayOverYearless(t *testing.T) {
+	contacts := []model.ParsedContact{
+		{Source: model.SourceICloud, GivenName: "Jane", FamilyName: "Doe", Birthday: "--10-22",
+			Extra: map[string][]string{"X-ROLODEX-SOURCE": {"icloud"}}},
+		{Source: model.SourceGoogle, GivenName: "Jane", FamilyName: "Doe", Birthday: "1989-10-22",
+			Extra: map[string][]string{"X-ROLODEX-SOURCE": {"google"}}},
+	}
+	got := mergeReviewCluster(contacts).Contact.Birthday
+	if got != "1989-10-22" {
+		t.Errorf("merged birthday = %q, want the full date 1989-10-22", got)
+	}
+}

@@ -28,7 +28,10 @@ func Run(reportPath, reviewPath, calibrationPath string) (bool, error) {
 		return true, nil
 	}
 
-	clusters := BuildClusters(report, loaded.ReviewContacts)
+	clusters, err := BuildClusters(report, loaded.ReviewContacts)
+	if err != nil {
+		return false, err
+	}
 
 	// Check if all clusters are already resolved
 	pending := 0

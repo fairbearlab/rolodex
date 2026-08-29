@@ -2,13 +2,52 @@ package writer
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
 	vcard "github.com/emersion/go-vcard"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/parser"
 )
+
+// failingWriter errors on every Write call, simulating a full disk or a
+// closed pipe partway through a multi-contact write.
+type failingWriter struct{}
+
+func (failingWriter) Write(p []byte) (int, error) {
+	return 0, errors.New("simulated write failure")
+}
+
+// TestWriteReturnsErrorOnWriteFailure covers the write error path: Write
+// formats each contact into a buffer and emits it in one call, and a failure
+// writing that buffer out must be reported, not silently swallowed.
+func TestWriteReturnsErrorOnWriteFailure(t *testing.T) {
+	mc := model.MergedContact{
+		Contact: model.ParsedContact{GivenName: "A", FamilyName: "B", FormattedName: "A B"},
+	}
+	err := Write(failingWriter{}, []model.MergedContact{mc})
+	if err == nil {
+		t.Fatal("expected an error when the underlying writer fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "writing contact") {
+		t.Errorf("error = %q, want it to name the failing contact", err.Error())
+	}
+}
+
+// TestWriteStopsAtFirstFailure: a writer that fails only after N bytes
+// (mid-second-contact) must still surface the error rather than continuing
+// to "succeed" on later contacts.
+func TestWriteStopsAtFirstFailure(t *testing.T) {
+	mc := func(name string) model.MergedContact {
+		return model.MergedContact{Contact: model.ParsedContact{GivenName: name, FormattedName: name}}
+	}
+	err := Write(failingWriter{}, []model.MergedContact{mc("First"), mc("Second")})
+	if err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+}
 
 func TestWriteBasicContact(t *testing.T) {
 	mc := model.MergedContact{
@@ -100,5 +139,40 @@ func TestWriteReviewFlag(t *testing.T) {
 
 	if !strings.Contains(buf.String(), "X-ROLODEX-REVIEW:true") {
 		t.Error("missing X-ROLODEX-REVIEW field")
+	}
+}
+
+// TestWriteKeepsEscapedSemicolon: go-vcard decodes "ORG:Acme\; Inc." to the
+// value `Acme\; Inc.` and would re-encode it as `Acme\\; Inc.`, which every
+// reader takes as org "Acme\" plus unit "Inc.". The writer must emit the
+// escape exactly once, and the value must survive a parse/write cycle.
+func TestWriteKeepsEscapedSemicolon(t *testing.T) {
+	in := "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A\r\nN:A;;;;\r\nORG:Acme\\; Inc.\r\nNOTE:x\\;y\r\nEND:VCARD\r\n"
+	contacts, _, err := parser.Parse(strings.NewReader(in), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got := contacts[0].Org; got != `Acme\; Inc.` {
+		t.Fatalf("parsed ORG = %q, want the escape kept as one component", got)
+	}
+
+	var buf bytes.Buffer
+	if err := Write(&buf, []model.MergedContact{{Contact: contacts[0], Sources: []model.Source{model.SourceICloud}}}); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ORG:Acme\\; Inc.\r\n") || strings.Contains(out, `\\;`) {
+		t.Errorf("ORG escape not preserved on write:\n%s", out)
+	}
+	if !strings.Contains(out, "NOTE:x\\;y\r\n") {
+		t.Errorf("NOTE escape not preserved on write:\n%s", out)
+	}
+
+	again, _, err := parser.Parse(strings.NewReader(out), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	if again[0].Org != contacts[0].Org || again[0].Note != contacts[0].Note {
+		t.Errorf("round trip changed ORG %q -> %q, NOTE %q -> %q", contacts[0].Org, again[0].Org, contacts[0].Note, again[0].Note)
 	}
 }

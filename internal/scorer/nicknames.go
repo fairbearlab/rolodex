@@ -2,8 +2,18 @@ package scorer
 
 import "strings"
 
-// nicknames maps diminutives to their canonical form.
-// All keys are lowercase.
+// nicknames maps diminutives to their canonical form. All keys are lowercase.
+//
+// The table feeds name *similarity* only: Bob Smith and Robert Smith score
+// as one name and get a review card. It never makes an *identity* —
+// sameGivenName requires the given names to be equal — because a nickname
+// is also a nickname of other names: Alex is Alexandra as well as
+// Alexander, Sam is Samantha, Pat is Patricia, Frank is Frances, and those
+// are siblings and spouses on one household landline. An earlier attempt
+// to keep identity honest by deleting jack, liam, jamie, leo and harry
+// (standalone names in current usage) cost the similarity floor instead:
+// Jack Smith and John Smith on one phone scored 0.578 and were written out
+// as two distinct people without a card. They are back, as similarity.
 var nicknames = map[string]string{
 	"bob":     "robert",
 	"bobby":   "robert",

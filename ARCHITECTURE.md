@@ -28,7 +28,7 @@ testdata/              Test fixtures (icloud.vcf, google.vcf)
 
 ## Data flow
 
-The tool has five commands. The `run` command is the recommended workflow, wrapping merge/review/resolve into a single invocation:
+The tool has six commands (`run`, `merge`, `review`, `resolve`, `audit`, `version`). The `run` command is the recommended workflow, wrapping merge/review/resolve into a single invocation:
 
 ```text
                           run command (unified)
@@ -82,18 +82,18 @@ ParsedContact → NormalizedContact → ScoredPair → MergedContact
 | `ScoredPair` | A candidate match between two contacts with a composite score, per-feature breakdown (`ScoreFeatures`), and tier classification |
 | `MergedContact` | Final output contact with source provenance, score, and review flag |
 | `Cluster` | A group of contacts connected by scored pairs (used by union-find) |
-| `Tier` | Classification enum: `auto_merge` (>= 0.85), `review` (0.60-0.85), `distinct` (< 0.60) |
+| `Tier` | Classification enum: `auto_merge` (>= 0.85, or identical name + shared phone/email/birthday; never with conflicting birthdays, and not on one identifier when a birthday is present but unreadable), `review` (0.60-0.85, or a near-identical name alone; a birthday conflict caps a pair here but never raises it), `distinct` (< 0.60) |
 | `Report` | JSON report structure: summary stats, merge decisions, review decisions, distinct entries, warnings |
 
 ## Package details
 
 ### parser
 
-Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. Unmodeled vCard properties are stored in `Extra` for lossless round-tripping. Malformed entries produce warnings instead of aborting the parse.
+Reads vCard 3.0 files using `emersion/go-vcard`. Extracts structured name components (N field), formatted name (FN), emails, phones, org, title, birthday, addresses, notes, URLs, and photos. `ORG` is cleaned of empty trailing structured components (iCloud emits `Acme;`; a leading `;Dept` keeps its position) and `BDAY` is canonicalized to `YYYY-MM-DD` or `--MM-DD` (Google's `19891022`, iCloud's `X-APPLE-OMIT-YEAR`, the Apple placeholder year `1604`, and hand-typed slash, dotted and month-name forms are all recognized; anything else passes through untouched and the scorer treats it as unreadable). Values are decoded by the parser itself (go-vcard's decoder resolves `\\` but not `\;`, so it is handed a form in which its unescaping is a no-op): `N` and `ADR` split on unescaped separators only, so `N:O\;Brien;Sean;;;` is family `O;Brien`. `ORG` alone is kept in wire form (escapes intact; `normalize.DisplayComponents` reads it) because it is one string in the model, and unmodeled fields pass through as wire form. The writer formats lines itself and escapes every decoded value on the way out. A `X-ROLODEX-SOURCE` of `icloud`/`google` written by an earlier run is restored into `Source` on read-back paths (review, resolve, audit); on `merge` the `--icloud`/`--google` flag is authoritative and the field is ignored. Every decoded field value and parameter is stripped of C0/C1 control characters, DEL, and bidi/invisible characters (RTL/LTR overrides, zero-width space, BOM) — a .vcf is untrusted input, and these could otherwise repaint the review terminal or forge a line in the written output; TAB, LF, and the zero-width joiners used in Indic/Persian names and emoji are kept. Unmodeled vCard properties are stored in `Extra` for round-tripping (control/bidi stripping above still applies; parameters on unmodeled fields are not preserved). Malformed entries produce warnings instead of aborting the parse.
 
 ### normalize
 
-Prepares contacts for comparison. Names go through Unicode NFKD decomposition, accent/combining-mark stripping, case folding, whitespace collapse, and title/suffix removal (Dr., Jr., III, etc.). Phones are reduced to digits-only with US country code stripping (11-digit numbers starting with 1). Emails are lowercased and trimmed.
+Prepares contacts for comparison. Names go through Unicode NFKD decomposition, accent/combining-mark stripping, case folding, whitespace collapse, and title/suffix removal (Dr., Jr., III, etc.) for blocking and similarity scoring. A second, diacritic-preserving form (`NameStrict`) is kept alongside it for identity checks: it applies NFKC (which still folds compatibility variants like halfwidth kana and fullwidth Latin, a routine iCloud-vs-Google divergence) but keeps combining marks, so "Nguyên" and "Nguyễn" no longer compare equal the way they would after NFKD strips the accents. Phones are reduced to digits-only with US country code stripping (11-digit numbers starting with 1). Emails are lowercased and trimmed.
 
 ### blocker
 
@@ -104,17 +104,18 @@ Generates candidate pairs for scoring without comparing every contact against ev
 Computes a weighted composite score for each candidate pair:
 
 - **Name similarity** (0.40): Jaro-Winkler distance on full name strings, with nickname expansion (~120 mappings like Bob/Robert, Bill/William). The higher of direct and nickname-expanded scores is used.
-- **Shared email** (0.25): Binary — any normalized email in common.
-- **Shared phone** (0.25): Binary — any normalized phone in common.
-- **Shared org** (0.10): Exact match on lowercased org field.
+- **Shared email** (0.25): Binary — any normalized email in common that is also plausible (a non-empty local part and a domain with a dot); `unknown@` or a bare local part is never evidence.
+- **Shared phone** (0.25): Binary — any normalized phone in common that is also plausible (7+ digits, not all the same digit); placeholders like `0` or `000-000-0000` are never evidence.
+- **Shared org** (0.10): Exact match on lowercased org field (the parser has already dropped iCloud's empty trailing `;` component).
+- **Shared birthday** (0.10, bonus; total capped at 1.0): Equal canonical `YYYY-MM-DD`, or a no-year `--MM-DD` matching the month and day of a full date. Both sides must be canonical, in-range dates; equal free text is not a match, and neither is a January 1st (any year, or the no-year `--01-01` Apple's placeholder becomes) — the date exports carry when nobody entered one.
 
-Contacts missing a given name use adjusted weights (0.45/0.45/0.10) and require 2+ matching identifiers for auto-merge.
+Contacts missing a given name use adjusted weights (0.45/0.45/0.10/0.10) and require 2+ matching identifiers for auto-merge.
 
-Pairs are classified into tiers by score threshold.
+Pairs are classified into tiers by score threshold, with rules layered on top (`scorer.Classify`) because real exports are sparse and the linear score rarely reaches 0.85 on its own: an identical name (`NameExact`: given and family equal — a nickname counts toward similarity, never identity; a family name present; a given name longer than an initial; compatible middle names, with trailing given-name tokens read as the middle name when the middle slot is empty; equal generational suffixes) plus a shared phone, email or birthday is `auto_merge`; a near-identical name (Jaro-Winkler >= 0.95, which also admits Eric/Erica) alone is floored at `review` so same-name pairs are surfaced to a human rather than dropped; and two well-formed birthdays that disagree (`BirthdayConflict`) cap any pair at `review`. When both contacts carry a birthday but one is unreadable (`BirthdayUnknown`), the conflict check cannot run, so the single-identifier exact-name rule does not fire and the pair falls through to the score thresholds — the guard fails closed.
 
 ### merger
 
-Clusters connected contacts using a union-find (disjoint set) data structure. Two contacts in the same cluster are transitively related — if A matches B and B matches C, all three form one cluster.
+Clusters connected contacts using a union-find (disjoint set) data structure. Two contacts in the same cluster are transitively related — if A matches B and B matches C, all three form one cluster. Transitivity applies only to edges that carry evidence (a shared identifier, or a score at the review threshold). A pair that is in review on its name alone is applied afterwards and only between two contacts nothing else has claimed, so same-name contacts are reviewed as pairs rather than collapsed into one cluster per common name; a third namesake with no tie stays distinct, and the unapplied edge is returned as a `DeferredEdge` so the report lists it under `deferred` instead of dropping it silently. Cluster ids hash each member's source, index and name, so they are unique within a run and stable across re-runs of the same inputs.
 
 Before auto-merging a cluster, every internal pair is validated. If any pair is review-tier, distinct, or unscored (not blocked together), the entire cluster is demoted to review.
 
@@ -129,13 +130,13 @@ Encodes `MergedContact` slices as vCard 3.0 using `emersion/go-vcard`. Adds prov
 Generates a JSON report (`model.Report`) with:
 - **Summary**: contact counts per source, auto-merged/review/distinct/warning counts.
 - **Merged**: per-cluster decisions with score, contributing contacts, field conflicts, and result name.
-- **Review**: per-cluster decisions with score, per-feature breakdown, ambiguity explanation, and decision status (pending/merge/skip).
+- **Review**: per-cluster decisions with score, per-feature breakdown (`name_similarity`, `name_exact`, `shared_email`, `shared_phone`, `shared_org`, `shared_birthday`, `birthday_conflict`, `birthday_unknown`, `nameless`), ambiguity explanation, and decision status (pending/merge/skip).
 - **Distinct**: singletons not matched to anything.
 - **Warnings**: parse errors with source and index.
 
 ### review
 
-Interactive terminal UI built on BubbleTea. Loads review clusters from `report.json` and `review.vcf`, sorted by score descending. Adaptive pacing shows a compact card for high-confidence pairs (score >= 0.78) and a full field-by-field diff for ambiguous pairs. Supports merge (`m`), skip (`s`), undo (`u`), detail toggle (`d`), and quit (`q`). Decisions are saved to `report.json` after every keypress, so sessions can be interrupted and resumed.
+Interactive terminal UI built on BubbleTea. Loads review clusters from `report.json` and `review.vcf`, sorted by score descending. Rejects a `review.vcf` whose length or per-contact `X-ROLODEX-CLUSTER` tags disagree with `report.json` instead of pairing a decision with the wrong cluster — the same check `resolve` already applied. Adaptive pacing shows a compact card — the matched email/phone on both sides marked ✓ with a count of values not shown, birthdays, and a one-line score breakdown — when the score reaches the review threshold (>= 0.60) and neither a birthday conflict/unknown nor a 3+-contact cluster forces the detailed view; those cases, and any pair below 0.60 (including one surfaced by the exact-name rule alone), get a full field-by-field diff, with the iCloud card on the left labelled as the conflict winner. Supports merge (`m`), skip (`s`), undo (`u`), detail toggle (`d`), and quit (`q`). Decisions are saved to `report.json` after every keypress, so sessions can be interrupted and resumed.
 
 ### resolve
 
@@ -143,7 +144,7 @@ Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if
 
 ### calibration
 
-Logs every review decision to a JSONL file with cluster ID, score, per-feature scores, view mode, decision, and response time. At the end of a review session, analyzes the log to suggest threshold adjustments — e.g., if the user merged everything above 0.78, suggests raising the auto-merge threshold accordingly.
+Logs every review decision to a JSONL file with cluster ID, score, per-feature scores, view mode, decision, and response time. At the end of a review session, analyzes the log to suggest threshold adjustments — e.g., if the user merged everything above 0.78, suggests lowering the auto-merge threshold to 0.78 so those pairs skip review next time. These are printed suggestions only; the thresholds (`model.ThresholdAutoMerge`, `model.ThresholdReview`) are constants with no flag to apply a suggestion automatically.
 
 ### audit
 
@@ -155,7 +156,7 @@ Checks contact quality by scanning for unreachable contacts (no email and no pho
 
 **Union-find for clustering.** Handles transitive matches naturally — if A matches B and B matches C, they form one cluster without explicitly comparing A to C. This is important because the blocker may not have paired A and C directly.
 
-**Pairwise validation before auto-merge.** A cluster only auto-merges if every internal pair scores at or above the auto-merge threshold. One weak link (review-tier pair, or an unscored pair that wasn't blocked together) demotes the entire cluster to review. This prevents false merges in chains like A-B (strong) + B-C (strong) where A-C might be unrelated.
+**Pairwise validation before auto-merge.** A cluster only auto-merges if every internal pair is tier `auto_merge` — either the linear score clears the threshold, or the identical-name rule promoted it. One weak link (review-tier pair, or an unscored pair that wasn't blocked together) demotes the entire cluster to review. This prevents false merges in chains like A-B (strong) + B-C (strong) where A-C might be unrelated.
 
 **Blocking before scoring.** Scoring is the most expensive stage (Jaro-Winkler on every pair). Blocking by shared email, phone, or last name reduces the candidate set from O(N*M) to a small fraction, keeping the tool fast on large address books (~26ms for 1000 contacts).
 
@@ -172,6 +173,7 @@ Checks contact quality by scanning for unreachable contacts (no email and no pho
 | `golang.org/x/text` | Unicode NFKD normalization |
 | `charmbracelet/bubbletea` | Terminal UI framework (review command) |
 | `charmbracelet/lipgloss` | Terminal styling (review command) |
+| `charmbracelet/x/ansi` | ANSI-aware string truncation for review card rendering |
 
 ## Testing
 

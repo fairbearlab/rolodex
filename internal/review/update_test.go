@@ -7,10 +7,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func newTestModel(scores []float64) ReviewModel {
+func newTestModel(t *testing.T, scores []float64) ReviewModel {
+	t.Helper()
 	report := makeReport(scores)
 	contacts := makeContacts(len(scores) * 2)
-	clusters := BuildClusters(report, contacts)
+	clusters := mustBuild(t, report, contacts)
 
 	m := ReviewModel{
 		Report:    report,
@@ -25,7 +26,7 @@ func newTestModel(scores []float64) ReviewModel {
 }
 
 func TestDecideMerge(t *testing.T) {
-	m := newTestModel([]float64{0.82, 0.65})
+	m := newTestModel(t, []float64{0.82, 0.65})
 
 	startIdx := m.CurrentIndex
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
@@ -44,7 +45,7 @@ func TestDecideMerge(t *testing.T) {
 }
 
 func TestDecideSkip(t *testing.T) {
-	m := newTestModel([]float64{0.82, 0.65})
+	m := newTestModel(t, []float64{0.82, 0.65})
 
 	startIdx := m.CurrentIndex
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
@@ -56,7 +57,7 @@ func TestDecideSkip(t *testing.T) {
 }
 
 func TestUndo(t *testing.T) {
-	m := newTestModel([]float64{0.82, 0.65})
+	m := newTestModel(t, []float64{0.82, 0.65})
 
 	// Merge first
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
@@ -80,7 +81,7 @@ func TestUndo(t *testing.T) {
 }
 
 func TestUndoEmpty(t *testing.T) {
-	m := newTestModel([]float64{0.82})
+	m := newTestModel(t, []float64{0.82})
 
 	// Undo with no decisions should be a no-op
 	startIdx := m.CurrentIndex
@@ -93,7 +94,7 @@ func TestUndoEmpty(t *testing.T) {
 }
 
 func TestToggleView(t *testing.T) {
-	m := newTestModel([]float64{0.82}) // compact by default
+	m := newTestModel(t, []float64{0.82}) // compact by default
 
 	if m.ActiveViewMode() != ViewCompact {
 		t.Fatal("expected initial compact mode")
@@ -115,7 +116,7 @@ func TestToggleView(t *testing.T) {
 }
 
 func TestHelpToggle(t *testing.T) {
-	m := newTestModel([]float64{0.82})
+	m := newTestModel(t, []float64{0.82})
 
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	m = result.(ReviewModel)
@@ -131,7 +132,7 @@ func TestHelpToggle(t *testing.T) {
 }
 
 func TestAllDecidedDone(t *testing.T) {
-	m := newTestModel([]float64{0.82})
+	m := newTestModel(t, []float64{0.82})
 
 	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	m = result.(ReviewModel)
@@ -145,7 +146,7 @@ func TestAllDecidedDone(t *testing.T) {
 }
 
 func TestScrollDetailedView(t *testing.T) {
-	m := newTestModel([]float64{0.65}) // detailed mode
+	m := newTestModel(t, []float64{0.65}) // detailed mode
 
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	m = result.(ReviewModel)

@@ -15,25 +15,75 @@ type Result struct {
 	Merged   []model.MergedContact // auto-merged, confident
 	Review   []model.MergedContact // review-tier, needs human eyes
 	Clusters []model.Cluster       // cluster info for reporting
+	Deferred []model.DeferredEdge  // near-name edges not applied; see DeferredEdge
 }
 
 // Merge takes normalized contacts and scored pairs, clusters them via union-find,
 // validates all pairs within each cluster, and produces merged output.
+//
+// Clustering is transitive on purpose: A shares a phone with B and B an email
+// with C, so A, B and C are one person. That transitivity is only safe on
+// edges that carry evidence. A pair held in review by the near-name floor
+// alone (same name, nothing else) is not evidence of identity, and unioning
+// on it collapses everyone who shares a common name into one cluster — six
+// unrelated "David Lee"s, six phones, six emails, one review card, and a
+// single merge keystroke destroys five of them. Those edges are applied
+// second, and only between two contacts that nothing else has claimed, so a
+// near-name pair is reviewed as a pair and a third namesake stays distinct
+// rather than being stacked onto a cluster it has no tie to. An edge that
+// is not applied is not forgotten either: it is returned in Deferred, one
+// entry per pair of sides, so the report can list the namesake that was
+// left out — before that, it shipped to merged.vcf as its own person with
+// no card, no cluster and no warning.
 func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result {
 	n := len(contacts)
 	uf := newUnionFind(n)
 
-	// Build pair lookup by indices
+	// Build pair lookup by indices; union on every edge that carries a
+	// confirming identifier or clears the review score threshold.
 	pairMap := make(map[[2]int]model.ScoredPair)
+	attached := make([]bool, n)
+	var nearNameOnly []model.ScoredPair
 	for _, p := range pairs {
 		a, b := p.A, p.B
 		if a > b {
 			a, b = b, a
 		}
-		if p.Tier != model.TierDistinct {
-			uf.union(a, b)
-		}
 		pairMap[[2]int{a, b}] = p
+		switch {
+		case p.Tier == model.TierDistinct:
+		case isNearNameOnly(p):
+			nearNameOnly = append(nearNameOnly, p)
+		default:
+			uf.union(a, b)
+			attached[a], attached[b] = true, true
+		}
+	}
+
+	// Near-name-only edges pair up unattached contacts. Most similar names
+	// first, cross-source before same-source (the tool's job is to match the
+	// two exports), then index order, so the pairing is deterministic.
+	sort.SliceStable(nearNameOnly, func(i, j int) bool {
+		pi, pj := nearNameOnly[i], nearNameOnly[j]
+		if pi.Score != pj.Score {
+			return pi.Score > pj.Score
+		}
+		ci := contacts[pi.A].Parsed.Source != contacts[pi.B].Parsed.Source
+		cj := contacts[pj.A].Parsed.Source != contacts[pj.B].Parsed.Source
+		if ci != cj {
+			return ci
+		}
+		if pi.A != pj.A {
+			return pi.A < pj.A
+		}
+		return pi.B < pj.B
+	})
+	for _, p := range nearNameOnly {
+		if attached[p.A] || attached[p.B] {
+			continue
+		}
+		uf.union(p.A, p.B)
+		attached[p.A], attached[p.B] = true, true
 	}
 
 	// Get clusters with deterministic ordering
@@ -45,6 +95,7 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 	sort.Ints(roots)
 
 	var result Result
+	result.Deferred = deferredEdges(nearNameOnly, uf, groups)
 	merged := make(map[int]bool)
 
 	for _, root := range roots {
@@ -127,7 +178,65 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 	return result
 }
 
-// ClusterID generates a stable content-hash ID for a cluster.
+// deferredEdges collects the near-name-only edges that were not applied —
+// their endpoints ended up in different groups — as one DeferredEdge per
+// pair of groups, carrying the strongest edge between them. Sorted by score
+// descending, then by the lowest member index, so the report is stable.
+func deferredEdges(nearNameOnly []model.ScoredPair, uf *unionFind, groups map[int][]int) []model.DeferredEdge {
+	type key [2]int
+	best := make(map[key]float64)
+	var order []key
+	for _, p := range nearNameOnly {
+		ra, rb := uf.find(p.A), uf.find(p.B)
+		if ra == rb {
+			continue // applied, or joined by other evidence
+		}
+		if ra > rb {
+			ra, rb = rb, ra
+		}
+		k := key{ra, rb}
+		if prev, seen := best[k]; !seen {
+			best[k] = p.Score
+			order = append(order, k)
+		} else if p.Score > prev {
+			best[k] = p.Score
+		}
+	}
+	deferred := make([]model.DeferredEdge, 0, len(order))
+	for _, k := range order {
+		a := append([]int(nil), groups[k[0]]...)
+		b := append([]int(nil), groups[k[1]]...)
+		sort.Ints(a)
+		sort.Ints(b)
+		deferred = append(deferred, model.DeferredEdge{Score: best[k], Sides: [2][]int{a, b}})
+	}
+	sort.SliceStable(deferred, func(i, j int) bool {
+		if deferred[i].Score != deferred[j].Score {
+			return deferred[i].Score > deferred[j].Score
+		}
+		return deferred[i].Sides[0][0] < deferred[j].Sides[0][0]
+	})
+	return deferred
+}
+
+// isNearNameOnly reports whether a pair is in review on the strength of its
+// name alone: below the review score threshold with no shared phone, email
+// or birthday. Such an edge is a prompt for a human, not a link between
+// people, and Merge does not chain clusters through it.
+func isNearNameOnly(p model.ScoredPair) bool {
+	if p.Tier != model.TierReview || p.Score >= model.ThresholdReview {
+		return false
+	}
+	f := p.Features
+	return !f.SharedPhone && !f.SharedEmail && !f.SharedBirthday
+}
+
+// ClusterID generates a stable content-hash ID for a cluster. Every member's
+// index is part of the hash: a contact belongs to exactly one cluster per
+// run, so two clusters can never share an id. Hashing names alone let two
+// unrelated "Alex" pairs collide, and the review TUI then wrote one decision
+// onto both. The same input files yield the same indices, so ids are still
+// stable across re-runs.
 func ClusterID(contacts []model.NormalizedContact, indices []int) string {
 	// Sort indices for deterministic hash regardless of union-find traversal order
 	sorted := make([]int, len(indices))
@@ -136,8 +245,8 @@ func ClusterID(contacts []model.NormalizedContact, indices []int) string {
 	var parts []string
 	for _, idx := range sorted {
 		c := contacts[idx].Parsed
-		parts = append(parts, fmt.Sprintf("%s:%s:%s",
-			c.Source, c.FamilyName, c.GivenName))
+		parts = append(parts, fmt.Sprintf("%s:%d:%s:%s",
+			c.Source, idx, c.FamilyName, c.GivenName))
 	}
 	h := sha256.Sum256([]byte(strings.Join(parts, "|")))
 	return fmt.Sprintf("%x", h[:8])
@@ -233,9 +342,7 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		if base.Title == "" && c.Title != "" {
 			base.Title = c.Title
 		}
-		if base.Birthday == "" && c.Birthday != "" {
-			base.Birthday = c.Birthday
-		}
+		base.Birthday = normalize.PreferBirthday(base.Birthday, c.Birthday)
 		if base.Note == "" && c.Note != "" {
 			base.Note = c.Note
 		}

@@ -7,11 +7,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	vcard "github.com/emersion/go-vcard"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
 // ParseFile reads a .vcf file and returns parsed contacts.
@@ -25,7 +27,11 @@ func ParseFile(path string, source model.Source) ([]model.ParsedContact, []model
 
 // Parse reads vCard data from a reader and returns parsed contacts.
 func Parse(r io.Reader, source model.Source) ([]model.ParsedContact, []model.Warning, error) {
-	dec := vcard.NewDecoder(r)
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading vCard data: %w", err)
+	}
+	dec := vcard.NewDecoder(bytes.NewReader(wireForm(data)))
 	var contacts []model.ParsedContact
 	var warnings []model.Warning
 	idx := 0
@@ -45,6 +51,7 @@ func Parse(r io.Reader, source model.Source) ([]model.ParsedContact, []model.War
 			continue
 		}
 
+		sanitizeCard(card)
 		c := cardToContact(card, source)
 		contacts = append(contacts, c)
 		idx++
@@ -53,10 +60,118 @@ func Parse(r io.Reader, source model.Source) ([]model.ParsedContact, []model.War
 	return contacts, warnings, nil
 }
 
+// foldRe matches a line fold: a line break followed by one space or tab.
+var foldRe = regexp.MustCompile("\r?\n[ \t]")
+
+// wireForm prepares raw vCard bytes so that go-vcard's decoder hands every
+// value back exactly as written. The decoder resolves "\\", "\n" and "\,"
+// but leaves "\;" alone, so "ORG:Acme\; Inc." (an escaped semicolon) and
+// "ORG:Acme\\; Inc." (a literal backslash before a separator) decoded to the
+// same string and the difference was gone before the parser could see it —
+// and whichever way the writer then chose, one of the two came back wrong
+// in Apple or Google Contacts. Doubling every backslash first makes the
+// decoder's unescaping return each original backslash untouched, and
+// cardToContact decodes each property itself, splitting structured values
+// on unescaped separators only. Folds are removed before the doubling so an
+// escape split across a fold ("\" at the end of one physical line, "n" at
+// the start of the next) is still one escape. Parameter values, which the
+// decoder never unescapes, are undoubled in sanitizeCard.
+func wireForm(data []byte) []byte {
+	data = foldRe.ReplaceAll(data, nil)
+	return bytes.ReplaceAll(data, []byte(`\`), []byte(`\\`))
+}
+
+// sanitizeCard strips control characters from every value and parameter in a
+// decoded card, and undoes wireForm's doubling on parameter values.
+//
+// A .vcf is untrusted input: it comes from whatever ended up in the user's
+// address book, including cards other people sent them. Control characters in
+// a field value are never meaningful contact data, and they are dangerous
+// twice over. The review TUI writes field values straight to the terminal and
+// truncates with an ANSI-aware helper that deliberately preserves escape
+// sequences, so a contact named "Bob\x1b[2J..." could clear the screen,
+// repaint it, and hide the other card — while the reviewer presses a key that
+// irreversibly merges two people. And a bare CR survives the vCard writer
+// (which escapes LF but not CR), so a value could forge an "X-ROLODEX-REVIEW"
+// line in the emitted .vcf for any reader that treats a lone CR as a line
+// break.
+//
+// TAB and LF are kept: go-vcard decodes the "\n" escape into a real newline
+// and a multi-line NOTE or ADR is legitimate.
+func sanitizeCard(card vcard.Card) {
+	for _, fields := range card {
+		for _, f := range fields {
+			if f == nil {
+				continue
+			}
+			f.Value = stripControl(f.Value)
+			for name, values := range f.Params {
+				for i, v := range values {
+					values[i] = stripControl(strings.ReplaceAll(v, `\\`, `\`))
+				}
+				f.Params[name] = values
+			}
+		}
+	}
+}
+
+// stripControl removes C0 and C1 control characters and DEL, keeping TAB and
+// LF. It returns s unchanged when there is nothing to strip.
+func stripControl(s string) string {
+	if strings.IndexFunc(s, isControl) < 0 {
+		return s
+	}
+	return strings.Map(func(r rune) rune {
+		if isControl(r) {
+			return -1
+		}
+		return r
+	}, s)
+}
+
+func isControl(r rune) bool {
+	if r == '\t' || r == '\n' {
+		return false
+	}
+	if r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+		return true
+	}
+	// Invisible and direction-changing characters. lipgloss scores these as
+	// zero width, so the TUI reserves no columns for them: a right-to-left
+	// override in one card's name reorders the other card's name and email on
+	// the same rendered row, and the reviewer merges two people whose cards
+	// were made to look alike. ZWJ and ZWNJ (U+200C-200D) are deliberately
+	// kept — they are load-bearing in Indic and Persian names and in emoji.
+	switch {
+	case r == 0x200b, // zero width space
+		r == 0x200e, r == 0x200f, // LTR/RTL marks
+		r >= 0x202a && r <= 0x202e, // embedding and override
+		r >= 0x2060 && r <= 0x2064, // word joiner, invisible operators
+		r >= 0x2066 && r <= 0x2069, // isolates
+		r == 0xfeff:                // BOM / zero width no-break space
+		return true
+	}
+	return false
+}
+
 func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	c := model.ParsedContact{
 		Source: source,
 		Extra:  make(map[string][]string),
+	}
+
+	// Provenance written by an earlier rolodex run (review.vcf / merged.vcf).
+	// On read-back paths the caller only has a generic label ("review",
+	// "merged", unknown) and a single known source restores which card is
+	// which. On the ingest path the --icloud/--google flag is authoritative,
+	// so a stray X-ROLODEX-SOURCE in a re-exported file must not relabel the
+	// contact (that would also hide it from conflict reporting). The field is
+	// kept in Extra either way: merged provenance like "merged(icloud+google)"
+	// is read from there by resolve.
+	if source != model.SourceICloud && source != model.SourceGoogle {
+		if src := provenanceSource(card); src != "" {
+			c.Source = src
+		}
 	}
 
 	// Structured name (N field)
@@ -71,7 +186,7 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	}
 
 	// Formatted name
-	if fn := card.PreferredValue(vcard.FieldFormattedName); fn != "" {
+	if fn := text(card, vcard.FieldFormattedName); fn != "" {
 		c.FormattedName = fn
 	}
 
@@ -82,7 +197,7 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		}
 		emailType := fieldType(field)
 		c.Emails = append(c.Emails, model.Email{
-			Address: field.Value,
+			Address: normalize.Unescape(field.Value),
 			Type:    emailType,
 		})
 	}
@@ -94,23 +209,30 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		}
 		phoneType := fieldType(field)
 		c.Phones = append(c.Phones, model.Phone{
-			Number: field.Value,
+			Number: normalize.Unescape(field.Value),
 			Type:   phoneType,
 		})
 	}
 
-	// Org
-	if org := card.PreferredValue(vcard.FieldOrganization); org != "" {
+	// Org (structured; iCloud leaves an empty trailing unit, e.g. "Acme;").
+	// Kept in wire form, escapes intact — see model.ParsedContact.Org.
+	if org := normalize.Org(card.PreferredValue(vcard.FieldOrganization)); org != "" {
 		c.Org = org
 	}
 
 	// Title
-	if title := card.PreferredValue(vcard.FieldTitle); title != "" {
+	if title := text(card, vcard.FieldTitle); title != "" {
 		c.Title = title
 	}
 
-	// Birthday
-	if bday := card.PreferredValue(vcard.FieldBirthday); bday != "" {
+	// Birthday, canonicalized to YYYY-MM-DD / --MM-DD so iCloud ("1989-10-22")
+	// and Google ("19891022") agree. iCloud marks a no-year birthday with a
+	// placeholder year and X-APPLE-OMIT-YEAR=<that year>.
+	if f := card.Preferred(vcard.FieldBirthday); f != nil && f.Value != "" {
+		bday := normalize.Birthday(normalize.Unescape(f.Value))
+		if omit := f.Params.Get("X-APPLE-OMIT-YEAR"); omit != "" && strings.HasPrefix(bday, omit+"-") {
+			bday = normalize.BirthdayWithoutYear(bday)
+		}
 		c.Birthday = bday
 	}
 
@@ -123,12 +245,12 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	}
 
 	// Note
-	if note := card.PreferredValue(vcard.FieldNote); note != "" {
+	if note := text(card, vcard.FieldNote); note != "" {
 		c.Note = note
 	}
 
 	// URL
-	if url := card.PreferredValue(vcard.FieldURL); url != "" {
+	if url := text(card, vcard.FieldURL); url != "" {
 		c.URL = url
 	}
 
@@ -147,7 +269,9 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		}
 	}
 
-	// Collect extra fields we don't explicitly model
+	// Collect extra fields we don't explicitly model. Values stay in wire
+	// form and the writer emits them verbatim, so an unmodeled property
+	// round-trips byte for byte whatever its escaping conventions.
 	modeled := map[string]bool{
 		"VERSION": true, "N": true, "FN": true, "EMAIL": true, "TEL": true,
 		"ORG": true, "TITLE": true, "BDAY": true, "ADR": true, "NOTE": true,
@@ -167,11 +291,30 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	return c
 }
 
-// splitN extracts the 5 components of the N field.
+// provenanceSource returns the single source recorded in X-ROLODEX-SOURCE,
+// or "" when the field is absent or names a merged/unknown source.
+func provenanceSource(card vcard.Card) model.Source {
+	src := model.Source(strings.TrimSpace(card.PreferredValue("X-ROLODEX-SOURCE")))
+	switch src {
+	case model.SourceICloud, model.SourceGoogle:
+		return src
+	default:
+		return ""
+	}
+}
+
+// text returns the preferred value of a text property, decoded.
+func text(card vcard.Card, key string) string {
+	return normalize.Unescape(card.PreferredValue(key))
+}
+
+// splitN extracts the 5 components of the N field, decoded. Only an
+// unescaped ';' separates components: "N:O\;Brien;Sean;;;" is family
+// "O;Brien" and given "Sean", not family "O\" and a middle name "Sean".
 func splitN(field *vcard.Field) [5]string {
 	var parts [5]string
 	// The N field value is "family;given;middle;prefix;suffix"
-	components := strings.Split(field.Value, ";")
+	components := normalize.DisplayComponents(field.Value, ';')
 	for i := 0; i < len(components) && i < 5; i++ {
 		parts[i] = strings.TrimSpace(components[i])
 	}
@@ -186,8 +329,9 @@ func fieldType(field *vcard.Field) string {
 }
 
 func parseAddress(field *vcard.Field) model.Address {
-	// ADR value is: POBox;Extended;Street;City;Region;PostCode;Country
-	components := strings.Split(field.Value, ";")
+	// ADR value is: POBox;Extended;Street;City;Region;PostCode;Country,
+	// split on unescaped separators only and decoded per component.
+	components := normalize.DisplayComponents(field.Value, ';')
 	addr := model.Address{
 		Type: fieldType(field),
 	}

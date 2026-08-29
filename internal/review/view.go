@@ -5,8 +5,29 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
+	"github.com/fairbearlab/rolodex/internal/scorer"
+)
+
+// Layout constants. lipgloss semantics that these encode:
+//
+//   - Style.Width(n) covers content + padding only; a border adds 2 more
+//     columns. A box built with Width(n) therefore renders n+2 wide.
+//   - borderStyle has Padding(1, 2), so the text inside a Width(n) box is
+//     n - outerPad columns wide.
+//
+// Every width in this file is derived from these so the side-by-side cards
+// fit the container exactly instead of hard-wrapping.
+const (
+	outerPad         = 4 // borderStyle Padding(1, 2): 2 columns each side
+	cardBorder       = 2 // NormalBorder on each contact card
+	cardGap          = 2 // spacer between the two cards
+	minBoxWidth      = 20
+	maxDetailedWidth = 120
+	maxCompactWidth  = 80
 )
 
 var (
@@ -35,7 +56,33 @@ var (
 			Bold(true).
 			Foreground(lipgloss.Color("6")) // cyan
 
+	matchStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("2")) // green
+
+	// Per-source card styling. iCloud wins field conflicts on merge, so it
+	// gets the stronger colour and an explicit label.
+	icloudStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("4")) // blue
+
+	googleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("5")) // magenta
 )
+
+// layout returns the outer box width to pass to borderStyle.Width and the
+// usable text width inside it, for a terminal termWidth columns wide.
+func layout(termWidth, maxWidth int) (box, inner int) {
+	box = max(min(termWidth-4, maxWidth), minBoxWidth)
+	return box, box - outerPad
+}
+
+// cardWidth returns the Width to give each of two side-by-side contact cards
+// so that both cards plus the gap fit in inner columns.
+func cardWidth(inner int) int {
+	return (inner-cardGap)/2 - cardBorder
+}
 
 func (m ReviewModel) View() string {
 	if m.ShowHelp {
@@ -58,43 +105,67 @@ func (m ReviewModel) View() string {
 	}
 }
 
-func renderCompact(m ReviewModel, c *ReviewCluster) string {
-	w := max(min(m.Width-4, 60), 20)
-
-	// Header
-	header := fmt.Sprintf(" Review %d/%d", m.ResolvedCount()+1, len(m.Clusters))
+// renderTitle builds the " Review i/n ───── Score: x.xx " rule, sized to the
+// inner text width so the score never wraps onto its own line.
+func renderTitle(m ReviewModel, c *ReviewCluster, inner int) string {
+	header := fmt.Sprintf(" Review %d/%d", m.CurrentIndex+1, len(m.Clusters))
 	scoreStr := fmt.Sprintf("Score: %.2f ", c.Decision.Score)
-	scoreRendered := scoreHighStyle.Render(scoreStr)
-	if c.Decision.Score < CompactThreshold {
-		scoreRendered = scoreLowStyle.Render(scoreStr)
+	scoreRendered := scoreLowStyle.Render(scoreStr)
+	if c.Decision.Score >= CompactThreshold {
+		scoreRendered = scoreHighStyle.Render(scoreStr)
 	}
-	padLen := w - lipgloss.Width(header) - lipgloss.Width(scoreStr)
+	padLen := inner - lipgloss.Width(header) - lipgloss.Width(scoreStr)
 	if padLen < 1 {
 		padLen = 1
 	}
-	title := titleStyle.Render(header) + strings.Repeat("─", padLen) + scoreRendered
+	return titleStyle.Render(header) + strings.Repeat("─", padLen) + scoreRendered
+}
+
+// orderedPair returns the two contacts of a pair with iCloud on the left, so
+// the winning side is always in the same place on screen.
+func orderedPair(contacts []model.ParsedContact) (model.ParsedContact, model.ParsedContact) {
+	a, b := contacts[0], contacts[1]
+	if a.Source != model.SourceICloud && b.Source == model.SourceICloud {
+		return b, a
+	}
+	return a, b
+}
+
+func renderCompact(m ReviewModel, c *ReviewCluster) string {
+	w, inner := layout(m.Width, maxCompactWidth)
+	title := renderTitle(m, c, inner)
+
+	// Two columns: left column fixed, right column takes the rest.
+	colW := max((inner-4)/2, 10)
+	row := func(l, r string) string {
+		return "  " + padRight(truncate(l, colW), colW) + "  " + truncate(r, colW)
+	}
 
 	// Contact names side-by-side
 	var lines []string
 	if len(c.Contacts) >= 2 {
-		a, b := c.Contacts[0], c.Contacts[1]
-		nameA := contactDisplayName(a)
-		nameB := contactDisplayName(b)
-		lines = append(lines, fmt.Sprintf("  %-24s  %s", nameA, nameB))
+		a, b := orderedPair(c.Contacts)
+		mixed := a.Source != b.Source
+		lines = append(lines, row(sourceLabel(a.Source, mixed), sourceLabel(b.Source, mixed)))
+		lines = append(lines, row(contactDisplayName(a), contactDisplayName(b)))
 
-		// Show matched fields
+		// One email and one phone per side: the value that matched, when
+		// there is one, marked the way the detailed cards mark it. Showing
+		// the first value put two different addresses under "Match: email"
+		// when the shared one was second on either side, and hid that the
+		// card was leaving values out.
+		shared := sharedValues(a, b)
 		if len(a.Emails) > 0 || len(b.Emails) > 0 {
-			emailA := firstEmail(a)
-			emailB := firstEmail(b)
-			lines = append(lines, fmt.Sprintf("  %-24s  %s", emailA, emailB))
+			lines = append(lines, row(compactEmail(a, shared), compactEmail(b, shared)))
 		}
 		if len(a.Phones) > 0 || len(b.Phones) > 0 {
-			phoneA := firstPhone(a)
-			phoneB := firstPhone(b)
-			lines = append(lines, fmt.Sprintf("  %-24s  %s", phoneA, phoneB))
+			lines = append(lines, row(compactPhone(a, shared), compactPhone(b, shared)))
 		}
 		if a.Org != "" || b.Org != "" {
-			lines = append(lines, fmt.Sprintf("  %-24s  %s", orBlank(a.Org), orBlank(b.Org)))
+			lines = append(lines, row(displayOrg(a.Org), displayOrg(b.Org)))
+		}
+		if a.Birthday != "" || b.Birthday != "" {
+			lines = append(lines, row(orNone(a.Birthday), orNone(b.Birthday)))
 		}
 	}
 
@@ -112,10 +183,14 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 	if c.Features.SharedOrg {
 		matchParts = append(matchParts, "org")
 	}
+	if c.Features.SharedBirthday {
+		matchParts = append(matchParts, "birthday")
+	}
 	if len(matchParts) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, "  "+labelStyle.Render("Match: ")+strings.Join(matchParts, ", "))
 	}
+	lines = append(lines, "  "+labelStyle.Render("Score: ")+truncate(compactBreakdown(c), inner-11))
 
 	// Footer
 	lines = append(lines, "")
@@ -130,36 +205,30 @@ func renderCompact(m ReviewModel, c *ReviewCluster) string {
 }
 
 func renderDetailed(m ReviewModel, c *ReviewCluster) string {
-	w := max(min(m.Width-4, 72), 20)
-	cardW := (w - 7) / 2 // two cards with gap
-
-	// Header
-	header := fmt.Sprintf(" Review %d/%d", m.ResolvedCount()+1, len(m.Clusters))
-	scoreStr := fmt.Sprintf("Score: %.2f ", c.Decision.Score)
-	scoreRendered := scoreLowStyle.Render(scoreStr)
-	if c.Decision.Score >= CompactThreshold {
-		scoreRendered = scoreHighStyle.Render(scoreStr)
-	}
-	padLen := w - lipgloss.Width(header) - lipgloss.Width(scoreStr)
-	if padLen < 1 {
-		padLen = 1
-	}
-	title := titleStyle.Render(header) + strings.Repeat("─", padLen) + scoreRendered
+	w, inner := layout(m.Width, maxDetailedWidth)
+	title := renderTitle(m, c, inner)
 
 	var body strings.Builder
 
 	if len(c.Contacts) == 2 {
-		// Side-by-side cards
-		leftCard := renderContactCard(c.Contacts[0], cardW)
-		rightCard := renderContactCard(c.Contacts[1], cardW)
-		body.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftCard, "  ", rightCard))
+		// Side-by-side cards, iCloud (the conflict winner) on the left.
+		a, b := orderedPair(c.Contacts)
+		mixed := a.Source != b.Source
+		shared := sharedValues(a, b)
+		cardW := cardWidth(inner)
+		leftCard := renderContactCard(a, cardW, shared, sourceLabel(a.Source, mixed))
+		rightCard := renderContactCard(b, cardW, shared, sourceLabel(b.Source, mixed))
+		body.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftCard, strings.Repeat(" ", cardGap), rightCard))
 	} else {
-		// Stacked cards for multi-contact clusters
+		// Stacked cards for multi-contact clusters. The "wins conflicts"
+		// label only means something when the cluster spans both sources;
+		// blocking pairs same-source duplicates too.
+		mixed := hasMixedSources(c.Contacts)
 		for i, contact := range c.Contacts {
 			if i > 0 {
 				body.WriteString("\n")
 			}
-			body.WriteString(renderContactCard(contact, w-4))
+			body.WriteString(renderContactCard(contact, inner-cardBorder, nil, sourceLabel(contact.Source, mixed)))
 		}
 	}
 
@@ -170,19 +239,19 @@ func renderDetailed(m ReviewModel, c *ReviewCluster) string {
 	// Ambiguity warning
 	if c.Decision.Ambiguity != "" {
 		body.WriteString("\n")
-		body.WriteString(warningStyle.Render("  ! " + truncate(c.Decision.Ambiguity, w-6)))
+		body.WriteString(warningStyle.Render("  ! " + truncate(c.Decision.Ambiguity, inner-4)))
 	}
 
 	// Footer
 	body.WriteString("\n\n")
 	body.WriteString(renderKeybar())
 
-	content := title + "\n\n" + body.String()
-
 	if m.LastError != nil {
 		body.WriteString("\n")
 		body.WriteString(warningStyle.Render("  ! save error: " + m.LastError.Error()))
 	}
+
+	content := title + "\n\n" + body.String()
 
 	// Apply scroll offset for long content
 	lines := strings.Split(content, "\n")
@@ -198,6 +267,9 @@ func renderDetailed(m ReviewModel, c *ReviewCluster) string {
 		if offset > len(lines)-maxVisible {
 			offset = len(lines) - maxVisible
 		}
+		// offset is already clamped to len(lines)-maxVisible above, so this
+		// cannot fire; it is kept as a slice-bounds backstop in case the
+		// clamp above is ever reordered or relaxed.
 		end := offset + maxVisible
 		if end > len(lines) {
 			end = len(lines)
@@ -208,26 +280,101 @@ func renderDetailed(m ReviewModel, c *ReviewCluster) string {
 	return borderStyle.Width(w).Render(strings.Join(lines, "\n")) + "\n"
 }
 
-func renderContactCard(c model.ParsedContact, w int) string {
+// sharedValues returns the normalized emails and phones present on both
+// contacts, so the cards can mark the values that caused the match.
+func sharedValues(a, b model.ParsedContact) map[string]bool {
+	na := normalize.Contact(a)
+	nb := normalize.Contact(b)
+	inB := make(map[string]bool)
+	for _, e := range nb.NormalizedEmails {
+		inB[e] = true
+	}
+	for _, p := range nb.NormalizedPhones {
+		inB[p] = true
+	}
+	// Mark only values the scorer would accept as a shared identifier. A
+	// placeholder both contacts carry ("000-000-0000", "unknown") is equal on
+	// both cards but proves nothing, and ticking it told the reviewer the pair
+	// was confirmed while the score said the opposite — a contradictory cue on
+	// the screen where an irreversible merge is chosen.
+	shared := make(map[string]bool)
+	for _, e := range na.NormalizedEmails {
+		if inB[e] && normalize.PlausibleEmail(e) {
+			shared[e] = true
+		}
+	}
+	for _, p := range na.NormalizedPhones {
+		if inB[p] && normalize.PlausiblePhone(p) {
+			shared[p] = true
+		}
+	}
+	return shared
+}
+
+// hasMixedSources reports whether a cluster spans more than one source.
+func hasMixedSources(contacts []model.ParsedContact) bool {
+	for i := 1; i < len(contacts); i++ {
+		if contacts[i].Source != contacts[0].Source {
+			return true
+		}
+	}
+	return false
+}
+
+// sourceLabel names a source for display. When the pair spans sources the
+// iCloud side is called out as the one that wins field conflicts on merge;
+// for two contacts from the same source that label would be meaningless.
+func sourceLabel(s model.Source, mixed bool) string {
+	switch {
+	case s == model.SourceICloud && mixed:
+		return "icloud (wins conflicts)"
+	case s == "":
+		return "unknown"
+	default:
+		return string(s)
+	}
+}
+
+func sourceStyle(s model.Source) lipgloss.Style {
+	switch s {
+	case model.SourceICloud:
+		return icloudStyle
+	case model.SourceGoogle:
+		return googleStyle
+	default:
+		return labelStyle
+	}
+}
+
+// renderContactCard renders one contact in a bordered card w columns wide
+// (plus the border) under the given source label. shared marks normalized
+// emails/phones present on the other contact; those lines get a ✓ so the
+// match cause is visible.
+func renderContactCard(c model.ParsedContact, w int, shared map[string]bool, label string) string {
+	style := sourceStyle(c.Source)
 	cardStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
+		BorderForeground(style.GetForeground()).
 		Padding(0, 1).
 		Width(w)
 
-	source := string(c.Source)
-	if source == "" {
-		source = "unknown"
+	// Values must not exceed the card's text width or lipgloss wraps them.
+	textW := w - 2
+	mark := func(value, key string) string {
+		if shared[key] {
+			return matchStyle.Render("✓ ") + truncate(value, textW-2)
+		}
+		return "  " + truncate(value, textW-2)
 	}
-	header := labelStyle.Render("─ " + source + " ")
 
 	var lines []string
-	lines = append(lines, header)
-	lines = append(lines, field("Name", contactDisplayName(c)))
+	lines = append(lines, style.Render(truncate("─ "+label+" ", textW)))
+	lines = append(lines, field("Name", truncate(contactDisplayName(c), textW-6)))
 
 	if len(c.Emails) > 0 {
 		lines = append(lines, field("Email", ""))
 		for _, e := range c.Emails {
-			lines = append(lines, "  "+e.Address)
+			lines = append(lines, mark(e.Address, normalize.Email(e.Address)))
 		}
 	} else {
 		lines = append(lines, field("Email", "(none)"))
@@ -236,64 +383,86 @@ func renderContactCard(c model.ParsedContact, w int) string {
 	if len(c.Phones) > 0 {
 		lines = append(lines, field("Phone", ""))
 		for _, p := range c.Phones {
-			lines = append(lines, "  "+p.Number)
+			lines = append(lines, mark(displayPhone(p.Number), normalize.Phone(p.Number)))
 		}
 	} else {
 		lines = append(lines, field("Phone", "(none)"))
 	}
 
-	lines = append(lines, field("Org", orNone(c.Org)))
-	lines = append(lines, field("Title", orNone(c.Title)))
-	lines = append(lines, field("Birthday", orNone(c.Birthday)))
+	lines = append(lines, field("Org", truncate(orNone(displayOrg(c.Org)), textW-5)))
+	lines = append(lines, field("Title", truncate(orNone(c.Title), textW-7)))
+	lines = append(lines, field("Birthday", truncate(orNone(c.Birthday), textW-10)))
 
 	if len(c.Addresses) > 0 {
 		lines = append(lines, field("Address", ""))
 		for _, a := range c.Addresses {
-			lines = append(lines, "  "+formatAddress(a))
+			lines = append(lines, "  "+truncate(formatAddress(a), textW-2))
 		}
 	}
 
 	return cardStyle.Render(strings.Join(lines, "\n"))
 }
 
+// displayPhone renders a phone number in one canonical form so the same
+// number stored as "(317) 555-9876" and "3175559876" looks identical on
+// both cards. Numbers that don't normalize to 10 digits are shown as-is.
+func displayPhone(raw string) string {
+	digits := normalize.Phone(raw)
+	if len(digits) == 10 {
+		return fmt.Sprintf("(%s) %s-%s", digits[:3], digits[3:6], digits[6:])
+	}
+	return raw
+}
+
 func renderScoreBreakdown(c *ReviewCluster) string {
 	f := c.Features
-	nameless := f.NameSimilarity == 0 && !hasDisplayName(c)
+	// The scorer records which weight table it used; older reports without
+	// the flag fall back to the display-name heuristic.
+	nameless := f.Nameless || (f.NameSimilarity == 0 && !hasDisplayName(c))
+
+	// One formatter for every row so the weight column lines up.
+	row := func(label, value string, weight float64) string {
+		return fmt.Sprintf("    %-9s %-28s x%.2f", label+":", value, weight)
+	}
+	shared := func(hit bool, yes, no string) string {
+		if hit {
+			return "1.00 (" + yes + ")"
+		}
+		return "0.00 (" + no + ")"
+	}
 
 	var lines []string
 	lines = append(lines, "  "+labelStyle.Render("Score breakdown:"))
 
+	emailWeight, phoneWeight, orgWeight, bdayWeight :=
+		scorer.WeightEmail, scorer.WeightPhone, scorer.WeightOrg, scorer.WeightBirthday
 	if nameless {
 		lines = append(lines, "    "+labelStyle.Render("(nameless contacts — name weight redistributed)"))
+		emailWeight, phoneWeight, orgWeight, bdayWeight =
+			scorer.WeightEmailNoName, scorer.WeightPhoneNoName, scorer.WeightOrgNoName, scorer.WeightBirthdayNoName
 	} else {
-		nameLabel := fmt.Sprintf("    Name:  %.2f", f.NameSimilarity)
-		lines = append(lines, fmt.Sprintf("%-36s x0.40", nameLabel))
+		lines = append(lines, row("Name", fmt.Sprintf("%.2f", f.NameSimilarity), scorer.WeightName))
 	}
+	lines = append(lines, row("Email", shared(f.SharedEmail, "shared email", "no shared emails"), emailWeight))
+	lines = append(lines, row("Phone", shared(f.SharedPhone, "shared phone", "no shared phones"), phoneWeight))
+	lines = append(lines, row("Org", shared(f.SharedOrg, "shared org", "no shared org"), orgWeight))
+	bdayVal := shared(f.SharedBirthday, "shared birthday", "no shared birthday")
+	if f.BirthdayConflict {
+		bdayVal = "0.00 (birthdays differ)"
+	} else if f.BirthdayUnknown {
+		bdayVal = "0.00 (a birthday could not be read)"
+	}
+	lines = append(lines, row("Birthday", bdayVal, bdayWeight))
 
-	emailWeight := "x0.25"
-	phoneWeight := "x0.25"
-	if nameless {
-		emailWeight = "x0.45"
-		phoneWeight = "x0.45"
+	// Say why the pair is here when the score alone would not have put it here.
+	switch {
+	case f.BirthdayConflict:
+		lines = append(lines, "    "+warningStyle.Render("Held for review: the two birthdays disagree."))
+	case f.BirthdayUnknown:
+		lines = append(lines, "    "+warningStyle.Render("Held for review: a birthday could not be read, so they may disagree."))
+	case !nameless && f.NearName() && c.Decision.Score < model.ThresholdReview:
+		lines = append(lines, "    "+labelStyle.Render("Surfaced because the names match."))
 	}
-
-	emailVal := "0.00 (no shared emails)"
-	if f.SharedEmail {
-		emailVal = "1.00 (shared email)"
-	}
-	lines = append(lines, fmt.Sprintf("    Email: %-28s %s", emailVal, emailWeight))
-
-	phoneVal := "0.00 (no shared phones)"
-	if f.SharedPhone {
-		phoneVal = "1.00 (shared phone)"
-	}
-	lines = append(lines, fmt.Sprintf("    Phone: %-28s %s", phoneVal, phoneWeight))
-
-	orgVal := "0.00 (no shared org)"
-	if f.SharedOrg {
-		orgVal = "1.00 (shared org)"
-	}
-	lines = append(lines, fmt.Sprintf("    Org:   %-28s x0.10", orgVal))
 
 	return strings.Join(lines, "\n")
 }
@@ -352,6 +521,74 @@ func contactDisplayName(c model.ParsedContact) string {
 	return "(unknown)"
 }
 
+// compactEmail is the one email the compact card shows for a contact: the
+// address the scorer matched on the other side if there is one, marked ✓,
+// else the first, with a count of the addresses not shown.
+func compactEmail(c model.ParsedContact, shared map[string]bool) string {
+	if len(c.Emails) == 0 {
+		return "(none)"
+	}
+	shown := c.Emails[0].Address
+	mark := "  "
+	for _, e := range c.Emails {
+		if shared[normalize.Email(e.Address)] {
+			shown, mark = e.Address, matchStyle.Render("✓ ")
+			break
+		}
+	}
+	return mark + shown + moreHint(len(c.Emails))
+}
+
+// compactPhone is compactEmail for phones.
+func compactPhone(c model.ParsedContact, shared map[string]bool) string {
+	if len(c.Phones) == 0 {
+		return "(none)"
+	}
+	shown := c.Phones[0].Number
+	mark := "  "
+	for _, p := range c.Phones {
+		if shared[normalize.Phone(p.Number)] {
+			shown, mark = p.Number, matchStyle.Render("✓ ")
+			break
+		}
+	}
+	return mark + displayPhone(shown) + moreHint(len(c.Phones))
+}
+
+// moreHint says how many values a one-line field is not showing.
+func moreHint(n int) string {
+	if n > 1 {
+		return fmt.Sprintf(" +%d", n-1)
+	}
+	return ""
+}
+
+// compactBreakdown is the score in one line: the name term and every shared
+// signal that added to it, with the weights the scorer used. The detailed
+// view has the full table; the compact card still has to show where the
+// number came from, because that number is what the reviewer merges on.
+func compactBreakdown(c *ReviewCluster) string {
+	f := c.Features
+	nameless := f.Nameless || (f.NameSimilarity == 0 && !hasDisplayName(c))
+	emailW, phoneW, orgW, bdayW := scorer.WeightEmail, scorer.WeightPhone, scorer.WeightOrg, scorer.WeightBirthday
+	var parts []string
+	if nameless {
+		emailW, phoneW, orgW, bdayW = scorer.WeightEmailNoName, scorer.WeightPhoneNoName, scorer.WeightOrgNoName, scorer.WeightBirthdayNoName
+	} else {
+		parts = append(parts, fmt.Sprintf("name %.2f x%.2f", f.NameSimilarity, scorer.WeightName))
+	}
+	for _, sig := range []struct {
+		hit   bool
+		label string
+		w     float64
+	}{{f.SharedEmail, "email", emailW}, {f.SharedPhone, "phone", phoneW}, {f.SharedOrg, "org", orgW}, {f.SharedBirthday, "birthday", bdayW}} {
+		if sig.hit {
+			parts = append(parts, fmt.Sprintf("%s +%.2f", sig.label, sig.w))
+		}
+	}
+	return strings.Join(parts, ", ") + fmt.Sprintf(" = %.2f", c.Decision.Score)
+}
+
 func firstEmail(c model.ParsedContact) string {
 	if len(c.Emails) > 0 {
 		return c.Emails[0].Address
@@ -361,20 +598,13 @@ func firstEmail(c model.ParsedContact) string {
 
 func firstPhone(c model.ParsedContact) string {
 	if len(c.Phones) > 0 {
-		return c.Phones[0].Number
+		return displayPhone(c.Phones[0].Number)
 	}
 	return "(none)"
 }
 
 func field(label, value string) string {
 	return labelStyle.Render(label+": ") + value
-}
-
-func orBlank(s string) string {
-	if s == "" {
-		return ""
-	}
-	return s
 }
 
 func orNone(s string) string {
@@ -398,16 +628,38 @@ func formatAddress(a model.Address) string {
 	return strings.Join(nonEmpty, ", ")
 }
 
+// displayOrg renders a structured ORG value for a human: units joined with
+// ", " and empty positional slots dropped (";Engineering" -> "Engineering").
+func displayOrg(org string) string {
+	var parts []string
+	for _, p := range normalize.DisplayComponents(org, ';') {
+		if p = strings.TrimSpace(p); p != "" {
+			parts = append(parts, p)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// padRight pads s with spaces to width terminal columns (not runes, so
+// double-width scripts still line up).
+func padRight(s string, width int) string {
+	if pad := width - lipgloss.Width(s); pad > 0 {
+		return s + strings.Repeat(" ", pad)
+	}
+	return s
+}
+
+// truncate limits s to maxLen terminal columns, measuring display width so
+// CJK and other double-width glyphs do not overflow the card and wrap.
 func truncate(s string, maxLen int) string {
 	if maxLen <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) <= maxLen {
+	if lipgloss.Width(s) <= maxLen {
 		return s
 	}
 	if maxLen <= 3 {
-		return string(runes[:maxLen])
+		return ansi.Truncate(s, maxLen, "")
 	}
-	return string(runes[:maxLen-3]) + "..."
+	return ansi.Truncate(s, maxLen, "...")
 }

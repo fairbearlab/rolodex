@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -134,7 +135,7 @@ func runMerge(args []string) error {
 	icloudPath := fs.String("icloud", "", "path to iCloud .vcf export")
 	googlePath := fs.String("google", "", "path to Google .vcf export")
 	outPath := fs.String("out", "merged.vcf", "output path for merged contacts")
-	reviewPath := fs.String("review", "review.vcf", "output path for review-tier contacts")
+	reviewPath := fs.String("review", "", "output path for review-tier contacts (default: review.vcf next to --out)")
 	reportPath := fs.String("report", "", "output path for JSON report")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -143,8 +144,99 @@ func runMerge(args []string) error {
 	if *icloudPath == "" || *googlePath == "" {
 		return fmt.Errorf("both --icloud and --google flags are required")
 	}
+	reviewDerived := *reviewPath == ""
+	if reviewDerived {
+		*reviewPath = filepath.Join(filepath.Dir(*outPath), "review.vcf")
+	}
+	inputs := []pathFlag{{"--icloud", *icloudPath}, {"--google", *googlePath}}
+	outputs := []pathFlag{{"--out", *outPath}, {"--review", *reviewPath}, {"--report", *reportPath}}
+	if err := checkDistinctPaths(inputs, outputs); err != nil {
+		return err
+	}
 
-	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath)
+	return merge(*icloudPath, *googlePath, *outPath, *reviewPath, *reportPath, reviewDerived)
+}
+
+// pathFlag names a path the way the user gave it, for error messages.
+type pathFlag struct{ flag, path string }
+
+// checkDistinctPaths rejects a command whose paths collide: an output over
+// an input, or two outputs on one file. --review defaults to a path derived
+// from --out, so "merge --out dir/review.vcf" aimed both writes at one file:
+// the merged contacts were written and then overwritten by the review set,
+// with no error. run had a narrower copy of this check that never included
+// its inputs, so "run --out icloud.vcf" replaced the iCloud export with the
+// resolved output and exited 0; resolve had no check at all.
+//
+// Three subtleties, each of which cost a whole address book in testing:
+//   - Keys are case-folded. macOS APFS and HFS+ are case-insensitive by
+//     default, so "--out Merged.vcf --review merged.vcf" is ONE file that
+//     filepath.Abs reports as two. The stale-review removal then unlinked the
+//     merged output and the command still exited 0.
+//   - The input exports are included. Writing --out over --icloud destroyed
+//     the one artifact a user needs if the merge went wrong.
+//   - writer.WriteFile stages through "<path>.tmp", so that sibling is
+//     reserved too.
+//
+// Empty paths (an optional flag left unset) are skipped.
+func checkDistinctPaths(inputs, outputs []pathFlag) error {
+	seen := make(map[string]string)
+	claim := func(key, flag string) error {
+		if prev, ok := seen[key]; ok && prev != flag {
+			return fmt.Errorf("%s and %s refer to the same file; they must be different", prev, flag)
+		}
+		seen[key] = flag
+		return nil
+	}
+
+	for _, e := range append(append([]pathFlag{}, inputs...), outputs...) {
+		if e.path == "" {
+			continue
+		}
+		k, err := pathKey(e.path)
+		if err != nil {
+			return fmt.Errorf("resolving %s path %q: %w", e.flag, e.path, err)
+		}
+		if err := claim(k, e.flag); err != nil {
+			return err
+		}
+	}
+	// Reserve the staging sibling of every file we write, and refuse to write
+	// on top of an input.
+	for _, e := range outputs {
+		if e.path == "" {
+			continue
+		}
+		k, err := pathKey(e.path + ".tmp")
+		if err != nil {
+			return fmt.Errorf("resolving %s path %q: %w", e.flag, e.path, err)
+		}
+		if err := claim(k, e.flag); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// pathKey identifies the file a path names, resolving symlinks as well as
+// case. filepath.Abs cleans a path but follows nothing, so "--icloud
+// real/icloud.vcf --out alias/icloud.vcf" through a symlinked directory
+// looked like two files and the source export was overwritten. A path that
+// does not exist yet still has a parent that usually does, so resolve the
+// directory and keep the base name.
+func pathKey(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return strings.ToLower(resolved), nil
+	}
+	dir, base := filepath.Split(abs)
+	if resolvedDir, err := filepath.EvalSymlinks(filepath.Clean(dir)); err == nil {
+		return strings.ToLower(filepath.Join(resolvedDir, base)), nil
+	}
+	return strings.ToLower(abs), nil
 }
 
 func runReview(args []string) error {
@@ -175,6 +267,10 @@ func runResolve(args []string) error {
 
 	if *reportPath == "" || *reviewPath == "" || *mergedPath == "" {
 		return fmt.Errorf("--report, --review, and --merged flags are required")
+	}
+	inputs := []pathFlag{{"--report", *reportPath}, {"--review", *reviewPath}, {"--merged", *mergedPath}}
+	if err := checkDistinctPaths(inputs, []pathFlag{{"--out", *outPath}}); err != nil {
+		return err
 	}
 
 	return resolve(*reportPath, *reviewPath, *mergedPath, *outPath)

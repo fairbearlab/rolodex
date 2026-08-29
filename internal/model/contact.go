@@ -25,10 +25,15 @@ type ParsedContact struct {
 	Emails []Email
 	Phones []Phone
 
+	// Org is the structured ORG value in wire form: units separated by ';'
+	// with escapes intact, so an escaped "\;" is part of its unit. It is one
+	// string in the model, and "Acme; Inc." decoded would be indistinguishable
+	// from the two units "Acme" and " Inc.". normalize.DisplayComponents reads
+	// it; the writer emits it as is. Every other modeled field is decoded.
 	Org   string
 	Title string
 
-	Birthday string // raw BDAY value
+	Birthday string // canonical YYYY-MM-DD or --MM-DD when recognizable, else raw BDAY value
 
 	Addresses []Address
 	Note      string
@@ -37,7 +42,8 @@ type ParsedContact struct {
 	Photo     []byte // raw PHOTO data
 	PhotoType string // e.g. "JPEG", "PNG"
 
-	// Catch-all for fields we don't explicitly model
+	// Catch-all for fields we don't explicitly model. Values are wire form
+	// and are written back verbatim.
 	Extra map[string][]string
 
 	// Raw vCard text for passthrough on malformed entries
@@ -73,16 +79,51 @@ type NormalizedContact struct {
 	// Normalized forms used for blocking and scoring
 	NormalizedFamilyName string
 	NormalizedGivenName  string
-	NormalizedEmails     []string // lowercased, trimmed
-	NormalizedPhones     []string // digits only
+	NormalizedMiddleName string
+	NormalizedSuffix     string // generational suffix only (jr, sr, ii, iii, iv, v), from Suffix or the name fields
+
+	// Accent-preserving forms. The normalized forms above fold diacritics away
+	// so that blocking and similarity scoring stay tolerant of an export that
+	// lost them; these keep the marks so an identity rule can tell "Nguyên"
+	// from "Nguyễn" before merging two people into one.
+	StrictFamilyName string
+	StrictGivenName  string
+	StrictMiddleName string
+
+	NormalizedEmails []string // lowercased, trimmed
+	NormalizedPhones []string // digits only
 }
 
 // ScoreFeatures holds per-feature scores for a scored pair.
 type ScoreFeatures struct {
 	NameSimilarity float64 `json:"name_similarity"`
-	SharedEmail    bool    `json:"shared_email"`
-	SharedPhone    bool    `json:"shared_phone"`
-	SharedOrg      bool    `json:"shared_org"`
+	// NameExact is true when the two names identify the same person as far as
+	// the name fields can tell: given and family names identical (a nickname
+	// counts toward NameSimilarity, never toward identity), middle names
+	// compatible, and generational suffixes equal. Stricter than NameSimilarity >= 0.95, which
+	// Jaro-Winkler also awards to Eric/Erica, and than normalized equality,
+	// which would merge John Smith Jr. with John Smith Sr.
+	NameExact   bool `json:"name_exact,omitempty"`
+	SharedEmail bool `json:"shared_email"`
+	SharedPhone bool `json:"shared_phone"`
+	SharedOrg   bool `json:"shared_org"`
+	// SharedBirthday is true when both birthdays are present, well-formed
+	// and agree; BirthdayConflict when both are well-formed and disagree;
+	// BirthdayUnknown when both are present but at least one is not in a
+	// form the comparison can read, so neither of the other two can be
+	// trusted.
+	SharedBirthday   bool `json:"shared_birthday,omitempty"`
+	BirthdayConflict bool `json:"birthday_conflict,omitempty"`
+	BirthdayUnknown  bool `json:"birthday_unknown,omitempty"`
+	// Nameless is true when the pair was scored with the nameless weight table
+	// (either contact lacks a given name).
+	Nameless bool `json:"nameless,omitempty"`
+}
+
+// NearName reports whether the pair's names are near-identical: enough to
+// deserve a human look, not enough to merge on.
+func (f ScoreFeatures) NearName() bool {
+	return f.NameSimilarity >= ThresholdNearName
 }
 
 // ScoredPair represents a candidate match between two contacts.
@@ -103,9 +144,22 @@ const (
 )
 
 // Thresholds for tier classification.
+//
+// The linear score alone rarely reaches ThresholdAutoMerge on real exports,
+// where most contacts carry only a name and one identifier. Two rules sit on
+// top of the score thresholds (see scorer.Classify):
+//
+//   - an identical name (ScoreFeatures.NameExact) plus a shared phone, email
+//     or birthday is auto_merge
+//   - a near-identical name (similarity >= ThresholdNearName) on its own is at
+//     least review, so same-name pairs are surfaced to a human instead of
+//     silently dropped
+//   - two well-formed birthdays that disagree cap the pair at review: that is
+//     the strongest "two different people" signal an export carries
 const (
 	ThresholdAutoMerge = 0.85
 	ThresholdReview    = 0.60
+	ThresholdNearName  = 0.95
 )
 
 // MergedContact is the output of the merge stage.
@@ -121,4 +175,16 @@ type MergedContact struct {
 type Cluster struct {
 	Indices []int        // indices into the contact slice
 	Pairs   []ScoredPair // all scored pairs in this cluster
+}
+
+// DeferredEdge is a near-name-only pair the merger saw but did not apply:
+// at least one side was already in a cluster on confirming evidence, and a
+// same-name edge is a prompt for a human, not a link between people, so it
+// does not chain onto that cluster. Sides holds the two groups the edge
+// would have joined — a cluster's members, or a single contact left
+// distinct. Both stay separate people in the output; this is the record
+// that the resemblance was seen, so the report can say so.
+type DeferredEdge struct {
+	Score float64 // the strongest suppressed edge between the two sides
+	Sides [2][]int
 }

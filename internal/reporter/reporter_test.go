@@ -8,6 +8,8 @@ import (
 
 	"github.com/fairbearlab/rolodex/internal/merger"
 	"github.com/fairbearlab/rolodex/internal/model"
+	"github.com/fairbearlab/rolodex/internal/normalize"
+	"github.com/fairbearlab/rolodex/internal/scorer"
 )
 
 func TestGenerateAutoMergeCluster(t *testing.T) {
@@ -191,5 +193,84 @@ func TestGenerateWarnings(t *testing.T) {
 	}
 	if len(report.Warnings) != 1 {
 		t.Errorf("expected 1 warning, got %d", len(report.Warnings))
+	}
+}
+
+// TestFindConflictsComparesBirthdaysCanonically: the report raw-compared the
+// BDAY strings, so a pair the scorer had just merged on a shared birthday
+// (iCloud `--10-22`, Google `1989-10-22`) was reported with both
+// shared_birthday:true and a BDAY conflict. Two dates that agree are not a
+// conflict; two that disagree, or free text against a date, still are.
+func TestFindConflictsComparesBirthdaysCanonically(t *testing.T) {
+	cases := []struct {
+		icloud, google string
+		wantConflict   bool
+	}{
+		{"--10-22", "1989-10-22", false},
+		{"1989-10-22", "--10-22", false},
+		{"1989-10-22", "1989-10-22", false},
+		{"1989-10-22", "1990-10-22", true},
+		{"--10-22", "1989-10-23", true},
+		{"unknown", "1989-10-22", true},
+	}
+	for _, tc := range cases {
+		contacts := []model.NormalizedContact{
+			{Parsed: model.ParsedContact{Source: model.SourceICloud, FormattedName: "Jane Doe", Birthday: tc.icloud}},
+			{Parsed: model.ParsedContact{Source: model.SourceGoogle, FormattedName: "Jane Doe", Birthday: tc.google}},
+		}
+		var got bool
+		for _, c := range findConflicts(contacts, []int{0, 1}) {
+			if c.Field == "BDAY" {
+				got = true
+			}
+		}
+		if got != tc.wantConflict {
+			t.Errorf("BDAY %q vs %q: conflict reported = %v, want %v", tc.icloud, tc.google, got, tc.wantConflict)
+		}
+	}
+}
+
+// TestGenerateReportsDeferredPairs: a same-name pair the merger left
+// unreviewed (one side already merged on a shared phone) appears in the
+// report under "deferred" with both sides' contacts, and is counted in the
+// summary, so a namesake shipped as a separate person is never silent.
+func TestGenerateReportsDeferredPairs(t *testing.T) {
+	mk := func(src model.Source, phone string) model.NormalizedContact {
+		return normalize.Contact(model.ParsedContact{Source: src, GivenName: "David", FamilyName: "Lee",
+			Phones: []model.Phone{{Number: phone}}})
+	}
+	contacts := []model.NormalizedContact{
+		mk(model.SourceICloud, "3175551111"),
+		mk(model.SourceGoogle, "4155552222"),
+		mk(model.SourceGoogle, "3175551111"),
+	}
+	var idx [][2]int
+	for i := range contacts {
+		for j := i + 1; j < len(contacts); j++ {
+			idx = append(idx, [2]int{i, j})
+		}
+	}
+	result := merger.Merge(contacts, scorer.Score(contacts, idx))
+	report := Generate(contacts, result, 1, 2, nil)
+
+	if report.Summary.ReviewCount != 0 || report.Summary.AutoMerged != 1 || report.Summary.DistinctCount != 1 {
+		t.Fatalf("summary = %+v, want 1 auto-merge, 1 distinct, 0 review", report.Summary)
+	}
+	if report.Summary.DeferredCount != 1 || len(report.Deferred) != 1 {
+		t.Fatalf("deferred_count=%d deferred=%+v, want one deferred pair", report.Summary.DeferredCount, report.Deferred)
+	}
+	d := report.Deferred[0]
+	got := map[int]bool{}
+	for _, c := range d.Contacts {
+		got[c.Index] = true
+		if c.Name == "" {
+			t.Errorf("deferred contact %d has no name", c.Index)
+		}
+	}
+	if len(got) != 3 || !got[0] || !got[1] || !got[2] {
+		t.Errorf("deferred contacts = %+v, want all three David Lees (the cluster and the namesake)", d.Contacts)
+	}
+	if d.Score != 0.40 || d.Reason == "" {
+		t.Errorf("deferred score=%.2f reason=%q, want 0.40 and an explanation", d.Score, d.Reason)
 	}
 }

@@ -158,3 +158,37 @@ func TestUnionFind(t *testing.T) {
 		t.Errorf("expected 2 clusters, got %d", len(clusters))
 	}
 }
+
+// TestMergePrefersFullBirthdayOverYearless: the fill-only-if-empty rule kept
+// iCloud's `--10-22` (the year omitted with X-APPLE-OMIT-YEAR) over Google's
+// `1989-10-22` for the same person, and the merged card lost the year with no
+// warning — while the scorer had just counted the two as a shared birthday.
+// The more specific of two agreeing dates wins; a disagreement still goes to
+// the priority source.
+func TestMergePrefersFullBirthdayOverYearless(t *testing.T) {
+	cases := []struct {
+		name          string
+		icloud, other string
+		want          string
+	}{
+		{"iCloud yearless, Google full", "--10-22", "1989-10-22", "1989-10-22"},
+		{"iCloud full, Google yearless", "1989-10-22", "--10-22", "1989-10-22"},
+		{"both full and equal", "1989-10-22", "1989-10-22", "1989-10-22"},
+		{"disagreeing years: priority source wins", "1989-10-22", "1990-10-22", "1989-10-22"},
+		{"yearless vs a different day: priority source wins", "--10-22", "1989-10-23", "--10-22"},
+		{"iCloud empty", "", "1989-10-22", "1989-10-22"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			contacts := []model.NormalizedContact{
+				{Parsed: model.ParsedContact{Source: model.SourceICloud, GivenName: "Jane", FamilyName: "Doe", Birthday: tc.icloud}},
+				{Parsed: model.ParsedContact{Source: model.SourceGoogle, GivenName: "Jane", FamilyName: "Doe", Birthday: tc.other}},
+			}
+			pairs := []model.ScoredPair{{A: 0, B: 1, Score: 0.90, Tier: model.TierAutoMerge}}
+			got := Merge(contacts, pairs).Merged[0].Contact.Birthday
+			if got != tc.want {
+				t.Errorf("merged birthday = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
