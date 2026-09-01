@@ -20,7 +20,7 @@ func TestWriteBytesReplacesDestination(t *testing.T) {
 	if err := WriteBytes(path, []byte(`{"ok":true}`)); err != nil {
 		t.Fatalf("WriteBytes: %v", err)
 	}
-	got, err := os.ReadFile(path)
+	got, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestCommitFailureLeavesDestination(t *testing.T) {
 	if err := s.Commit(); err == nil {
 		t.Fatal("Commit succeeded with no staged file")
 	}
-	got, err := os.ReadFile(path)
+	got, err := os.ReadFile(filepath.Clean(path))
 	if err != nil || string(got) != "previous" {
 		t.Errorf("destination after failed commit = %q, %v; want the previous content untouched", got, err)
 	}
