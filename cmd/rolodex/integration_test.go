@@ -506,3 +506,47 @@ func writeTestVCF(t *testing.T, path, name, email string) {
 		t.Fatalf("failed to write test VCF %s: %v", path, err)
 	}
 }
+
+// --out may itself be the --keep merged.vcf path: the kept copy is skipped
+// rather than flagged as a collision, and the final output lands there.
+func TestRunKeepOutNamedMergedVcf(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
+	googleVCF := filepath.Join(tmpDir, "google.vcf")
+	if err := os.WriteFile(icloudVCF, []byte("BEGIN:VCARD\r\nVERSION:3.0\r\nN:One;Person;;;\r\nFN:Person One\r\nEMAIL:one@example.com\r\nEND:VCARD\r\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(googleVCF, []byte("BEGIN:VCARD\r\nVERSION:3.0\r\nN:Two;Person;;;\r\nFN:Person Two\r\nEMAIL:two@example.com\r\nEND:VCARD\r\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	outDir := filepath.Join(tmpDir, "out")
+	if err := os.MkdirAll(outDir, 0750); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join(outDir, "merged.vcf")
+	if err := run(icloudVCF, googleVCF, outPath, "", true); err != nil {
+		t.Fatalf("run --keep with --out merged.vcf: %v", err)
+	}
+	if _, err := os.Stat(outPath); err != nil {
+		t.Errorf("final output missing: %v", err)
+	}
+}
+
+// dispatch wires every command name to its handler; each arm reached with no
+// flags must come back with that command's own usage error, proving the name
+// routes to the right place.
+func TestDispatchRoutesEveryCommand(t *testing.T) {
+	for cmd, want := range map[string]string{
+		"run":     "both --icloud and --google flags are required",
+		"merge":   "both --icloud and --google flags are required",
+		"review":  "--report and --review flags are required",
+		"resolve": "--report, --review, and --merged flags are required",
+	} {
+		err := dispatch(cmd, nil)
+		if err == nil || err.Error() != want {
+			t.Errorf("dispatch(%q) = %v, want %q", cmd, err, want)
+		}
+	}
+}

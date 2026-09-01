@@ -132,6 +132,18 @@
 **Priority:** P3
 **Depends on:** Calibration dataset for scoring thresholds
 
+### Emit stable UIDs so re-imports don't duplicate
+
+**What:** No card in a real merged export carries a `UID` — the sources don't provide one and the writer never generates one. Have `writer.contactToCard` emit a deterministic UID (e.g. a hash of stable identity fields, or a UUID minted once and preserved thereafter) whenever the parsed contact has none; the parser already round-trips an existing UID since v0.4.x.
+
+**Why:** vCard import is additive, and without UIDs a contacts app has only loose name matching to detect that an incoming card is one it already has. CardDAV-backed apps (iCloud, Google) match on UID, so a stable UID is what makes importing a regenerated `final.vcf`/`reachable.vcf` over a previous import update-in-place instead of duplicating all 650 contacts. Found while diagnosing real duplicate-on-reimport reports (2026-08-31).
+
+**Context:** Determinism matters: the same contact must get the same UID across runs, or the UID makes re-import duplication worse rather than better. Hashing name+first-phone/email is fragile under merges that change those fields; minting once and persisting via the round-tripped UID is likely the right shape.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Nothing
+
 ## Review UX
 
 ### Re-merge detection

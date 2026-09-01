@@ -792,3 +792,47 @@ func TestPruneReportNamesUncountedPhoneAndNote(t *testing.T) {
 		t.Errorf("removed_contacts[0] = %v", first)
 	}
 }
+
+// With --format json the refusal over malformed entries is stderr's to
+// explain: the JSON report is never printed, so the warning lines are the
+// only record of what would be lost.
+func TestPruneMalformedJSONRefusalStillWarns(t *testing.T) {
+	dir := t.TempDir()
+	in := writeFixture(t, dir, "in.vcf", malformedFixture)
+	kept := filepath.Join(dir, "kept.vcf")
+
+	var stdout bytes.Buffer
+	var err error
+	stderr := captureStderr(t, func() {
+		err = runPrune([]string{in, "--out", kept, "--format", "json"}, &stdout)
+	})
+	if err == nil || !strings.Contains(err.Error(), "malformed entries would be in neither output") {
+		t.Errorf("err = %v, want the refusal", err)
+	}
+	if !strings.Contains(stderr, "warning: 1 malformed entries in "+in) {
+		t.Errorf("stderr lacks the warning detail:\n%s", stderr)
+	}
+	if stdout.Len() != 0 {
+		t.Errorf("refusal should print no JSON report, got:\n%s", stdout.String())
+	}
+	if got := dirEntries(t, dir); len(got) != 1 {
+		t.Errorf("files written despite refusing: %v", got)
+	}
+}
+
+// sameFile answers false, never errors, when either side cannot be stat'd —
+// a missing file must not block the caller's normal path.
+func TestSameFileMissingPaths(t *testing.T) {
+	dir := t.TempDir()
+	real := writeFixture(t, dir, "real.vcf", pruneFixture)
+	missing := filepath.Join(dir, "missing.vcf")
+	if sameFile(missing, real) {
+		t.Error("missing first path compared as the same file")
+	}
+	if sameFile(real, missing) {
+		t.Error("missing second path compared as the same file")
+	}
+	if !sameFile(real, real) {
+		t.Error("a path is the same file as itself")
+	}
+}
