@@ -274,3 +274,37 @@ func TestGenerateReportsDeferredPairs(t *testing.T) {
 		t.Errorf("deferred score=%.2f reason=%q, want 0.40 and an explanation", d.Score, d.Reason)
 	}
 }
+
+// report.json is written with the same staging guarantees as the .vcf
+// outputs: a symlink planted at the old "<path>.tmp" is never written
+// through, and a directory at the path is refused, not replaced.
+func TestWriteFileStagesLikeTheWriter(t *testing.T) {
+	dir := t.TempDir()
+	victim := filepath.Join(dir, "victim.txt")
+	if err := os.WriteFile(victim, []byte("KEEP ME\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, "report.json")
+	if err := os.Symlink(victim, out+".tmp"); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFile(out, model.Report{}); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Clean(victim)); string(b) != "KEEP ME\n" {
+		t.Fatalf("wrote through the planted symlink: %q", b)
+	}
+	if fi, err := os.Lstat(out); err != nil || !fi.Mode().IsRegular() {
+		t.Errorf("report.json is not a regular file: %v %v", fi, err)
+	}
+	empty := filepath.Join(dir, "reportdir")
+	if err := os.Mkdir(empty, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFile(empty, model.Report{}); err == nil {
+		t.Error("a directory at --report was accepted")
+	}
+	if fi, err := os.Stat(empty); err != nil || !fi.IsDir() {
+		t.Errorf("the directory was replaced: %v %v", fi, err)
+	}
+}

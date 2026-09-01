@@ -40,6 +40,7 @@ type ParsedContact struct {
 	URL       string
 
 	Photo     []byte // raw PHOTO data
+	PhotoURI  string // PHOTO given as a reference (VALUE=uri, as Google exports it) rather than bytes
 	PhotoType string // e.g. "JPEG", "PNG"
 
 	// Catch-all for fields we don't explicitly model. Values are wire form

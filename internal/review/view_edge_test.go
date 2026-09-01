@@ -672,3 +672,27 @@ func TestScoreBreakdownExplainsNearNameSurfacing(t *testing.T) {
 		t.Errorf("birthday row did not show the conflict:\n%s", out)
 	}
 }
+
+// A contact with no email shows "(none)" in the compact card rather than an
+// empty column.
+func TestCompactEmailNone(t *testing.T) {
+	got := compactEmail(model.ParsedContact{}, map[string]bool{})
+	if !strings.Contains(got, "(none)") {
+		t.Errorf("compactEmail with no addresses = %q, want (none)", got)
+	}
+}
+
+// A nameless pair's breakdown uses the redistributed no-name weights and
+// carries no name term — the number shown must be the number the scorer used.
+func TestCompactBreakdownNameless(t *testing.T) {
+	c := pairCluster()
+	c.Features.Nameless = true
+	c.Features.NameSimilarity = 0
+	out := compactBreakdown(&c)
+	if strings.Contains(out, "name ") {
+		t.Errorf("nameless breakdown shows a name term:\n%s", out)
+	}
+	if !strings.Contains(out, "email") || !strings.Contains(out, "phone") {
+		t.Errorf("breakdown lacks the shared signals:\n%s", out)
+	}
+}

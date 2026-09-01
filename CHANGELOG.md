@@ -1,5 +1,25 @@
 # Changelog
 
+## \[0.5.0] - 2026-08-29
+
+### Added
+
+* **`rolodex prune`** splits a `.vcf` into the contacts you can reach and the ones you cannot. A contact is reachable when it has a plausible email, a plausible phone, or a deliverable address — a street, PO box, extended line or postcode; a country or city alone is a picker default (`--reachable-by` chooses the channels; `url` is opt-in). Without `--out` it is a dry run that prints the report (`--format json` for the machine-readable shape); with `--out kept.vcf` it writes the kept set there and the rest to `removed.vcf` beside it (or `--removed`), so nothing is deleted. `removed.vcf` is written even when empty; both files are staged before either is moved into place, so a failed run leaves both untouched. Output paths may not collide with each other or with the input (case-insensitively), and a file with no vCard entries at all is refused rather than split into two empty files. A file with malformed cards is reported by the dry run, but `--out` refuses unless `--skip-malformed` is passed, because a card the parser cannot read would be in neither output. The report says what each removed contact does have — including an email or phone that failed the plausibility gate, and a note — so `name only` means exactly that. On the author's merged export this moves 419 of 1,074 contacts — the residue of an old social-network sync, none of them contactable — to `removed.vcf`.
+
+### Removed
+
+* **`rolodex audit`.** `prune` without `--out` is the same report and with `--out` it acts on it. Running `audit` now exits 1 with a pointer to `prune`. The `--include-names-only` flag is gone with it: under prune a names-only contact is unreachable, full stop.
+
+### Fixed
+
+* **Every card written by `resolve` carried `X-ROLODEX-SOURCE` twice** (measured: 1,053 of 1,074 cards, the 21 merged ones three times). The parser keeps the field in `Extra` on read-back and the writer emitted that copy beside the one it regenerates from the contact's sources. The writer now drops the stale copy; `X-ROLODEX-SCORE` and `X-ROLODEX-REVIEW` are likewise replaced rather than doubled when a new value is emitted, and `X-ROLODEX-CLUSTER` still passes through.
+* A `.vcf` from outside rolodex (no provenance to record) is no longer stamped `X-ROLODEX-SOURCE:unknown` on every card when written back, and the internal read-back labels (`merged`, `review`) are never stamped either. An `X-ROLODEX-SOURCE` value a rolodex run never wrote (anything but `icloud`, `google` or `merged(icloud+google)`) is ignored on read-back instead of being carried into the output as fact.
+* **A card with no `END:VCARD` no longer swallows the next one silently.** go-vcard reads on to the next `END`, so the following card's fields were grafted onto it with no warning: the total came back one short, `warning_count` was 0, and every command exited 0. The parser now skips such a card with a warning naming how many cards it absorbed; `merge` and `run` report it, and `prune --out` refuses unless `--skip-malformed` is passed.
+* **`UID` survives a write.** The parser listed `UID` as modeled but never stored it, so every card `merge` and `resolve` wrote (and every card `prune` would have) came back from a CardDAV import as a new contact instead of updating the one it came from. It now passes through; a merged card keeps the iCloud card's. `PRODID` and `REV` are still dropped, because they describe the file that was read.
+* **A `PHOTO` given as a URI is no longer turned into a broken image.** Google exports `PHOTO;VALUE=uri:https://...`; the parser stored the URI's bytes as the picture and the writer emitted them base64-encoded under `ENCODING=b`. The URI is kept and written back as one.
+* **Output files are staged safely.** The writer opened `<path>.tmp` in place, so a symlink planted there was written through and then renamed onto the output; staging now uses an exclusively created, randomly named file. `--out` naming an empty directory replaced it with a file (the writer unlinked the destination before renaming); a directory is now refused and the unlink is gone. `report.json` (`--report`, and the review's own report) is written the same way; it had the same two problems.
+* `rolodex prune -help` exits 0 after printing usage, like the other commands, instead of reporting the help request as an error.
+
 ## \[0.4.0] - 2026-08-28
 
 Duplicate detection that works on sparse real-world exports, and a review TUI that renders.

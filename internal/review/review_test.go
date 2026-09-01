@@ -101,3 +101,13 @@ func TestRunMissingFiles(t *testing.T) {
 		t.Fatal("expected an error for missing report/review files, got nil")
 	}
 }
+
+// A report aimed at a directory that does not exist must error out of
+// writeReport, not vanish.
+func TestWriteReportParentDirMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "no-such-dir", "report.json")
+	err := writeReport(path, map[string]string{"k": "v"})
+	if err == nil || !strings.Contains(err.Error(), "writing report") {
+		t.Errorf("err = %v, want a writing-report error", err)
+	}
+}

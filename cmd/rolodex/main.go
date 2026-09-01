@@ -13,27 +13,22 @@ import (
 //go:embed version.txt
 var version string
 
+// errUnknownCommand is returned by dispatch for a command it does not know;
+// main prints usage for it.
+var errUnknownCommand = errors.New("unknown command")
+
+// errAuditRemoved is what "rolodex audit" says now. prune without --out is
+// the same report, and with --out it acts on it.
+var errAuditRemoved = errors.New(`audit was replaced by "rolodex prune"; run it without --out for a report`)
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
 	}
 
-	var err error
-	switch os.Args[1] {
-	case "run":
-		err = runRunCmd(os.Args[2:])
-	case "merge":
-		err = runMerge(os.Args[2:])
-	case "review":
-		err = runReview(os.Args[2:])
-	case "resolve":
-		err = runResolve(os.Args[2:])
-	case "audit":
-		err = runAuditCmdFlags(os.Args[2:])
-	case "version":
-		fmt.Printf("rolodex v%s\n", strings.TrimSpace(version))
-	default:
+	err := dispatch(os.Args[1], os.Args[2:])
+	if errors.Is(err, errUnknownCommand) {
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		printUsage()
 		os.Exit(1)
@@ -49,6 +44,29 @@ func main() {
 	}
 }
 
+// dispatch runs one command.
+func dispatch(cmd string, args []string) error {
+	switch cmd {
+	case "run":
+		return runRunCmd(args)
+	case "merge":
+		return runMerge(args)
+	case "review":
+		return runReview(args)
+	case "resolve":
+		return runResolve(args)
+	case "prune":
+		return runPrune(args, os.Stdout)
+	case "audit":
+		return errAuditRemoved
+	case "version":
+		fmt.Printf("rolodex v%s\n", strings.TrimSpace(version))
+		return nil
+	default:
+		return errUnknownCommand
+	}
+}
+
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage: rolodex <command> [flags]
 
@@ -57,7 +75,7 @@ Commands:
   merge    Merge and deduplicate vCard files (individual step)
   review   Interactively review uncertain matches (individual step)
   resolve  Apply review decisions from an edited report (individual step)
-  audit    Find unreachable contacts missing email and phone
+  prune    Split a .vcf into reachable and unreachable contacts
   version  Print version
 
 Run 'rolodex <command> -help' for details.
@@ -80,26 +98,6 @@ func runRunCmd(args []string) error {
 	}
 
 	return run(*icloudPath, *googlePath, *outPath, *reportPath, *keep)
-}
-
-func runAuditCmdFlags(args []string) error {
-	fs := flag.NewFlagSet("audit", flag.ExitOnError)
-	format := fs.String("format", "text", "output format: text or json")
-	namesOnly := fs.Bool("include-names-only", false, "also flag contacts with only a name")
-
-	// Reorder args so flags precede the positional file path.
-	// flag.FlagSet stops at the first non-flag token, so
-	// "audit file.vcf --format json" would silently ignore --format.
-	reordered := reorderFlagsBeforePositional(args, fs)
-
-	if err := fs.Parse(reordered); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: rolodex audit <file.vcf>")
-	}
-
-	return runAuditCmd(fs.Arg(0), *format, *namesOnly)
 }
 
 // reorderFlagsBeforePositional moves flag arguments (and their values) before
@@ -175,8 +173,9 @@ type pathFlag struct{ flag, path string }
 //     merged output and the command still exited 0.
 //   - The input exports are included. Writing --out over --icloud destroyed
 //     the one artifact a user needs if the merge went wrong.
-//   - writer.WriteFile stages through "<path>.tmp", so that sibling is
-//     reserved too.
+//   - The "<path>.tmp" sibling of every output is reserved too. The writer
+//     stages through a random dot-file beside the output now, but an output
+//     named after another's old staging sibling is never what a user meant.
 //
 // Empty paths (an optional flag left unset) are skipped.
 func checkDistinctPaths(inputs, outputs []pathFlag) error {

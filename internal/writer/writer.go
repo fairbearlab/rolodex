@@ -14,40 +14,104 @@ import (
 	"github.com/fairbearlab/rolodex/internal/normalize"
 )
 
-// WriteFile writes merged contacts to a .vcf file atomically.
-// Writes to a temp file first, then renames to prevent partial output on crash.
+// WriteFile writes merged contacts to a .vcf file atomically: staged beside
+// the destination, then renamed into place, so a crash never leaves a
+// partial output.
 func WriteFile(path string, contacts []model.MergedContact) error {
-	tmpPath := filepath.Clean(path + ".tmp")
-	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	s, err := Stage(path, contacts)
 	if err != nil {
-		return fmt.Errorf("creating %s: %w", tmpPath, err)
+		return err
 	}
+	return s.Commit()
+}
 
-	if err := Write(f, contacts); err != nil {
+// Staged is a file written beside its destination but not yet moved into
+// place. Commit renames it there; Abort deletes it. A caller writing several
+// files stages them all before committing any, so a failure part-way leaves
+// every destination exactly as it was.
+type Staged struct {
+	path string
+	tmp  string
+}
+
+// Stage writes contacts to a fresh temp file in path's directory, mode
+// 0600. The file is created exclusively with a random name, so a symlink or
+// a stale file planted at a predictable staging path (the old "<path>.tmp")
+// is never opened, let alone written through.
+func Stage(path string, contacts []model.MergedContact) (*Staged, error) {
+	var buf bytes.Buffer
+	if err := Write(&buf, contacts); err != nil {
+		return nil, fmt.Errorf("writing contacts: %w", err)
+	}
+	return StageBytes(path, buf.Bytes())
+}
+
+// WriteBytes writes data to path the way WriteFile writes contacts: staged
+// beside the destination, fsynced, renamed into place. The JSON reports use
+// it so that every file rolodex writes has the same guarantees.
+func WriteBytes(path string, data []byte) error {
+	s, err := StageBytes(path, data)
+	if err != nil {
+		return err
+	}
+	return s.Commit()
+}
+
+// StageBytes is Stage for raw bytes.
+func StageBytes(path string, data []byte) (*Staged, error) {
+	path = filepath.Clean(path)
+	if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+		// os.Rename would replace an empty directory with the file.
+		return nil, fmt.Errorf("%s is a directory", path)
+	}
+	dir, base := filepath.Split(path)
+	if dir == "" {
+		dir = "."
+	}
+	f, err := os.CreateTemp(dir, "."+base+".*.tmp")
+	if err != nil {
+		return nil, fmt.Errorf("creating temp file for %s: %w", path, err)
+	}
+	s := &Staged{path: path, tmp: f.Name()}
+
+	if _, err := f.Write(data); err != nil {
 		_ = f.Close()
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("writing contacts: %w", err)
+		s.Abort()
+		return nil, fmt.Errorf("writing %s: %w", s.tmp, err)
 	}
 
 	if err := f.Sync(); err != nil {
 		_ = f.Close()
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("syncing %s: %w", tmpPath, err)
+		s.Abort()
+		return nil, fmt.Errorf("syncing %s: %w", s.tmp, err)
 	}
 
 	if err := f.Close(); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("closing %s: %w", tmpPath, err)
+		s.Abort()
+		return nil, fmt.Errorf("closing %s: %w", s.tmp, err)
 	}
+	return s, nil
+}
 
-	// Remove existing file first — os.Rename doesn't overwrite on Windows
-	_ = os.Remove(path)
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("renaming %s to %s: %w", tmpPath, path, err)
+// Commit moves the staged file onto its destination, replacing whatever was
+// there. On failure the staged file is discarded and the destination is
+// left as it was.
+func (s *Staged) Commit() error {
+	// os.Rename replaces an existing file on every platform Go supports
+	// (MOVEFILE_REPLACE_EXISTING on Windows), so there is no unlink first:
+	// the destination is never absent, and an empty directory at the path
+	// is refused by Stage instead of being removed here.
+	if err := os.Rename(s.tmp, s.path); err != nil {
+		s.Abort()
+		return fmt.Errorf("renaming %s to %s: %w", s.tmp, s.path, err)
 	}
-
 	return nil
+}
+
+// Abort discards the staged file without touching the destination. It is
+// safe to call after Commit.
+func (s *Staged) Abort() {
+	_ = os.Remove(s.tmp)
 }
 
 // Write writes merged contacts as vCard 3.0 to a writer.
@@ -186,11 +250,33 @@ func contactProperties(mc model.MergedContact) []property {
 			params = append(params, [2]string{"TYPE", c.PhotoType})
 		}
 		add("PHOTO", base64.StdEncoding.EncodeToString(c.Photo), params...)
+	} else if c.PhotoURI != "" {
+		params := [][2]string{{"VALUE", "uri"}}
+		if c.PhotoType != "" {
+			params = append(params, [2]string{"TYPE", c.PhotoType})
+		}
+		// A URI value is not text: RFC 2426/6350 do not escape it, Apple and
+		// Google do not, and it is held in wire form, so it goes out as is.
+		add("PHOTO", c.PhotoURI, params...)
 	}
 
-	// Extra fields (passthrough, wire form) — sort keys for deterministic output
+	// Extra fields (passthrough, wire form) — sort keys for deterministic output.
+	// The writer's own extension fields are regenerated below, so a copy that
+	// arrived in Extra from reading back rolodex output is dropped rather
+	// than emitted beside the new one: every card resolve wrote used to carry
+	// X-ROLODEX-SOURCE twice. SOURCE is always ours to regenerate; SCORE and
+	// REVIEW only when there is a new value to emit. CLUSTER is set in Extra
+	// by the merger on purpose and passes through.
+	skip := map[string]bool{
+		"X-ROLODEX-SOURCE": true,
+		"X-ROLODEX-SCORE":  mc.Score > 0,
+		"X-ROLODEX-REVIEW": mc.ReviewFlag,
+	}
 	extraKeys := make([]string, 0, len(c.Extra))
 	for key := range c.Extra {
+		if skip[strings.ToUpper(key)] {
+			continue
+		}
 		extraKeys = append(extraKeys, key)
 	}
 	sort.Strings(extraKeys)
@@ -200,14 +286,18 @@ func contactProperties(mc model.MergedContact) []property {
 		}
 	}
 
-	// Provenance extension fields
+	// Provenance extension fields. A foreign file (prune reads any .vcf as
+	// SourceUnknown) has no provenance to record, so nothing is stamped.
 	if len(mc.Sources) > 1 {
 		sourceStrs := make([]string, len(mc.Sources))
 		for i, s := range mc.Sources {
 			sourceStrs[i] = string(s)
 		}
 		add("X-ROLODEX-SOURCE", fmt.Sprintf("merged(%s)", strings.Join(sourceStrs, "+")))
-	} else if len(mc.Sources) == 1 {
+	} else if len(mc.Sources) == 1 && (mc.Sources[0] == model.SourceICloud || mc.Sources[0] == model.SourceGoogle) {
+		// Only a real source is provenance. "unknown" (a foreign file) and
+		// the read-back labels "merged"/"review" say where the parser was
+		// called from, not where the contact came from.
 		add("X-ROLODEX-SOURCE", string(mc.Sources[0]))
 	}
 

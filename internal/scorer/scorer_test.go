@@ -421,3 +421,24 @@ func TestSameNameIdentity(t *testing.T) {
 		})
 	}
 }
+
+// sameNameParts rejects on the family name before anything else; the
+// given/middle reconciliation must never run across different families.
+func TestSameNamePartsFamilyMismatch(t *testing.T) {
+	if sameNameParts("doe", "john", "", "smith", "john", "") {
+		t.Error("different family names compared as the same name")
+	}
+}
+
+// A given name that is all separators has no tokens; it carries no more
+// identity than an initial does, so it must be treated as one.
+func TestIsInitialDegenerateGivenNames(t *testing.T) {
+	for _, given := range []string{"", ".", " . ", "\t"} {
+		if !isInitial(given) {
+			t.Errorf("isInitial(%q) = false, want true", given)
+		}
+	}
+	if isInitial("Jo") {
+		t.Error("a two-letter name is not an initial")
+	}
+}

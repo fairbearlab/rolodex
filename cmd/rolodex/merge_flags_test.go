@@ -184,7 +184,9 @@ func TestRunMergeKeepsUnrelatedReviewFile(t *testing.T) {
 // one file that looked like two, and the stale-review removal then deleted the
 // merged output while the command exited 0. Writing over an input export
 // destroyed the one artifact worth keeping if the merge went wrong, and
-// writer.WriteFile stages through "<path>.tmp", so that sibling is reserved.
+// the "<path>.tmp" sibling of an output stays reserved (the writer stages
+// through a random dot-file now, but naming an output after another's
+// old staging file is never what a user meant).
 func TestRunMergeRejectsAliasedAndInputPaths(t *testing.T) {
 	dir := t.TempDir()
 	icloud := filepath.Join(dir, "icloud.vcf")

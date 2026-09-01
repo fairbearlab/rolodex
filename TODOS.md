@@ -60,6 +60,28 @@
 **Priority:** P2
 **Depends on:** Nothing
 
+### Preserve vCard property groups (Apple `item1.` labels)
+
+**What:** go-vcard strips the group prefix (`item1.EMAIL` / `item1.X-ABLabel:School`) before the parser sees a field, and the model has no place for it, so every written card comes out with bare `EMAIL` and a detached `X-ABLABEL` that labels nothing. Capture `vcard.Field.Group` on the modeled multi-value fields (email, phone, address, URL) and on `Extra`, and re-emit the prefix in the writer.
+
+**Why:** Apple exports carry every custom label this way. After `merge`, `resolve` or `prune` the labels are separated from the values they named, silently. `prune` is advertised as a faithful split, and this is the largest remaining thing it loses.
+
+**Context:** Found by the adversarial review of v0.5.0. Documented as a limitation in README (Merge behavior) until fixed. A second `URL` or `NOTE` on one card is dropped for the same single-value-field reason and belongs to the same fix.
+
+**Effort:** M
+**Priority:** P1
+**Depends on:** Nothing
+
+### `resolve` and the review loader discard parse warnings
+
+**What:** `internal/resolve/resolve.go` (`parser.ParseFile(mergedPath, "merged")`) and `internal/resolve/loader.go` (`review.vcf`) drop the warnings slice. A malformed `merged.vcf` loses contacts from `final.vcf` with no message, the same silent loss `merge`, `run` and `prune` now report. Surface them through `reportParseWarnings` (or refuse, as `prune --out` does).
+
+**Why:** A truncated intermediate file is the one case the cluster-id check cannot catch, because the lost card is simply absent.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Nothing
+
 ## Merge Engine
 
 ### Calibration dataset for scoring thresholds
@@ -109,6 +131,18 @@
 **Effort:** S
 **Priority:** P3
 **Depends on:** Calibration dataset for scoring thresholds
+
+### Emit stable UIDs so re-imports don't duplicate
+
+**What:** No card in a real merged export carries a `UID` — the sources don't provide one and the writer never generates one. Have `writer.contactToCard` emit a deterministic UID (e.g. a hash of stable identity fields, or a UUID minted once and preserved thereafter) whenever the parsed contact has none; the parser already round-trips an existing UID since v0.4.x.
+
+**Why:** vCard import is additive, and without UIDs a contacts app has only loose name matching to detect that an incoming card is one it already has. CardDAV-backed apps (iCloud, Google) match on UID, so a stable UID is what makes importing a regenerated `final.vcf`/`reachable.vcf` over a previous import update-in-place instead of duplicating all 650 contacts. Found while diagnosing real duplicate-on-reimport reports (2026-08-31).
+
+**Context:** Determinism matters: the same contact must get the same UID across runs, or the UID makes re-import duplication worse rather than better. Hashing name+first-phone/email is fragile under merges that change those fields; minting once and persisting via the round-tripped UID is likely the right shape.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Nothing
 
 ## Review UX
 

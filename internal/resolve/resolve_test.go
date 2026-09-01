@@ -250,40 +250,6 @@ func TestRunMalformedReportJSON(t *testing.T) {
 	}
 }
 
-func TestExtractProvenanceMerged(t *testing.T) {
-	c := model.ParsedContact{
-		Extra: map[string][]string{"X-ROLODEX-SOURCE": {"merged(icloud+google)"}},
-	}
-	sources := extractProvenance(c)
-	if len(sources) != 2 {
-		t.Fatalf("want 2 sources, got %d: %v", len(sources), sources)
-	}
-	if sources[0] != model.SourceICloud {
-		t.Errorf("sources[0] = %q, want 'icloud'", sources[0])
-	}
-	if sources[1] != model.SourceGoogle {
-		t.Errorf("sources[1] = %q, want 'google'", sources[1])
-	}
-}
-
-func TestExtractProvenanceSingle(t *testing.T) {
-	c := model.ParsedContact{
-		Extra: map[string][]string{"X-ROLODEX-SOURCE": {"icloud"}},
-	}
-	sources := extractProvenance(c)
-	if len(sources) != 1 || sources[0] != model.SourceICloud {
-		t.Errorf("expected [icloud], got %v", sources)
-	}
-}
-
-func TestExtractProvenanceFallback(t *testing.T) {
-	c := model.ParsedContact{Source: model.SourceGoogle}
-	sources := extractProvenance(c)
-	if len(sources) != 1 || sources[0] != model.SourceGoogle {
-		t.Errorf("expected fallback to [google], got %v", sources)
-	}
-}
-
 func TestRunClusterIDMismatch(t *testing.T) {
 	tmpDir := t.TempDir()
 	reportPath := filepath.Join(tmpDir, "report.json")
@@ -336,5 +302,86 @@ func TestMergeReviewClusterPrefersFullBirthdayOverYearless(t *testing.T) {
 	got := mergeReviewCluster(contacts).Contact.Birthday
 	if got != "1989-10-22" {
 		t.Errorf("merged birthday = %q, want the full date 1989-10-22", got)
+	}
+}
+
+// A review cluster merged by hand keeps one UID, the iCloud card's, as the
+// automatic merger does.
+func TestMergeReviewClusterKeepsOneUID(t *testing.T) {
+	contacts := []model.ParsedContact{
+		{Source: model.SourceGoogle, FormattedName: "A", Extra: map[string][]string{"UID": {"google-uid"}}},
+		{Source: model.SourceICloud, FormattedName: "A", Extra: map[string][]string{"UID": {"icloud-uid"}}},
+	}
+	if got := mergeReviewCluster(contacts).Contact.Extra["UID"]; len(got) != 1 || got[0] != "icloud-uid" {
+		t.Errorf("UID = %v, want [icloud-uid]", got)
+	}
+}
+
+// A single-member cluster is passed through untouched, with its own
+// provenance, not run through the merge machinery.
+func TestMergeReviewClusterSingleMember(t *testing.T) {
+	c := model.ParsedContact{Source: model.SourceICloud, FormattedName: "Solo",
+		Extra: map[string][]string{"X-ROLODEX-SOURCE": {"icloud"}}}
+	got := mergeReviewCluster([]model.ParsedContact{c})
+	if got.Contact.FormattedName != "Solo" {
+		t.Errorf("contact = %q, want the member unchanged", got.Contact.FormattedName)
+	}
+	if len(got.Sources) != 1 || got.Sources[0] != model.SourceICloud {
+		t.Errorf("sources = %v, want [icloud]", got.Sources)
+	}
+}
+
+// mergeReviewCluster's photo rule: image bytes beat a URI reference, and a
+// reference only fills an empty slot.
+func TestMergeReviewClusterPhotoPrecedence(t *testing.T) {
+	jpeg := []byte{0xFF, 0xD8}
+	uri := "https://example.com/a.jpg"
+
+	// Base has nothing; a member's bytes are adopted, its type along with them.
+	got := mergeReviewCluster([]model.ParsedContact{
+		{Source: model.SourceICloud, FormattedName: "A"},
+		{Source: model.SourceGoogle, FormattedName: "A", Photo: jpeg, PhotoType: "JPEG"},
+	}).Contact
+	if string(got.Photo) != string(jpeg) || got.PhotoType != "JPEG" || got.PhotoURI != "" {
+		t.Errorf("bytes not adopted: photo=%d bytes, type=%q, uri=%q", len(got.Photo), got.PhotoType, got.PhotoURI)
+	}
+
+	// Base has nothing; a member's URI fills the empty slot.
+	got = mergeReviewCluster([]model.ParsedContact{
+		{Source: model.SourceICloud, FormattedName: "B"},
+		{Source: model.SourceGoogle, FormattedName: "B", PhotoURI: uri, PhotoType: "JPEG"},
+	}).Contact
+	if got.PhotoURI != uri || len(got.Photo) != 0 {
+		t.Errorf("URI not adopted into the empty slot: uri=%q, photo=%d bytes", got.PhotoURI, len(got.Photo))
+	}
+
+	// A member's bytes replace the base's URI-only photo.
+	got = mergeReviewCluster([]model.ParsedContact{
+		{Source: model.SourceICloud, FormattedName: "C", PhotoURI: uri, PhotoType: "GIF"},
+		{Source: model.SourceGoogle, FormattedName: "C", Photo: jpeg, PhotoType: "JPEG"},
+	}).Contact
+	if string(got.Photo) != string(jpeg) || got.PhotoURI != "" || got.PhotoType != "JPEG" {
+		t.Errorf("bytes should replace the reference: photo=%d bytes, uri=%q, type=%q", len(got.Photo), got.PhotoURI, got.PhotoType)
+	}
+
+	// The base's bytes stand; a member's URI must not displace them.
+	got = mergeReviewCluster([]model.ParsedContact{
+		{Source: model.SourceICloud, FormattedName: "D", Photo: jpeg, PhotoType: "JPEG"},
+		{Source: model.SourceGoogle, FormattedName: "D", PhotoURI: uri, PhotoType: "GIF"},
+	}).Contact
+	if string(got.Photo) != string(jpeg) || got.PhotoURI != "" || got.PhotoType != "JPEG" {
+		t.Errorf("bytes displaced by a reference: photo=%d bytes, uri=%q, type=%q", len(got.Photo), got.PhotoURI, got.PhotoType)
+	}
+}
+
+// When the priority card has no UID, the first member that has one supplies
+// it — one UID, never a union of both.
+func TestMergeReviewClusterAdoptsUIDWhenBaseHasNone(t *testing.T) {
+	contacts := []model.ParsedContact{
+		{Source: model.SourceICloud, FormattedName: "A"},
+		{Source: model.SourceGoogle, FormattedName: "A", Extra: map[string][]string{"UID": {"google-uid", "second"}}},
+	}
+	if got := mergeReviewCluster(contacts).Contact.Extra["UID"]; len(got) != 1 || got[0] != "google-uid" {
+		t.Errorf("UID = %v, want [google-uid]", got)
 	}
 }

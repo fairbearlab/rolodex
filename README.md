@@ -32,16 +32,30 @@ This merges your contacts, drops you into a terminal UI for uncertain matches, t
 
 Use `--report report.json` to save the full merge report, or `--keep` to preserve intermediate files alongside the output.
 
-### Audit
+### Prune
 
-Find contacts you can't actually reach (no email and no phone):
+Split a contact list into the people you can reach and the ones you cannot. Nothing is deleted: the unreachable contacts go to a second file you can keep or import back.
 
 ```Shell
-rolodex audit contacts.vcf
-rolodex audit contacts.vcf --format json
+rolodex prune contacts.vcf                          # dry run: report only, writes nothing
+rolodex prune contacts.vcf --format json            # same, machine-readable
+rolodex prune contacts.vcf --out kept.vcf           # writes kept.vcf and removed.vcf beside it
+rolodex prune contacts.vcf --out kept.vcf --removed archive/unreachable.vcf
+rolodex prune contacts.vcf --out kept.vcf --reachable-by email,phone           # an address alone does not count
+rolodex prune contacts.vcf --out kept.vcf --reachable-by email,phone,address,url
+rolodex prune contacts.vcf --out kept.vcf --skip-malformed
 ```
 
-Works on any VCF file, not just rolodex output.
+A contact is reachable when any enabled channel is present:
+
+| Channel | Counts when | Default |
+|---|---|---|
+| `email` | an address that passes the plausibility check (`unknown` does not) | on |
+| `phone` | a number that passes the plausibility check (`000-000-0000` does not) | on |
+| `address` | a street, PO box, extended line or postcode (a country or city alone is a picker default, not a place mail can reach) | on |
+| `url` | a non-blank URL | off |
+
+`removed.vcf` is always written, even when empty, so a stale one from an earlier run never survives; both files are staged before either is moved into place, so a failed run leaves both untouched. A file with malformed cards (including a card missing its `END:VCARD`) is reported by the dry run, but `--out` refuses to write until you fix the file or pass `--skip-malformed`, because a card the parser cannot read would be in neither output. A file with no vCard entries at all (a CSV named `.vcf`) is refused rather than split into two empty files. The report lists what each removed contact does have, including an email or phone that did not pass the plausibility check and a note, so `name only` means exactly that. Works on any VCF file, not just rolodex output. Every property of a card is carried over except `PRODID` and `REV` (they describe the file that was read), a second `URL` or `NOTE`, parameters on unmodeled properties, and Apple's `item1.` property groups (see Merge behavior).
 
 ### Individual commands
 
@@ -107,7 +121,7 @@ When contacts merge, single-value fields use **iCloud priority** -- the iCloud v
 
 Multi-value fields (emails, phones, addresses) are **unioned** -- duplicates are removed by normalized value, and both sources' unique entries are kept.
 
-All other vCard properties not explicitly modeled (e.g. `X-*` extension fields, `CATEGORIES`, `NICKNAME`) are preserved via a catch-all passthrough (values only -- parameters on an unmodeled field, and any control characters in it, are not preserved).
+All other vCard properties not explicitly modeled (e.g. `X-*` extension fields, `CATEGORIES`, `NICKNAME`, `UID`) are preserved via a catch-all passthrough (values only -- parameters on an unmodeled field, vCard property groups such as Apple's `item1.` label prefixes, and any control characters in it, are not preserved). A merged contact keeps one `UID`, the iCloud card's, so a re-import updates that record instead of creating a third contact. `PRODID` and `REV` describe the file that was read and are dropped. A `PHOTO` given as a URI (`VALUE=uri`, as Google exports it) is written back as a URI, not re-encoded.
 
 Output vCards include provenance extension fields: `X-ROLODEX-SOURCE` (which sources contributed), `X-ROLODEX-SCORE` (confidence score), and `X-ROLODEX-REVIEW` (whether the contact was flagged for review).
 
