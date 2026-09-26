@@ -170,7 +170,10 @@ func TestExpandName(t *testing.T) {
 
 func withBirthday(c model.NormalizedContact, bday string) model.NormalizedContact {
 	c.Parsed.Birthday = bday
-	return c
+	// Re-derive the cached birthday fields (normalize.MatchCache) so a test
+	// that calls birthdayConflict/sharedBirthday directly, bypassing Score's
+	// own hoist, still sees a contact consistent with its Parsed.Birthday.
+	return normalize.MatchCache(c)
 }
 
 // TestClassifyTiers pins the tier for the pair shapes that real exports

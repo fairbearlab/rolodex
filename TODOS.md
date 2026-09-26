@@ -108,18 +108,6 @@
 **Priority:** P3
 **Depends on:** Merge stage must be stable first
 
-### Hoist per-contact work out of the per-pair scoring loop
-
-**What:** Cache each contact's parsed birthday and split given/middle tokens on `NormalizedContact` during `normalize.Contact`, and have `sharedBirthday`, `birthdayConflict`, `birthdayUnknown`, `sameName` and `sameGivenName` read the cached values. `scorePair` currently runs eight `parseBirthday` calls per pair and re-tokenizes both given names on every comparison.
-
-**Why:** All of this work depends only on each contact individually, never on the pairing, so it repeats identically every time either contact appears in a candidate pair.
-
-**Context:** Not urgent at current scale — `blocker.Block` prunes to shared email, phone or last-name buckets, so the author's real export produces 559 candidate pairs, where the redundant work costs microseconds. It becomes real if the blocking buckets are ever widened, and it compounds with the uncapped-bucket bug above.
-
-**Effort:** M
-**Priority:** P3
-**Depends on:** Cap the email and phone blocking buckets
-
 ### Decide whether an unknown birthday should cap the score path too
 
 **What:** `scorer.Classify` has `nameRule := f.NameExact && confirmed && !f.BirthdayUnknown`, but the tier switch is `case autoMerge && !f.BirthdayConflict`. A `BirthdayConflict` caps both paths; a `BirthdayUnknown` caps only the single-identifier name rule. Decide whether to add `&& !f.BirthdayUnknown` to the switch.
