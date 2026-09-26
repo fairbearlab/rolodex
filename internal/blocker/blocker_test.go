@@ -13,7 +13,7 @@ func TestBlockByEmail(t *testing.T) {
 		{NormalizedEmails: []string{"other@example.com"}, NormalizedFamilyName: "brown"},
 	}
 
-	pairs := Block(contacts)
+	pairs, _ := Block(contacts)
 
 	// Should have a pair for contacts 0 and 1 (shared email)
 	found := false
@@ -33,7 +33,7 @@ func TestBlockByPhone(t *testing.T) {
 		{NormalizedPhones: []string{"5551234567"}, NormalizedFamilyName: "jones"},
 	}
 
-	pairs := Block(contacts)
+	pairs, _ := Block(contacts)
 	if len(pairs) == 0 {
 		t.Error("expected pairs for shared phone")
 	}
@@ -46,7 +46,7 @@ func TestBlockByLastName(t *testing.T) {
 		{NormalizedFamilyName: "jones", NormalizedGivenName: "carol"},
 	}
 
-	pairs := Block(contacts)
+	pairs, _ := Block(contacts)
 
 	// Should pair 0,1 (same last name) but not 0,2 or 1,2
 	foundSmith := false
@@ -84,7 +84,7 @@ func TestBlockNoDuplicatePairs(t *testing.T) {
 		},
 	}
 
-	pairs := Block(contacts)
+	pairs, _ := Block(contacts)
 	if len(pairs) != 1 {
 		t.Errorf("expected 1 unique pair, got %d: %v", len(pairs), pairs)
 	}
@@ -105,7 +105,7 @@ func TestBlockWithinSource(t *testing.T) {
 		},
 	}
 
-	pairs := Block(contacts)
+	pairs, _ := Block(contacts)
 	if len(pairs) == 0 {
 		t.Error("expected within-source blocking to produce pairs")
 	}
