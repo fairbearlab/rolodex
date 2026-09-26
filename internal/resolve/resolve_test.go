@@ -151,8 +151,20 @@ func TestRunSkipDecision(t *testing.T) {
 		t.Fatalf("reading output: %v", err)
 	}
 	content := string(data)
-	if strings.Contains(content, "Skip A") || strings.Contains(content, "Skip B") {
-		t.Error("skipped contacts should not appear in output")
+	// skip means "not the same person": both contacts are kept, unmerged.
+	// It used to drop them, so pressing s on a pair of genuinely different
+	// people deleted both from the address book.
+	if !strings.Contains(content, "Skip A") || !strings.Contains(content, "Skip B") {
+		t.Error("skipped contacts must be kept, separately, in the output")
+	}
+	if got := strings.Count(content, "BEGIN:VCARD"); got != 3 {
+		t.Errorf("output has %d cards, want 3 (Keep Me + both skipped contacts, unmerged)", got)
+	}
+	// The pair has been decided, so it carries no stale review tags.
+	for _, tag := range []string{"X-ROLODEX-CLUSTER", "X-ROLODEX-REVIEW", "X-ROLODEX-SCORE"} {
+		if strings.Contains(content, tag) {
+			t.Errorf("skipped contacts should not carry %s in the output", tag)
+		}
 	}
 	if !strings.Contains(content, "Keep Me") {
 		t.Error("merged contacts should still appear in output")

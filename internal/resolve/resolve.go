@@ -72,8 +72,16 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 			output = append(output, mc)
 			mergeCount++
 		case "skip":
+			// Skip means "not the same person": keep every contact, unmerged.
+			// Review members are not in merged.vcf, so dropping them here
+			// would delete them from the address book.
 			skipCount += clusterSize
-			// Skip means exclude these contacts from the output
+			for _, c := range clusterContacts {
+				output = append(output, model.MergedContact{
+					Contact: stripReviewTags(c),
+					Sources: parser.Provenance(c),
+				})
+			}
 		default:
 			// "pending" or unknown: keep all contacts as-is (safe default)
 			for _, c := range clusterContacts {
@@ -98,7 +106,7 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 		fmt.Printf("Merged %d review clusters\n", mergeCount)
 	}
 	if skipCount > 0 {
-		fmt.Printf("Skipped %d review contacts (decision: skip)\n", skipCount)
+		fmt.Printf("Kept %d review contacts separate (decision: skip)\n", skipCount)
 	}
 
 	// Write output
@@ -260,11 +268,9 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		}
 	}
 
-	// Drop review-only extension fields — the user resolved this cluster,
-	// so it should not carry stale review/score tags in the output.
-	delete(base.Extra, "X-ROLODEX-REVIEW")
-	delete(base.Extra, "X-ROLODEX-SCORE")
-	delete(base.Extra, "X-ROLODEX-CLUSTER")
+	// The user resolved this cluster, so it should not carry stale
+	// review/score tags in the output.
+	base = stripReviewTags(base)
 
 	// Rebuild email/phone slices with deterministic ordering
 	base.Emails = make([]model.Email, 0, len(emailSet))
@@ -286,6 +292,22 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		Contact: base,
 		Sources: allSources,
 	}
+}
+
+// stripReviewTags drops the review-only extension fields from a contact whose
+// cluster has been decided. Extra is copied, not edited in place, because the
+// map is shared with the caller's slice.
+func stripReviewTags(c model.ParsedContact) model.ParsedContact {
+	extra := make(map[string][]string, len(c.Extra))
+	for k, v := range c.Extra {
+		switch k {
+		case "X-ROLODEX-REVIEW", "X-ROLODEX-SCORE", "X-ROLODEX-CLUSTER":
+			continue
+		}
+		extra[k] = v
+	}
+	c.Extra = extra
+	return c
 }
 
 func addrContentKey(a model.Address) string {
