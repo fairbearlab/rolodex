@@ -123,6 +123,7 @@ func sanitizeCard(card vcard.Card) {
 				continue
 			}
 			f.Value = stripControl(f.Value)
+			f.Group = stripControl(f.Group)
 			for name, values := range f.Params {
 				for i, v := range values {
 					values[i] = stripControl(strings.ReplaceAll(v, `\\`, `\`))
