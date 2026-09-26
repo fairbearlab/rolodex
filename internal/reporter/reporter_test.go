@@ -149,6 +149,86 @@ func TestFindConflicts(t *testing.T) {
 		if c.Winner != "icloud" {
 			t.Errorf("expected winner=icloud, got %q for field %s", c.Winner, c.Field)
 		}
+		if c.Kept == "" {
+			t.Errorf("field %s: Kept is empty", c.Field)
+		}
+		if len(c.Discarded) == 0 {
+			t.Errorf("field %s: expected at least one discarded value", c.Field)
+		}
+	}
+}
+
+// TestFindConflictsSameSourcePair: a same-source conflict — two iCloud cards
+// in one cluster with differing NOTE, plus a Google card that ties them
+// together on a shared phone — used to be structurally invisible, because
+// the old comparison only ever looked at the first iCloud contact against
+// the first non-iCloud one. It must now be caught and both the kept value
+// and the discarded one must be reported, naming the contact it came from.
+func TestFindConflictsSameSourcePair(t *testing.T) {
+	contacts := []model.NormalizedContact{
+		{Parsed: model.ParsedContact{
+			Source: model.SourceICloud, FormattedName: "John Smith",
+			Note:   "Met at conf",
+			Phones: []model.Phone{{Number: "5551234567"}},
+		}},
+		{Parsed: model.ParsedContact{
+			Source: model.SourceICloud, FormattedName: "John Smith",
+			Note: "Owes me $500",
+		}},
+		{Parsed: model.ParsedContact{
+			Source: model.SourceGoogle, FormattedName: "John Smith",
+			Phones: []model.Phone{{Number: "5551234567"}},
+		}},
+	}
+
+	conflicts := findConflicts(contacts, []int{0, 1, 2})
+
+	var note *model.Conflict
+	for i := range conflicts {
+		if conflicts[i].Field == "NOTE" {
+			note = &conflicts[i]
+		}
+	}
+	if note == nil {
+		t.Fatalf("expected a NOTE conflict between the two same-source iCloud cards, got %+v", conflicts)
+	}
+	if note.Kept != "Met at conf" {
+		t.Errorf("kept = %q, want the first iCloud member's note", note.Kept)
+	}
+	if note.Winner != model.SourceICloud {
+		t.Errorf("winner = %q, want icloud", note.Winner)
+	}
+	if len(note.Discarded) != 1 || note.Discarded[0].Value != "Owes me $500" {
+		t.Fatalf("discarded = %+v, want one entry with the second iCloud card's note", note.Discarded)
+	}
+	if note.Discarded[0].Source != model.SourceICloud {
+		t.Errorf("discarded source = %q, want icloud (the same-source card)", note.Discarded[0].Source)
+	}
+	if note.Discarded[0].Index != 1 {
+		t.Errorf("discarded index = %d, want 1 (the second iCloud contact)", note.Discarded[0].Index)
+	}
+}
+
+// TestFindConflictsDedupesRepeatedDiscardedValue: a third member with the
+// same discarded value as the second is not reported twice.
+func TestFindConflictsDedupesRepeatedDiscardedValue(t *testing.T) {
+	contacts := []model.NormalizedContact{
+		{Parsed: model.ParsedContact{Source: model.SourceICloud, FormattedName: "Jane Doe", Org: "Acme"}},
+		{Parsed: model.ParsedContact{Source: model.SourceICloud, FormattedName: "Jane Doe", Org: "Acme Corp"}},
+		{Parsed: model.ParsedContact{Source: model.SourceGoogle, FormattedName: "Jane Doe", Org: "Acme Corp"}},
+	}
+	conflicts := findConflicts(contacts, []int{0, 1, 2})
+	var org *model.Conflict
+	for i := range conflicts {
+		if conflicts[i].Field == "ORG" {
+			org = &conflicts[i]
+		}
+	}
+	if org == nil {
+		t.Fatalf("expected an ORG conflict, got %+v", conflicts)
+	}
+	if len(org.Discarded) != 1 {
+		t.Errorf("discarded = %+v, want the repeated 'Acme Corp' value reported once", org.Discarded)
 	}
 }
 

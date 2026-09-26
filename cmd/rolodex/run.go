@@ -18,6 +18,16 @@ import (
 var ErrReviewPaused = errors.New("review paused with pending decisions")
 
 func run(icloudPath, googlePath, outPath, reportSavePath string, keep bool) error {
+	// A field conflict (two same-source cards disagreeing on NOTE, ORG,
+	// TITLE, BDAY, URL or PHOTO) is only visible in report.json — the merged
+	// .vcf can hold just one value. Saving it by default, like the temp
+	// merged.vcf and review.vcf this run already produces, means that loss
+	// is recorded somewhere even when nobody passed --report; before, the
+	// temp workspace holding it was deleted on success.
+	if reportSavePath == "" {
+		reportSavePath = filepath.Join(filepath.Dir(outPath), "report.json")
+	}
+
 	// Refuse to write on top of an input or to aim two writes at one file.
 	// The pipeline reads both exports before it writes anything, so without
 	// this "--out icloud.vcf" quietly replaced the iCloud export with the

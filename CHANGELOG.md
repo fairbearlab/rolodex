@@ -1,5 +1,11 @@
 # Changelog
 
+## \[Unreleased]
+
+### Fixed
+
+* **Same-source field conflicts were dropped and unreportable.** `reporter.findConflicts` compared only the first iCloud contact against the first non-iCloud one, so a 3+-member cluster's second same-source `NOTE`, `ORG`, `TITLE`, `BDAY`, `URL` or `PHOTO` — the value `mergeCluster` discards when filling a single-value field — was never even seen as a conflict, let alone reported: two iCloud "John Smith" cards with `NOTE:Met at conf` and `NOTE:Owes me $500`, plus a Google card sharing a phone, silently kept one note. Every member is now compared against the value that was kept, so a same-source conflict is caught the same as a cross-source one; `report.json`'s `conflicts` entries now carry `kept`/`winner` plus every `discarded` value with its source and contact index. `merge` and `run` also derive `--report` next to `--out` (`report.json`, the same default `--review` already gets) when the flag is left unset, so the loss is recorded in the default flow instead of only when `--report` is passed explicitly.
+
 ## \[0.5.0] - 2026-08-29
 
 ### Added
