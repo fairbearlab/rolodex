@@ -48,18 +48,6 @@
 **Priority:** P2
 **Depends on:** Nothing
 
-### Validate vCard TYPE parameters
-
-**What:** `writer.contactToCard` copies attacker-controlled `TYPE` parameter values straight into `vcard.Params`, and go-vcard's encoder escapes only backslash, LF and comma — never `;` or `:`. Validate against the known type tokens in `parser.fieldType`, or reject any parsed param value containing `;`, `:`, `"`, CR or LF. Same for `PhotoType`.
-
-**Why:** `EMAIL;TYPE="X:evil@attacker.test,":real@good.test` is written back as `EMAIL;TYPE=X:EVIL@ATTACKER.TEST:real@good.test`, which readers parse as the address `EVIL@ATTACKER.TEST:real@good.test` — the genuine address is corrupted in the user's merged export.
-
-**Context:** Cannot forge a whole new property (LF is escaped). Control characters are now stripped at the parse boundary, which closed the related CR-injection path; this is the remaining `;`/`:` case.
-
-**Effort:** S
-**Priority:** P2
-**Depends on:** Nothing
-
 ### Preserve vCard property groups (Apple `item1.` labels)
 
 **What:** go-vcard strips the group prefix (`item1.EMAIL` / `item1.X-ABLabel:School`) before the parser sees a field, and the model has no place for it, so every written card comes out with bare `EMAIL` and a detached `X-ABLABEL` that labels nothing. Capture `vcard.Field.Group` on the modeled multi-value fields (email, phone, address, URL) and on `Extra`, and re-emit the prefix in the writer.
@@ -70,16 +58,6 @@
 
 **Effort:** M
 **Priority:** P1
-**Depends on:** Nothing
-
-### `resolve` and the review loader discard parse warnings
-
-**What:** `internal/resolve/resolve.go` (`parser.ParseFile(mergedPath, "merged")`) and `internal/resolve/loader.go` (`review.vcf`) drop the warnings slice. A malformed `merged.vcf` loses contacts from `final.vcf` with no message, the same silent loss `merge`, `run` and `prune` now report. Surface them through `reportParseWarnings` (or refuse, as `prune --out` does).
-
-**Why:** A truncated intermediate file is the one case the cluster-id check cannot catch, because the lost card is simply absent.
-
-**Effort:** S
-**Priority:** P2
 **Depends on:** Nothing
 
 ## Merge Engine
@@ -210,3 +188,13 @@
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
 **Completed:** v0.2.0 (2026-04-07)
+
+### Validate vCard TYPE parameters
+
+**What:** The writer drops a `TYPE` (email, phone, address) or `PhotoType` value containing `;`, `:`, `"`, `,` or a control character, and writes the property without it, so a quoted input value can no longer end the parameter list and corrupt the address.
+**Completed:** Unreleased (2026-09-25)
+
+### `resolve` and the review loader discard parse warnings
+
+**What:** `resolve` and the shared review loader refuse a `merged.vcf` or `review.vcf` with malformed entries, naming each one and pointing at re-running `merge`, instead of writing a `final.vcf` with those contacts silently missing.
+**Completed:** Unreleased (2026-09-25)
