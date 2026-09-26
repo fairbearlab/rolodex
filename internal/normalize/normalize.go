@@ -40,7 +40,7 @@ var (
 
 // Contact normalizes a ParsedContact for matching.
 func Contact(c model.ParsedContact) model.NormalizedContact {
-	return model.NormalizedContact{
+	nc := model.NormalizedContact{
 		Parsed:               c,
 		NormalizedFamilyName: Name(c.FamilyName),
 		NormalizedGivenName:  Name(c.GivenName),
@@ -52,6 +52,39 @@ func Contact(c model.ParsedContact) model.NormalizedContact {
 		NormalizedEmails:     normalizeEmails(c.Emails),
 		NormalizedPhones:     normalizePhones(c.Phones),
 	}
+	return MatchCache(nc)
+}
+
+// MatchCache (re)computes the per-contact fields the scorer package reads
+// instead of recomputing on every pairwise comparison — the parsed birthday
+// and the given/middle name split — from nc's already-set Parsed and
+// Normalized/Strict name fields, and returns the updated copy. Contact calls
+// it so the fields are always populated; it is exported so a
+// model.NormalizedContact assembled by hand (as scorer's tests do) can be
+// brought up to date the same way after changing Parsed.Birthday or a name
+// field post-construction.
+func MatchCache(nc model.NormalizedContact) model.NormalizedContact {
+	year, monthDay, ok := ParseCanonicalBirthday(nc.Parsed.Birthday)
+	nc.BirthdayYear = year
+	nc.BirthdayMonthDay = monthDay
+	nc.BirthdayOK = ok
+	nc.BirthdayPlausible = ok && monthDay != "01-01"
+
+	nc.SplitGivenName, nc.SplitMiddleName = splitGiven(nc.NormalizedGivenName, nc.NormalizedMiddleName)
+	nc.StrictSplitGivenName, nc.StrictSplitMiddleName = splitGiven(nc.StrictGivenName, nc.StrictMiddleName)
+	return nc
+}
+
+// splitGiven moves trailing given-name tokens into the middle name when the
+// middle slot is empty; otherwise both are returned unchanged. Google folds
+// the middle name into the given name (N:Doe;John V;;;) where iCloud uses the
+// middle slot (N:Doe;John;V;;); this reconciles the two shapes of one person.
+func splitGiven(given, middle string) (string, string) {
+	words := strings.Fields(given)
+	if middle != "" || len(words) < 2 {
+		return given, middle
+	}
+	return words[0], strings.Join(words[1:], " ")
 }
 
 var generationalSuffixes = map[string]string{
