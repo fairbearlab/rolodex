@@ -198,3 +198,8 @@
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
 **Completed:** v0.2.0 (2026-04-07)
+
+### Hoist per-contact work out of the per-pair scoring loop
+
+**What:** `normalize.MatchCache` caches each contact's parsed birthday and given/middle name split on `NormalizedContact`; `scorer.Score` computes it once per contact and `sharedBirthday`, `birthdayConflict`, `birthdayUnknown` and `sameName` read the cache. Output pinned byte-identical by `TestScoreHoistIsEquivalent`; `BenchmarkScore` ~50% faster, ~58% fewer allocations.
+**Completed:** Unreleased (2026-09-26)
