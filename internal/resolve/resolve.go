@@ -23,9 +23,12 @@ func Run(reportPath, reviewPath, mergedPath, outPath string) error {
 	reviewContacts := loaded.ReviewContacts
 
 	// Read merged.vcf, restoring real provenance from X-ROLODEX-SOURCE
-	mergedContacts, _, err := parser.ParseFile(mergedPath, "merged")
+	mergedContacts, warnings, err := parser.ParseFile(mergedPath, "merged")
 	if err != nil {
 		return fmt.Errorf("reading merged contacts: %w", err)
+	}
+	if err := refuseMalformed(mergedPath, warnings); err != nil {
+		return err
 	}
 
 	// Build output: start with all merged contacts (with restored provenance)
