@@ -136,7 +136,16 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 			}
 		}
 	}
-	base := contacts[baseIdx]
+	// Property groups: every other member's are renumbered past the ones
+	// already taken, so a label stays with the value it names. Extra is
+	// copied so the union below does not write through to the input.
+	usedGroups := make(map[string]bool)
+	base := model.Regroup(contacts[baseIdx], usedGroups)
+	extra := make(map[string][]string, len(base.Extra))
+	for k, v := range base.Extra {
+		extra[k] = append([]string(nil), v...)
+	}
+	base.Extra = extra
 
 	// Collect all sources
 	var allSources []model.Source
@@ -168,10 +177,11 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		}
 	}
 
-	for i, c := range contacts {
+	for i := range contacts {
 		if i == baseIdx {
 			continue
 		}
+		c := model.Regroup(contacts[i], usedGroups)
 		for _, e := range c.Emails {
 			key := normalize.Email(e.Address)
 			if _, exists := emailSet[key]; !exists {
@@ -212,6 +222,7 @@ func mergeReviewCluster(contacts []model.ParsedContact) model.MergedContact {
 		}
 		if base.URL == "" && c.URL != "" {
 			base.URL = c.URL
+			base.URLGroup = c.URLGroup
 		}
 		// Image bytes beat a reference; a reference fills an empty slot.
 		if len(base.Photo) == 0 {
