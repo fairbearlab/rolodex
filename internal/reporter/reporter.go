@@ -258,21 +258,32 @@ func describeDeferred(contacts []model.NormalizedContact, d model.DeferredEdge) 
 		side(d.Sides[0]), side(d.Sides[1]))
 }
 
-// conflictField describes one single-value field mergeCluster fills from
-// only the first non-empty contact it sees, so every other value is lost.
-// value extracts the field's display text (empty means absent). Two
-// present values are the same value, and not a conflict, when their key
-// matches (defaults to value — PHOTO instead keys on a content hash, since
-// two different-length-but-coincidentally-same-summary photos must not
-// compare equal, and identical bytes must). equal overrides that identity
-// check to run on the raw values instead, for BDAY alone: iCloud's
-// "--10-22" and Google's "1989-10-22" are the same birthday even though
-// neither their display text nor a naive key would agree.
+// conflictField describes one single-value field mergeCluster keeps exactly
+// one value of, so every other value is lost. value extracts the field's
+// display text (empty means absent). Two present values are the same value,
+// and not a conflict, when their key matches (defaults to value — PHOTO
+// instead keys on a content hash, since two different-length-but-
+// coincidentally-same-summary photos must not compare equal, and identical
+// bytes must). equal overrides that identity check to run on the raw values
+// instead, for BDAY alone: iCloud's "--10-22" and Google's "1989-10-22" are
+// the same birthday even though neither their display text nor a naive key
+// would agree.
+//
+// Most fields are "first non-empty wins" in mergeCluster, but two are not,
+// and prefer mirrors that: given the value kept so far and a later member's
+// value (both present), it reports whether mergeCluster would replace the
+// kept one. BDAY upgrades a year-less birthday to the first agreeing full
+// date (normalize.PreferBirthday); PHOTO lets inline image bytes replace a
+// URI-only reference. Without this, Kept/Winner would name a value the
+// merger did not actually keep, and — worse for BDAY — a later value that
+// agrees with the partial base but not with the full date the merger kept
+// would never be reported as lost.
 type conflictField struct {
-	name  string
-	value func(model.ParsedContact) string
-	key   func(model.ParsedContact) string
-	equal func(a, b string) bool
+	name   string
+	value  func(model.ParsedContact) string
+	key    func(model.ParsedContact) string
+	equal  func(a, b string) bool
+	prefer func(kept, candidate model.ParsedContact) bool
 }
 
 var conflictFields = []conflictField{
@@ -283,10 +294,20 @@ var conflictFields = []conflictField{
 		name:  "BDAY",
 		value: func(c model.ParsedContact) string { return c.Birthday },
 		equal: normalize.BirthdaysAgree,
+		prefer: func(kept, candidate model.ParsedContact) bool {
+			return normalize.PreferBirthday(kept.Birthday, candidate.Birthday) != kept.Birthday
+		},
 	},
 	{name: "NOTE", value: func(c model.ParsedContact) string { return c.Note }},
 	{name: "URL", value: func(c model.ParsedContact) string { return c.URL }},
-	{name: "PHOTO", value: photoDisplay, key: photoKey},
+	{
+		name:  "PHOTO",
+		value: photoDisplay,
+		key:   photoKey,
+		prefer: func(kept, candidate model.ParsedContact) bool {
+			return len(kept.Photo) == 0 && len(candidate.Photo) > 0
+		},
+	},
 }
 
 // photoDisplay is PHOTO's report value: a reference URI stays readable, but
@@ -355,29 +376,40 @@ func findConflicts(contacts []model.NormalizedContact, indices []int) []model.Co
 			key = f.value
 		}
 
-		var kept, keptKey string
-		var winner model.Source
-		haveKept := false
-		var discarded []model.ConflictValue
-		seenKeys := make(map[string]bool)
-
+		// Pass 1: replay mergeCluster's fold over the members in its order
+		// to find the value it kept — the first non-empty one, unless the
+		// field's prefer says a later member's value displaces it.
+		winIdx := -1
+		var keptContact model.ParsedContact
 		for _, idx := range order {
+			c := contacts[idx].Parsed
+			if f.value(c) == "" {
+				continue
+			}
+			if winIdx < 0 || (f.prefer != nil && f.prefer(keptContact, c)) {
+				winIdx, keptContact = idx, c
+			}
+		}
+		if winIdx < 0 {
+			continue
+		}
+		kept, keptKey := f.value(keptContact), key(keptContact)
+
+		// Pass 2: every other present value that is not the kept one was
+		// lost. equal, when set (BDAY), compares the raw values canonically
+		// instead of the key.
+		var discarded []model.ConflictValue
+		seenKeys := map[string]bool{keptKey: true}
+		for _, idx := range order {
+			if idx == winIdx {
+				continue
+			}
 			c := contacts[idx].Parsed
 			v := f.value(c)
 			if v == "" {
 				continue
 			}
 			k := key(c)
-			if !haveKept {
-				kept, keptKey = v, k
-				winner = c.Source
-				haveKept = true
-				seenKeys[k] = true
-				continue
-			}
-			// Same value as the one that survives: not a conflict. equal,
-			// when set (BDAY), compares the raw values canonically instead
-			// of the key.
 			same := k == keptKey
 			if f.equal != nil {
 				same = f.equal(kept, v)
@@ -396,7 +428,7 @@ func findConflicts(contacts []model.NormalizedContact, indices []int) []model.Co
 		if len(discarded) > 0 {
 			conflicts = append(conflicts, model.Conflict{
 				Field:     f.name,
-				Winner:    winner,
+				Winner:    keptContact.Source,
 				Kept:      kept,
 				Discarded: discarded,
 			})
