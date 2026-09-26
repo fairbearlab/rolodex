@@ -62,6 +62,15 @@ func TestWriterDropsUnsafeParams(t *testing.T) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
 	}
+	// The photo-URI branch carries its own copy of the check.
+	uri := model.ParsedContact{FormattedName: "Ann Lee", PhotoURI: "https://example.test/a.jpg", PhotoType: "JPEG:x"}
+	buf.Reset()
+	if err := Write(&buf, []model.MergedContact{{Contact: uri}}); err != nil {
+		t.Fatal(err)
+	}
+	if want := "\r\nPHOTO;VALUE=uri:https://example.test/a.jpg\r\n"; !strings.Contains(buf.String(), want) {
+		t.Errorf("output lacks %q:\n%s", want, buf.String())
+	}
 	for i, r := range []rune{'\r', '\n', ';', ':', '"', ','} {
 		if isSafeParam("A" + string(r) + "B") {
 			t.Errorf("case %d: %q accepted as a safe parameter value", i, r)
