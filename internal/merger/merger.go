@@ -16,7 +16,17 @@ type Result struct {
 	Review   []model.MergedContact // review-tier, needs human eyes
 	Clusters []model.Cluster       // cluster info for reporting
 	Deferred []model.DeferredEdge  // near-name edges not applied; see DeferredEdge
+	// Oversized lists clusters over MaxClusterSize. Their members are in
+	// Merged as separate contacts; the cluster is neither merged nor reviewed.
+	Oversized []model.Cluster
 }
+
+// MaxClusterSize is the most contacts one cluster may join. A person has a
+// card or two per export; a bigger cluster is a shared identifier chaining
+// strangers together — 500 contacts on one switchboard TEL came out as one
+// 501-member review card that a single merge keystroke fused into one
+// contact. Such a cluster is kept apart and reported instead.
+const MaxClusterSize = 10
 
 // Merge takes normalized contacts and scored pairs, clusters them via union-find,
 // validates all pairs within each cluster, and produces merged output.
@@ -102,6 +112,11 @@ func Merge(contacts []model.NormalizedContact, pairs []model.ScoredPair) Result 
 		members := groups[root]
 		if len(members) == 1 {
 			continue // no merge candidate, handled below as distinct
+		}
+		if len(members) > MaxClusterSize {
+			// Left out of merged, so handled below as distinct.
+			result.Oversized = append(result.Oversized, model.Cluster{Indices: members})
+			continue
 		}
 
 		// Collect all pairs in this cluster
