@@ -38,13 +38,15 @@ type ParsedContact struct {
 	Addresses []Address
 	Note      string
 	URL       string
+	URLGroup  string // property group of URL; see Email.Group
 
 	Photo     []byte // raw PHOTO data
 	PhotoURI  string // PHOTO given as a reference (VALUE=uri, as Google exports it) rather than bytes
 	PhotoType string // e.g. "JPEG", "PNG"
 
 	// Catch-all for fields we don't explicitly model. Values are wire form
-	// and are written back verbatim.
+	// and are written back verbatim. A grouped property is keyed with its
+	// group, "item1.X-ABLABEL"; a property name cannot contain a dot.
 	Extra map[string][]string
 
 	// Raw vCard text for passthrough on malformed entries
@@ -55,11 +57,16 @@ type ParsedContact struct {
 type Email struct {
 	Address string
 	Type    string // HOME, WORK, etc.
+	// Group is the vCard property group ("item1" in "item1.EMAIL"). Apple
+	// ties every custom label to its value this way: item1.EMAIL and
+	// item1.X-ABLabel:School in Extra.
+	Group string
 }
 
 type Phone struct {
 	Number string
 	Type   string // CELL, HOME, WORK, etc.
+	Group  string // see Email.Group
 }
 
 type Address struct {
@@ -71,6 +78,7 @@ type Address struct {
 	Country  string
 	POBox    string
 	Extended string
+	Group    string // see Email.Group
 }
 
 // NormalizedContact extends ParsedContact with normalized forms for matching.
