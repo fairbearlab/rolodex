@@ -151,8 +151,20 @@ func TestRunSkipDecision(t *testing.T) {
 		t.Fatalf("reading output: %v", err)
 	}
 	content := string(data)
-	if strings.Contains(content, "Skip A") || strings.Contains(content, "Skip B") {
-		t.Error("skipped contacts should not appear in output")
+	// skip means "not the same person": both contacts are kept, unmerged.
+	// It used to drop them, so pressing s on a pair of genuinely different
+	// people deleted both from the address book.
+	if !strings.Contains(content, "Skip A") || !strings.Contains(content, "Skip B") {
+		t.Error("skipped contacts must be kept, separately, in the output")
+	}
+	if got := strings.Count(content, "BEGIN:VCARD"); got != 3 {
+		t.Errorf("output has %d cards, want 3 (Keep Me + both skipped contacts, unmerged)", got)
+	}
+	// The pair has been decided, so it carries no stale review tags.
+	for _, tag := range []string{"X-ROLODEX-CLUSTER", "X-ROLODEX-REVIEW", "X-ROLODEX-SCORE"} {
+		if strings.Contains(content, tag) {
+			t.Errorf("skipped contacts should not carry %s in the output", tag)
+		}
 	}
 	if !strings.Contains(content, "Keep Me") {
 		t.Error("merged contacts should still appear in output")
@@ -383,5 +395,37 @@ func TestMergeReviewClusterAdoptsUIDWhenBaseHasNone(t *testing.T) {
 	}
 	if got := mergeReviewCluster(contacts).Contact.Extra["UID"]; len(got) != 1 || got[0] != "google-uid" {
 		t.Errorf("UID = %v, want [google-uid]", got)
+	}
+}
+
+// stripReviewTags drops only the review-only extension fields, keeps every
+// other Extra key, and leaves the caller's map untouched: the map is shared
+// with the review.vcf slice, so editing it in place would alter the input.
+func TestStripReviewTagsKeepsOtherExtraAndInput(t *testing.T) {
+	in := model.ParsedContact{
+		FormattedName: "A",
+		Extra: map[string][]string{
+			"X-ROLODEX-CLUSTER": {"cluster-A"},
+			"X-ROLODEX-REVIEW":  {"true"},
+			"X-ROLODEX-SCORE":   {"0.80"},
+			"X-CUSTOM":          {"kept"},
+			"UID":               {"uid-1"},
+		},
+	}
+	out := stripReviewTags(in)
+
+	for _, tag := range []string{"X-ROLODEX-CLUSTER", "X-ROLODEX-REVIEW", "X-ROLODEX-SCORE"} {
+		if _, ok := out.Extra[tag]; ok {
+			t.Errorf("output still carries %s", tag)
+		}
+	}
+	if got := out.Extra["X-CUSTOM"]; len(got) != 1 || got[0] != "kept" {
+		t.Errorf("X-CUSTOM = %v, want [kept]", got)
+	}
+	if got := out.Extra["UID"]; len(got) != 1 || got[0] != "uid-1" {
+		t.Errorf("UID = %v, want [uid-1]", got)
+	}
+	if len(in.Extra) != 5 {
+		t.Errorf("input Extra was mutated: %d keys, want 5", len(in.Extra))
 	}
 }
