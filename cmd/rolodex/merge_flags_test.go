@@ -87,6 +87,68 @@ func TestRunMergeExplicitReviewPathWins(t *testing.T) {
 	}
 }
 
+// TestRunMergeDefaultsReportPathNextToOut: a field conflict (two same-source
+// cards disagreeing on NOTE, ORG, TITLE, BDAY, URL or PHOTO) is only visible
+// in report.json, so leaving --report unset must not mean the report is
+// never written — it lands beside --out, the same default --review already
+// gets.
+func TestRunMergeDefaultsReportPathNextToOut(t *testing.T) {
+	dir := t.TempDir()
+	icloud := filepath.Join(dir, "icloud.vcf")
+	google := filepath.Join(dir, "google.vcf")
+	writeTestVCF(t, icloud, "Alpha", "alpha@example.com")
+	writeTestVCF(t, google, "Alpha", "alpha.other@example.com")
+
+	outDir := filepath.Join(dir, "nested")
+	if err := os.MkdirAll(outDir, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	out := filepath.Join(outDir, "merged.vcf")
+
+	// --report deliberately omitted.
+	if err := runMerge([]string{"--icloud", icloud, "--google", google, "--out", out}); err != nil {
+		t.Fatalf("runMerge: %v", err)
+	}
+
+	wantReport := filepath.Join(outDir, "report.json")
+	if _, err := os.Stat(wantReport); err != nil {
+		t.Errorf("expected report.json beside --out at %s: %v", wantReport, err)
+	}
+	if _, err := os.Stat("report.json"); err == nil {
+		t.Error("report.json was written to the working directory, not beside --out")
+		_ = os.Remove("report.json")
+	}
+}
+
+// TestRunMergeExplicitReportPathWins confirms the default does not override
+// an explicit --report.
+func TestRunMergeExplicitReportPathWins(t *testing.T) {
+	dir := t.TempDir()
+	icloud := filepath.Join(dir, "icloud.vcf")
+	google := filepath.Join(dir, "google.vcf")
+	writeTestVCF(t, icloud, "Alpha", "alpha@example.com")
+	writeTestVCF(t, google, "Alpha", "alpha.other@example.com")
+
+	out := filepath.Join(dir, "out", "merged.vcf")
+	if err := os.MkdirAll(filepath.Dir(out), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	explicit := filepath.Join(dir, "elsewhere.json")
+
+	if err := runMerge([]string{
+		"--icloud", icloud, "--google", google, "--out", out, "--report", explicit,
+	}); err != nil {
+		t.Fatalf("runMerge: %v", err)
+	}
+
+	if _, err := os.Stat(explicit); err != nil {
+		t.Errorf("expected report output at the explicit path %s: %v", explicit, err)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(out), "report.json")); err == nil {
+		t.Error("default report.json was written even though --report was explicit")
+	}
+}
+
 // TestRunMergeRequiresBothSources covers the guard that precedes the default.
 func TestRunMergeRequiresBothSources(t *testing.T) {
 	dir := t.TempDir()
@@ -120,6 +182,10 @@ func TestRunMergeRejectsCollidingOutputs(t *testing.T) {
 		{
 			"derived review path collides with --out",
 			[]string{"--out", filepath.Join(dir, "review.vcf")},
+		},
+		{
+			"derived report path collides with --out",
+			[]string{"--out", filepath.Join(dir, "report.json")},
 		},
 		{
 			"explicit --review equals --out",
