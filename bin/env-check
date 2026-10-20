@@ -28,6 +28,7 @@ CUR_DETAIL=
 GO_STATE=unknown
 RO=
 RC=0
+ROT_CMD_RE='(^|[^[:alnum:]_./-])(docker|podman)[[:space:]]+(compose|run|build|buildx|exec|pull|push|up|ps|image|container|stop|rm)([^[:alnum:]_-]|$)|(^|[^[:alnum:]_./-])docker-compose([^[:alnum:]_-]|$)|uses:[[:space:]]*docker/(build-push|bake)-action'
 
 # redact TEXT: print TEXT with $HOME replaced by ~.
 redact() {
@@ -180,21 +181,46 @@ pin_cmp() {
 }
 
 # rot_scan: print a comma-separated list of container-related files, if any.
+# File names must look like real container files (not docs about them), and
+# Makefile/workflow text must use a container command, not merely the word.
 rot_scan() {
 	local f
 	{
 		git ls-files --cached --others --exclude-standard 2>/dev/null |
-			grep -E '(^|/)([^/]*compose[^/]*\.ya?ml|Dockerfile[^/]*|[^/]*\.Dockerfile|Containerfile[^/]*)$'
+			grep -E '(^|/)((docker-)?compose(\.[A-Za-z0-9_-]+)?\.ya?ml|Dockerfile(\.[A-Za-z0-9_-]+)?|Containerfile(\.[A-Za-z0-9_-]+)?|[^/]*\.Dockerfile)$' |
+			grep -vE '\.(md|markdown|txt|rst|adoc)$'
 		for f in Makefile .github/workflows/*.yml .github/workflows/*.yaml; do
-			if [ -f "$f" ] && grep -qwE 'docker|podman|compose' "$f"; then
+			if [ -f "$f" ] && grep -vE '^[[:space:]]*#' "$f" | grep -qE "$ROT_CMD_RE"; then
 				printf '%s\n' "$f"
 			fi
 		done
 	} | sort -u | paste -s -d, -
 }
 
+# lint_binaries: print every golangci-lint executable that could run as
+# "golangci-lint": all PATH entries plus the Go install dirs. A version-manager
+# shim can resolve to any of them, so a single probe proves nothing when there
+# is more than one.
+lint_binaries() {
+	local d p
+	{
+		type -ap golangci-lint 2>/dev/null
+		{
+			go env GOBIN 2>/dev/null
+			go env GOROOT 2>/dev/null | awk 'NF { print $0 "/bin" }'
+			go env GOPATH 2>/dev/null | tr ':' '\n' | awk 'NF { print $0 "/bin" }'
+		} | while IFS= read -r d; do
+			[ -n "$d" ] || continue
+			p=$d/golangci-lint
+			if [ -f "$p" ] && [ -x "$p" ]; then
+				printf '%s\n' "$p"
+			fi
+		done
+	} | awk 'NF && !seen[$0]++'
+}
+
 check_a() {
-	local tc gv ci tv f lines ln key val nv gl cmp lint lo lmaj ymaj tvl
+	local tc gv ci tv f lines ln key val nv gl cmp lint lo lmaj ymaj tvl lb
 	begin a
 	ci=
 	tc=$(awk '$1 == "toolchain" { print $2; exit }' go.mod 2>/dev/null)
@@ -237,11 +263,15 @@ check_a() {
 					sub WARN "workflow $f reads $val; env-check compares against go.mod"
 				fi
 			elif [ -n "$ci" ]; then
-				if nv=$(normver "$val"); then
+				# setup-go accepts X.Y.x, stable, lists, ...: only plain
+				# versions (and X.Y.x, compared as X.Y) are compared.
+				if [ -z "$val" ]; then
+					note "empty go-version in $f"
+				elif nv=$(normver "${val%.x}"); then
 					pin_cmp "workflow $f" "$nv" "$ci"
 					sub "$PC_ST" "$PC_MSG"
 				else
-					sub FAIL "could not parse go-version from $f"
+					sub WARN "workflow $f go-version '$val' is not a plain version; not compared"
 				fi
 			fi
 		done <<EOV
@@ -264,15 +294,15 @@ EOV
 	fi
 
 	# Installed Go vs CI pin.
-	run_out go env GOVERSION
+	run_out go version
 	if [ "$RC" -ne 0 ]; then
 		GO_STATE=bad
 		sub FAIL "go not runnable (see d)"
 	else
-		gl=$(printf '%s\n' "$RO" | tail -1 | awk '{ print $1 }')
+		gl=$(printf '%s\n' "$RO" | tail -1 | awk '{ print $3 }')
 		if ! gl=$(normver "$gl"); then
 			GO_STATE=ok
-			sub WARN "could not parse installed go version from go env GOVERSION"
+			sub WARN "could not parse installed go version from go version"
 		elif [ -z "$ci" ]; then
 			GO_STATE=ok
 		else
@@ -291,7 +321,14 @@ EOV
 		fi
 	fi
 
-	# golangci-lint.
+	# golangci-lint. Check for shadowing binaries first: a version-manager shim
+	# may run any of them, so the single probe below is not trustworthy alone.
+	if [ "$GO_STATE" != "bad" ]; then
+		lb=$(lint_binaries | paste -s -d, -)
+		case $lb in
+		*,*) sub WARN "multiple golangci-lint binaries can shadow the pinned one ($lb); delete the extras so make lint is deterministic" ;;
+		esac
+	fi
 	run_out golangci-lint version
 	if [ "$RC" -ne 0 ]; then
 		note "golangci-lint not runnable (see d)"
@@ -340,7 +377,7 @@ check_c() {
 }
 
 tool_probe() {
-	local name=$1
+	local name=$1 msg
 	shift
 	if ! command -v "$1" >/dev/null 2>&1; then
 		sub FAIL "$name not found on PATH; run asdf install in this worktree"
@@ -348,14 +385,20 @@ tool_probe() {
 	fi
 	run_out "$@"
 	if [ "$RC" -ne 0 ]; then
-		sub FAIL "$name not runnable: $(first_line "$RO"); run asdf install in this worktree"
+		msg=$(first_line "$RO")
+		# Only point at asdf when the error looks like a missing/uninstalled tool.
+		if printf '%s\n' "$RO" | grep -qiE 'asdf|no version|not installed|shim|command not found'; then
+			sub FAIL "$name not runnable: $msg; run asdf install in this worktree"
+		else
+			sub FAIL "$name not runnable: $msg"
+		fi
 	else
 		sub PASS "$name runs"
 	fi
 }
 
 check_d() {
-	local f t
+	local f t msg gw cache_skipped
 	begin d
 	tool_probe go go version
 	tool_probe make make --version
@@ -375,17 +418,34 @@ check_d() {
 			sub FAIL "file $f missing or empty"
 		fi
 	done
+	cache_skipped=0
 	if [ "$GO_STATE" = "low" ] || [ "$GO_STATE" = "bad" ]; then
-		sub PASS "module cache: skipped (see a)"
-	elif GOPROXY=off GOFLAGS=-mod=readonly go list -deps -test ./... >/dev/null 2>&1; then
-		sub PASS "module cache warm"
+		cache_skipped=1
+		note "module cache not checked (see a)"
 	else
-		sub WARN "module cache cold; run go mod download with network"
+		RO=$(GOPROXY=off GOFLAGS=-mod=readonly go list -deps -test ./... 2>&1 >/dev/null)
+		RC=$?
+		if [ "$RC" -eq 0 ]; then
+			sub PASS "module cache warm"
+		elif printf '%s\n' "$RO" | grep -qE 'GOPROXY=off|lookup disabled|cannot find module providing|missing go.sum entry'; then
+			sub WARN "module cache cold; run go mod download with network"
+		else
+			msg="go list failed: $(first_line "$RO")"
+			gw=$(go env GOWORK 2>/dev/null)
+			if [ -n "$gw" ] && [ "$gw" != "off" ]; then
+				msg="$msg (go.work: $gw)"
+			fi
+			sub WARN "$msg"
+		fi
 	fi
 	if ! grep -qE 'allow-(serial|parallel)-runners' .golangci.yml Makefile 2>/dev/null; then
 		note "golangci-lint uses a per-user lock; parallel make lint across worktrees can exit 3 (pending follow-up)"
 	fi
-	finish "tools, files and module cache ok"
+	if [ "$cache_skipped" -eq 1 ]; then
+		finish "tools and files ok (module cache not checked)"
+	else
+		finish "tools, files and module cache ok"
+	fi
 }
 
 TOP=$(git rev-parse --show-toplevel 2>/dev/null)

@@ -29,17 +29,41 @@ mkdir -p "$STUBS"
 cat >"$STUBS/go" <<'STUB'
 #!/bin/sh
 printf '%s\n' "${GOTOOLCHAIN:-unset}" >>"$STUB_LOG"
+printf '%s\n' "$*" >>"$STUB_ARGV_LOG"
 case $1 in
-version) echo "go version go${STUB_GO} stub/stub" ;;
-env) echo "go${STUB_GO}" ;;
-list) exit "${STUB_GO_LIST_RC:-0}" ;;
+version)
+	if [ "${STUB_GO_FAIL:-0}" = 1 ]; then
+		echo "go: broken stub" >&2
+		exit 1
+	fi
+	echo "go version go${STUB_GO} stub/stub"
+	;;
+env)
+	case $2 in
+	GOBIN) echo "${STUB_GOBIN:-}" ;;
+	GOROOT) echo "${STUB_GOROOT:-}" ;;
+	GOPATH) echo "${STUB_GOPATH:-}" ;;
+	GOWORK) echo "${STUB_GOWORK:-}" ;;
+	*) echo "go${STUB_GO}" ;;
+	esac
+	;;
+list)
+	[ -z "${STUB_GO_LIST_MSG:-}" ] || echo "$STUB_GO_LIST_MSG" >&2
+	exit "${STUB_GO_LIST_RC:-0}"
+	;;
 esac
 exit 0
+STUB
+# git wrapper: log argv, then run the real git.
+cat >"$STUBS/git" <<STUB
+#!/bin/sh
+printf '%s\n' "\$*" >>"\$STUB_GIT_LOG"
+exec "$(command -v git)" "\$@"
 STUB
 cat >"$STUBS/golangci-lint" <<'STUB'
 #!/bin/sh
 if [ "${STUB_LINT_FAIL:-0}" = 1 ]; then
-	echo "No version is set for command golangci-lint" >&2
+	echo "$HOME/.asdf/shims/golangci-lint: No version is set for command golangci-lint" >&2
 	exit 1
 fi
 if [ "${STUB_LINT_DEVEL:-0}" = 1 ]; then
@@ -52,10 +76,13 @@ cat >"$STUBS/make" <<'STUB'
 #!/bin/sh
 exit 0
 STUB
-chmod +x "$STUBS/go" "$STUBS/golangci-lint" "$STUBS/make"
+chmod +x "$STUBS/go" "$STUBS/git" "$STUBS/golangci-lint" "$STUBS/make"
 
 export STUB_LOG=$HOME/go-calls.log
 : >"$STUB_LOG"
+export STUB_ARGV_LOG=$HOME/go-argv.log STUB_GIT_LOG=$HOME/git-argv.log
+: >"$STUB_ARGV_LOG"
+: >"$STUB_GIT_LOG"
 
 GIT="git -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false"
 N=0
@@ -118,16 +145,19 @@ mkworktree() {
 	git -C "$HOME/$1" worktree add -q -b wt "$HOME/$1-wt" HEAD || exit 1
 }
 
-# run_in DIR: run env-check with cwd DIR; sets OUT and RC.
+# run_in DIR [VAR=value...]: run env-check with cwd DIR; sets OUT and RC.
 run_in() {
-	OUT=$(cd "$1" && PATH="$STUBS:/usr/bin:/bin" "$CHECK" 2>&1)
+	local dir=$1
+	shift
+	OUT=$(cd "$dir" && env PATH="$STUBS:/usr/bin:/bin" "$@" "$CHECK" 2>&1)
 	RC=$?
 	printf '%s\n' "$OUT" >>"$ALL"
 }
 
 # Defaults for stubs (reset per case).
 defaults() {
-	export STUB_GO=9.8.7 STUB_LINT=4.5.6 STUB_GO_LIST_RC=0 STUB_LINT_FAIL=0 STUB_LINT_DEVEL=0
+	export STUB_GO=9.8.7 STUB_LINT=4.5.6 STUB_GO_LIST_RC=0 STUB_GO_LIST_MSG='' STUB_GO_FAIL=0 STUB_LINT_FAIL=0 STUB_LINT_DEVEL=0
+	export STUB_GOBIN='' STUB_GOROOT='' STUB_GOPATH='' STUB_GOWORK=''
 }
 
 begin_case() {
@@ -139,6 +169,7 @@ begin_case() {
 want_rc() { [ "$RC" -eq "$1" ] || fail "expected exit $1"; }
 want() { printf '%s\n' "$OUT" | grep -qE "$1" || fail "missing /$1/"; }
 want_not() { ! printf '%s\n' "$OUT" | grep -qE "$1" || fail "unexpected /$1/"; }
+want_not_f() { ! printf '%s\n' "$OUT" | grep -qF "$1" || fail "unexpected literal $1"; }
 
 # Fresh fixture + linked worktree per mutation case.
 fresh() {
@@ -175,14 +206,12 @@ want_rc 1
 want '^c FAIL .*shared \(main\) checkout'
 
 begin_case "main checkout allowed"
-OUT=$(cd "$HOME/fx" && ENV_CHECK_ALLOW_MAIN=1 PATH="$STUBS:/usr/bin:/bin" "$CHECK" 2>&1)
-RC=$?
+run_in "$HOME/fx" ENV_CHECK_ALLOW_MAIN=1
 want_rc 0
 want '^c WARN '
 
 begin_case "main checkout ignores CI env"
-OUT=$(cd "$HOME/fx" && CI=true GITHUB_ACTIONS=true PATH="$STUBS:/usr/bin:/bin" "$CHECK" 2>&1)
-RC=$?
+run_in "$HOME/fx" CI=true GITHUB_ACTIONS=true
 want_rc 1
 want '^c FAIL '
 
@@ -203,7 +232,8 @@ export STUB_GO=9.8.6
 run_in "$WT"
 want_rc 1
 want '^a FAIL .*local go 9.8.6 < go.mod 9.8.7'
-want 'module cache: skipped'
+want 'info: module cache not checked'
+want '^d PASS tools and files ok \(module cache not checked\)'
 
 begin_case "go minor differs"
 export STUB_GO=9.9.0
@@ -238,6 +268,7 @@ begin_case "no workflow go-version-file"
 fresh
 printf 'name: CI\njobs: {}\n' >"$WT/.github/workflows/ci.yml"
 run_in "$WT"
+want_rc 0
 want '^a PASS '
 want 'info: no local go-version-file'
 
@@ -268,6 +299,7 @@ begin_case "lint devel build"
 fresh
 export STUB_LINT_DEVEL=1
 run_in "$WT"
+want_rc 0
 want_not '^a PASS '
 want_not 'golangci-lint 1\.99\.0'
 want '^a WARN .*could not parse golangci-lint version'
@@ -279,6 +311,10 @@ export STUB_LINT_FAIL=1
 run_in "$WT"
 want_rc 1
 want '^d FAIL .*No version is set'
+want '^d FAIL .*run asdf install'
+# Redaction: the stub error embeds the (fixture) HOME; it must print as ~.
+want '^d FAIL .*~/\.asdf/shims/golangci-lint'
+want_not_f "$HOME"
 
 # 18. missing version.txt
 begin_case "version.txt missing"
@@ -291,10 +327,18 @@ want '^d FAIL .*version.txt'
 # 19. cold module cache
 begin_case "cold module cache"
 fresh
-export STUB_GO_LIST_RC=1
+export STUB_GO_LIST_RC=1 STUB_GO_LIST_MSG="x: cannot find module providing package x: module lookup disabled by GOPROXY=off"
 run_in "$WT"
 want_rc 0
 want '^d WARN .*module cache cold'
+
+begin_case "go list fails for another reason"
+fresh
+export STUB_GO_LIST_RC=1 STUB_GO_LIST_MSG="internal/zz/zz.go:3:8: package example.invalid/nope is not in std" STUB_GOWORK=/some/go.work
+run_in "$WT"
+want_rc 0
+want '^d WARN go list failed: internal/zz/zz.go.*\(go.work: /some/go.work\)'
+want_not 'module cache cold'
 
 # 20. rot guard
 rot_case() {
@@ -326,6 +370,131 @@ want_rc 1
 want '^b FAIL .*Makefile'
 want '^e FAIL '
 
+# 20b. rot guard: real container command use in workflows and Makefile
+rot_content_case() {
+	# $1 label, $2 path, $3 content
+	begin_case "rot guard: $1"
+	fresh
+	mkdir -p "$(dirname "$WT/$2")"
+	printf '%s\n' "$3" >"$WT/$2"
+	run_in "$WT"
+	want_rc 1
+	want '^b FAIL .*container files found'
+	want '^e FAIL .*container files found'
+	want "$2"
+}
+rot_content_case "workflow docker run" .github/workflows/ci.yml 'jobs: {x: {steps: [{run: docker run busybox}]}}'
+rot_content_case "workflow .yaml docker build" .github/workflows/x.yaml 'run: docker build .'
+rot_content_case "workflow build-push-action" .github/workflows/ci.yml '      - uses: docker/build-push-action@v6'
+
+# 20c. rot guard must not trip on documentation or unrelated mentions
+nonrot_case() {
+	# $1 label, $2 path, $3 content
+	begin_case "no rot: $1"
+	fresh
+	mkdir -p "$(dirname "$WT/$2")"
+	printf '%s\n' "$3" >"$WT/$2"
+	run_in "$WT"
+	want_rc 0
+	want '^b SKIP '
+	want '^e SKIP '
+}
+nonrot_case "Dockerfile-notes.md" docs/Dockerfile-notes.md "notes"
+nonrot_case "Dockerfile.md" docs/Dockerfile.md "notes"
+nonrot_case "setup-buildx only" .github/workflows/x.yml '      - uses: docker/setup-buildx-action@v3'
+nonrot_case "Makefile comment" Makefile '# docker compose up is not used here'
+
+# 20d. toolchain directive, workflow expressions and go-version forms
+begin_case "go.mod toolchain is the CI pin"
+fresh
+printf 'module example.invalid/fixture\n\ngo 9.8.7\n\ntoolchain go9.8.8\n' >"$WT/go.mod"
+printf 'golang 9.8.8\ngolangci-lint 4.5.6\n' >"$WT/.tool-versions"
+export STUB_GO=9.8.8
+run_in "$WT"
+want_rc 0
+want '^a PASS '
+want 'CI Go pin 9.8.8 \(go.mod toolchain\)'
+
+begin_case "go.mod toolchain vs tool-versions"
+fresh
+printf 'module example.invalid/fixture\n\ngo 9.8.7\n\ntoolchain go9.8.8\n' >"$WT/go.mod"
+export STUB_GO=9.8.8
+run_in "$WT"
+want_rc 1
+want '^a FAIL .*tracked pins disagree: \.tool-versions 9\.8\.7, go\.mod 9\.8\.8'
+
+begin_case "workflow expression is info only"
+fresh
+# shellcheck disable=SC2016
+printf 'name: CI\njobs:\n  x:\n    steps:\n      - with:\n          go-version: ${{ matrix.go }}\n' >"$WT/.github/workflows/ci.yml"
+run_in "$WT"
+want_rc 0
+want '^a PASS '
+want 'info: unresolvable expression in \.github/workflows/ci\.yml'
+
+begin_case "workflow go-version-file other than go.mod"
+fresh
+printf 'name: CI\njobs:\n  x:\n    steps:\n      - with:\n          go-version-file: sub/go.mod\n' >"$WT/.github/workflows/ci.yml"
+run_in "$WT"
+want_rc 0
+want '^a WARN .*reads sub/go\.mod'
+
+wf_version_case() {
+	# $1 go-version value, $2 expected exit, $3 status line regex
+	begin_case "workflow go-version $1"
+	fresh
+	printf 'name: CI\njobs:\n  x:\n    steps:\n      - with:\n          go-version: %s\n' "$1" >"$WT/.github/workflows/ci.yml"
+	run_in "$WT"
+	want_rc "$2"
+	want "$3"
+}
+wf_version_case "'9.8.x'" 0 '^a WARN .*no patch'
+wf_version_case "'9.7.x'" 1 '^a FAIL .*tracked pins disagree'
+wf_version_case "stable" 0 "^a WARN .*go-version 'stable' is not a plain version"
+wf_version_case "['9.8.7']" 0 '^a WARN .*not a plain version'
+
+begin_case "tool-versions golang without patch"
+fresh
+printf 'golang 9.8\ngolangci-lint 4.5.6\n' >"$WT/.tool-versions"
+run_in "$WT"
+want_rc 0
+want '^a WARN .*\.tool-versions has no patch'
+
+begin_case "tool-versions golangci-lint missing"
+fresh
+printf 'golang 9.8.7\n' >"$WT/.tool-versions"
+run_in "$WT"
+want_rc 1
+want '^a FAIL .*could not parse golangci-lint from \.tool-versions'
+
+begin_case "go not runnable"
+fresh
+export STUB_GO_FAIL=1
+run_in "$WT"
+want_rc 1
+want '^a FAIL .*go not runnable'
+want '^d FAIL .*go not runnable: go: broken stub'
+want_not '^d FAIL .*run asdf install'
+want 'info: module cache not checked'
+
+# 20e. several golangci-lint binaries can shadow each other
+begin_case "second golangci-lint binary"
+fresh
+mkdir -p "$HOME/gobin"
+cp "$STUBS/golangci-lint" "$HOME/gobin/golangci-lint"
+export STUB_GOBIN=$HOME/gobin
+run_in "$WT"
+want_rc 0
+want '^a WARN multiple golangci-lint binaries can shadow'
+want_not_f "$HOME"
+
+begin_case "single golangci-lint binary in GOBIN"
+fresh
+export STUB_GOBIN=$STUBS
+run_in "$WT"
+want_rc 0
+want '^a PASS '
+
 # 21. outside a git repo
 begin_case "outside git repo"
 mkdir -p "$HOME/nogit"
@@ -341,6 +510,18 @@ if grep -qvx 'local' "$STUB_LOG"; then
 	fail "go invoked with GOTOOLCHAIN other than local"
 fi
 
+# No module downloads or other network-capable go/git subcommands.
+begin_case "no network subcommands"
+if grep -nE '^(mod|get|install|run|generate) ' "$STUB_ARGV_LOG"; then
+	RC=0 OUT=$(cat "$STUB_ARGV_LOG")
+	fail "go invoked with a download/install subcommand"
+fi
+if grep -nE '^(fetch|pull|clone|push|ls-remote|remote|submodule|gc) ' "$STUB_GIT_LOG"; then
+	RC=0 OUT=$(cat "$STUB_GIT_LOG")
+	fail "git invoked with a network or mutating subcommand"
+fi
+[ -s "$STUB_GIT_LOG" ] || fail "git wrapper never called"
+
 # 22. redaction: no fixture HOME in any output
 begin_case "redaction"
 if grep -qF "$HOME" "$ALL"; then
@@ -350,7 +531,8 @@ fi
 
 # 23. no network or install commands in the scripts
 begin_case "no install commands"
-if grep -nE '^[[:space:]]*(go install|go run [^ ]*@|curl |wget |asdf install)' "$CHECK" "$SELF"; then
+# (The pattern line itself is excluded.)
+if grep -nE '(^|[;&|(`]|\$\()[[:space:]]*(go (install|get|mod download|run [^ ]*@)|curl |wget |asdf install|git (fetch|pull|clone|push)|docker (pull|compose up)|brew install)' "$CHECK" "$SELF" | grep -v 'grep -nE'; then
 	RC=0 OUT=
 	fail "found a forbidden command"
 fi
