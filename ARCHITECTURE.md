@@ -98,7 +98,7 @@ Prepares contacts for comparison. Names go through Unicode NFKD decomposition, a
 
 ### blocker
 
-Generates candidate pairs for scoring without comparing every contact against every other (avoids N*M). Three blocking keys: shared normalized email, shared normalized phone, shared normalized last name. Last-name blocks larger than 50 contacts get a secondary filter — only pairs with matching first initials or shared org are retained.
+Generates candidate pairs for scoring without comparing every contact against every other (avoids N*M). Three blocking keys: shared normalized email, shared normalized phone, shared normalized last name. Any block larger than 50 contacts — a switchboard phone, a shared inbox, a common surname — gets a secondary filter: its members are sub-blocked by first initial and by org, and a sub-block still over 50 is dropped, so the cost stays linear in the block. Each such block is returned as a `Truncation` and the pipeline warns about it on stderr.
 
 ### scorer
 
@@ -117,6 +117,8 @@ Pairs are classified into tiers by score threshold, with rules layered on top (`
 ### merger
 
 Clusters connected contacts using a union-find (disjoint set) data structure. Two contacts in the same cluster are transitively related — if A matches B and B matches C, all three form one cluster. Transitivity applies only to edges that carry evidence (a shared identifier, or a score at the review threshold). A pair that is in review on its name alone is applied afterwards and only between two contacts nothing else has claimed, so same-name contacts are reviewed as pairs rather than collapsed into one cluster per common name; a third namesake with no tie stays distinct, and the unapplied edge is returned as a `DeferredEdge` so the report lists it under `deferred` instead of dropping it silently. Cluster ids hash each member's source, index and name, so they are unique within a run and stable across re-runs of the same inputs.
+
+A cluster of more than `MaxClusterSize` (10) contacts is neither merged nor reviewed — one person does not have that many cards, so it is a shared identifier chaining strangers together. Its members are written as separate contacts and the cluster is returned in `Oversized` for the pipeline to warn about.
 
 Before auto-merging a cluster, every internal pair is validated. If any pair is review-tier, distinct, or unscored (not blocked together), the entire cluster is demoted to review.
 

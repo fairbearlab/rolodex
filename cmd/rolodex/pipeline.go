@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/fairbearlab/rolodex/internal/blocker"
 	"github.com/fairbearlab/rolodex/internal/merger"
@@ -45,6 +46,38 @@ func reportParseWarnings(path string, warnings []model.Warning) {
 	}
 }
 
+// reportTruncatedBuckets warns, on stderr, about a shared email, phone or
+// last name too common to compare everyone who has it. Those contacts were
+// compared only within the same first initial or organization, so a
+// duplicate among them can be missed.
+func reportTruncatedBuckets(truncated []blocker.Truncation) {
+	for _, t := range truncated {
+		fmt.Fprintf(os.Stderr, "  warning: %d contacts share the %s %q, too many to compare in full; "+
+			"only those with the same first initial or organization were compared (%d not compared)\n",
+			t.Size, t.Kind, t.Key, t.Unpaired)
+	}
+}
+
+// reportOversizedClusters warns, on stderr, about a cluster the merger
+// refused to build: more contacts than one person has, chained together by
+// shared identifiers. Its members are written as separate contacts.
+func reportOversizedClusters(contacts []model.NormalizedContact, clusters []model.Cluster) {
+	const shown = 3
+	for _, c := range clusters {
+		names := make([]string, 0, shown)
+		for _, i := range c.Indices[:min(shown, len(c.Indices))] {
+			names = append(names, contacts[i].Parsed.FormattedName)
+		}
+		more := ""
+		if n := len(c.Indices) - len(names); n > 0 {
+			more = fmt.Sprintf(" and %d more", n)
+		}
+		fmt.Fprintf(os.Stderr, "  warning: %d contacts are linked by shared emails or phones, more than the %d one "+
+			"person can have; kept as separate people, not merged or reviewed: %s%s\n",
+			len(c.Indices), merger.MaxClusterSize, strings.Join(names, ", "), more)
+	}
+}
+
 // runPipeline executes the core merge pipeline (parse → normalize → block →
 // score → merge) and returns the in-memory result without writing any files.
 func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
@@ -78,8 +111,9 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 
 	// Stage 3: Block
 	fmt.Println("Blocking candidates...")
-	pairs := blocker.Block(normalized)
+	pairs, truncated := blocker.Block(normalized)
 	fmt.Printf("  %d candidate pairs\n", len(pairs))
+	reportTruncatedBuckets(truncated)
 
 	// Stage 4: Score
 	fmt.Println("Scoring pairs...")
@@ -106,6 +140,7 @@ func runPipeline(icloudPath, googlePath string) (*PipelineResult, error) {
 		fmt.Printf("  %d same-name pair(s) not reviewed: one side is already merged on a shared identifier "+
 			"(kept as separate people; listed under \"deferred\" in the report)\n", n)
 	}
+	reportOversizedClusters(normalized, result.Oversized)
 
 	return &PipelineResult{
 		MergeResult: result,
