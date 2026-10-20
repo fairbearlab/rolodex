@@ -385,3 +385,32 @@ func TestMergeReviewClusterAdoptsUIDWhenBaseHasNone(t *testing.T) {
 		t.Errorf("UID = %v, want [google-uid]", got)
 	}
 }
+
+// Both review members number their groups from item1; a merge renumbers the
+// second card's so each label stays with the value it names.
+func TestMergeReviewClusterRenumbersCollidingGroups(t *testing.T) {
+	icloud := model.ParsedContact{FormattedName: "Ann Lee",
+		Emails: []model.Email{{Address: "ann@school.example", Group: "item1"}},
+		Extra:  map[string][]string{"X-ROLODEX-SOURCE": {"icloud"}, "item1.X-ABLABEL": {"School"}}}
+	google := model.ParsedContact{FormattedName: "Ann Lee",
+		Emails: []model.Email{{Address: "ann@work.example", Group: "item1"}},
+		URL:    "https://ann.example", URLGroup: "item2",
+		Extra: map[string][]string{"X-ROLODEX-SOURCE": {"google"}, "item1.X-ABLABEL": {"Studio"}, "item2.X-ABLABEL": {"Site"}}}
+	mc := mergeReviewCluster([]model.ParsedContact{google, icloud}).Contact
+
+	labels := map[string]string{}
+	for _, e := range mc.Emails {
+		if v := mc.Extra[e.Group+".X-ABLABEL"]; len(v) == 1 {
+			labels[e.Address] = v[0]
+		}
+	}
+	if labels["ann@school.example"] != "School" || labels["ann@work.example"] != "Studio" {
+		t.Errorf("labels = %v (extra %v), want each email with its own label", labels, mc.Extra)
+	}
+	if v := mc.Extra[mc.URLGroup+".X-ABLABEL"]; len(v) != 1 || v[0] != "Site" {
+		t.Errorf("URL group %q label = %v, want [Site]", mc.URLGroup, v)
+	}
+	if icloud.Extra["item1.X-ABLABEL"][0] != "School" || len(icloud.Extra) != 2 {
+		t.Errorf("input contact modified: %v", icloud.Extra)
+	}
+}

@@ -60,16 +60,16 @@
 **Priority:** P2
 **Depends on:** Nothing
 
-### Preserve vCard property groups (Apple `item1.` labels)
+### Keep a second `URL` or `NOTE` on one card
 
-**What:** go-vcard strips the group prefix (`item1.EMAIL` / `item1.X-ABLabel:School`) before the parser sees a field, and the model has no place for it, so every written card comes out with bare `EMAIL` and a detached `X-ABLABEL` that labels nothing. Capture `vcard.Field.Group` on the modeled multi-value fields (email, phone, address, URL) and on `Extra`, and re-emit the prefix in the writer.
+**What:** `URL` and `NOTE` are single-value fields in the model, so a card with two of either keeps only the preferred one through `merge`, `resolve` and `prune`. Make them multi-value like `EMAIL` (each with its property group) and union them on merge.
 
-**Why:** Apple exports carry every custom label this way. After `merge`, `resolve` or `prune` the labels are separated from the values they named, silently. `prune` is advertised as a faithful split, and this is the largest remaining thing it loses.
+**Why:** `prune` is advertised as a faithful split; this is the largest remaining thing it drops now that property groups survive.
 
-**Context:** Found by the adversarial review of v0.5.0. Documented as a limitation in README (Merge behavior) until fixed. A second `URL` or `NOTE` on one card is dropped for the same single-value-field reason and belongs to the same fix.
+**Context:** Split out of "Preserve vCard property groups", which it was noted as belonging to.
 
-**Effort:** M
-**Priority:** P1
+**Effort:** S
+**Priority:** P2
 **Depends on:** Nothing
 
 ### `resolve` and the review loader discard parse warnings
@@ -210,3 +210,8 @@
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
 **Completed:** v0.2.0 (2026-04-07)
+
+### Preserve vCard property groups (Apple `item1.` labels)
+
+**What:** `Email`, `Phone`, `Address` and `URL` carry their property group, grouped `Extra` entries are keyed `item1.X-ABLABEL`, and the writer re-emits the prefix. Both merge paths renumber colliding groups (`model.Regroup`) so a label stays with its value, and the writer drops an Apple label (`X-ABLABEL`, `X-ABADR`) whose value was deduplicated away. The second `URL`/`NOTE` part is split out above.
+**Completed:** Unreleased (2026-09-25)

@@ -123,6 +123,7 @@ func sanitizeCard(card vcard.Card) {
 				continue
 			}
 			f.Value = stripControl(f.Value)
+			f.Group = stripControl(f.Group)
 			for name, values := range f.Params {
 				for i, v := range values {
 					values[i] = stripControl(strings.ReplaceAll(v, `\\`, `\`))
@@ -217,6 +218,7 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		c.Emails = append(c.Emails, model.Email{
 			Address: normalize.Unescape(field.Value),
 			Type:    emailType,
+			Group:   field.Group,
 		})
 	}
 
@@ -229,6 +231,7 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 		c.Phones = append(c.Phones, model.Phone{
 			Number: normalize.Unescape(field.Value),
 			Type:   phoneType,
+			Group:  field.Group,
 		})
 	}
 
@@ -258,6 +261,7 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	for _, field := range card[vcard.FieldAddress] {
 		addr := parseAddress(field)
 		if addr != (model.Address{}) {
+			addr.Group = field.Group
 			c.Addresses = append(c.Addresses, addr)
 		}
 	}
@@ -268,8 +272,9 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 	}
 
 	// URL
-	if url := text(card, vcard.FieldURL); url != "" {
-		c.URL = url
+	if f := card.Preferred(vcard.FieldURL); f != nil && f.Value != "" {
+		c.URL = normalize.Unescape(f.Value)
+		c.URLGroup = f.Group
 	}
 
 	// Photo
@@ -318,7 +323,14 @@ func cardToContact(card vcard.Card, source model.Source) model.ParsedContact {
 			continue
 		}
 		for _, f := range fields {
-			c.Extra[key] = append(c.Extra[key], f.Value)
+			// Keyed with its group so the writer can re-emit the prefix:
+			// go-vcard strips it, and an Apple label written without it
+			// labels nothing.
+			k := key
+			if f.Group != "" {
+				k = f.Group + "." + key
+			}
+			c.Extra[k] = append(c.Extra[k], f.Value)
 		}
 	}
 
