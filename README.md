@@ -74,7 +74,7 @@ rolodex resolve --report report.json --review review.vcf --merged merged.vcf --o
 
 `merge` rejects any two of `--icloud`, `--google`, `--out`, `--review` and `--report` that point at the same file — case-insensitively, through symlinks, and including a `<path>.tmp` staging sibling — instead of silently overwriting one with the other. `--review` defaults to `review.vcf` next to `--out` rather than the current directory. Malformed entries in either input are skipped and reported on stderr, by both `merge` and `run`.
 
-The **review** TUI walks through each uncertain pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip, `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress.
+The **review** TUI walks through each uncertain pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip (not the same person: every contact on the card is kept, unmerged), `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress.
 
 At the end of a session, you get printed threshold suggestions based on your decisions (e.g. "lower auto_merge to 0.78"). They're informational only -- there's no flag to apply one; a maintainer would change the constant in source.
 

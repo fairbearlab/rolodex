@@ -1,5 +1,11 @@
 # Changelog
 
+## \[Unreleased]
+
+### Fixed
+
+* **`[s] skip` in the review no longer deletes both contacts.** Review-cluster members are not in `merged.vcf`, and `resolve` excluded a skipped cluster from `final.vcf`, so skip was the one decision that removed data: a reviewer pressing `s` on 200 pairs of genuinely different people lost 400 contacts. Skip now means "not the same person" — every contact on the card is written to `final.vcf` separately, with its review tags dropped — and `resolve` reports how many it kept separate. No review decision removes a contact.
+
 ## \[0.5.0] - 2026-08-29
 
 ### Added
