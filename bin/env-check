@@ -200,9 +200,10 @@ rot_scan() {
 # lint_binaries: print every golangci-lint executable that could run as
 # "golangci-lint": all PATH entries plus the Go install dirs. A version-manager
 # shim can resolve to any of them, so a single probe proves nothing when there
-# is more than one.
+# is more than one. A file reached by two spellings (symlinked dir, trailing
+# slash, repeated PATH entry) is listed once.
 lint_binaries() {
-	local d p
+	local d p q kept dup
 	{
 		type -ap golangci-lint 2>/dev/null
 		{
@@ -216,7 +217,25 @@ lint_binaries() {
 				printf '%s\n' "$p"
 			fi
 		done
-	} | awk 'NF && !seen[$0]++'
+	} | awk 'NF && !seen[$0]++' | {
+		kept=
+		while IFS= read -r p; do
+			dup=0
+			while IFS= read -r q; do
+				if [ -n "$q" ] && [ "$p" -ef "$q" ]; then
+					dup=1
+					break
+				fi
+			done <<EOV
+$kept
+EOV
+			if [ "$dup" -eq 0 ]; then
+				kept="$kept$p
+"
+				printf '%s\n' "$p"
+			fi
+		done
+	}
 }
 
 check_a() {

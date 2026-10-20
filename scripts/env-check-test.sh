@@ -415,6 +415,36 @@ want_rc 0
 want '^a PASS '
 want 'CI Go pin 9.8.8 \(go.mod toolchain\)'
 
+# Unparseable pins must never read as PASS.
+begin_case "go.mod go directive unparseable"
+fresh
+printf 'module example.invalid/fixture\n\ngo 9.8rc1\n' >"$WT/go.mod"
+run_in "$WT"
+want_rc 1
+want '^a FAIL could not parse go version from go.mod'
+
+begin_case "go.mod toolchain unparseable"
+fresh
+printf 'module example.invalid/fixture\n\ngo 9.8.7\n\ntoolchain default\n' >"$WT/go.mod"
+run_in "$WT"
+want_rc 1
+want '^a FAIL could not parse toolchain from go.mod'
+
+begin_case "golangci.yml without version"
+fresh
+printf 'linters: {}\n' >"$WT/.golangci.yml"
+run_in "$WT"
+want_rc 1
+want '^a FAIL could not parse version from \.golangci\.yml'
+
+begin_case "installed go version unparseable"
+fresh
+export STUB_GO=devel
+run_in "$WT"
+want_rc 0
+want_not '^a PASS '
+want '^a WARN could not parse installed go version'
+
 begin_case "go.mod toolchain vs tool-versions"
 fresh
 printf 'module example.invalid/fixture\n\ngo 9.8.7\n\ntoolchain go9.8.8\n' >"$WT/go.mod"
@@ -494,6 +524,19 @@ export STUB_GOBIN=$STUBS
 run_in "$WT"
 want_rc 0
 want '^a PASS '
+
+# The same binary reached by two spellings (symlinked dir, trailing slash) is
+# one binary, not a shadow.
+begin_case "golangci-lint via symlinked GOBIN is one binary"
+fresh
+rm -f "$HOME/stubs-link"
+ln -s "$STUBS" "$HOME/stubs-link"
+export STUB_GOBIN=$HOME/stubs-link
+run_in "$WT"
+want_rc 0
+want '^a PASS '
+want_not 'multiple golangci-lint binaries'
+rm -f "$HOME/stubs-link"
 
 # 21. outside a git repo
 begin_case "outside git repo"
