@@ -133,6 +133,10 @@ N, FN, EMAIL, TEL, ORG, TITLE, BDAY, ADR, NOTE, URL, PHOTO
 
 All other properties present in the input are carried through to the output, with control and bidi-override characters stripped from every field at parse time.
 
+## Development
+
+Run `bin/env-check` (tool pins, worktree, harness) and then `make ci` before opening a PR. `bin/env-check` exits non-zero on any FAIL; set `ENV_CHECK_ALLOW_MAIN=1` only for deliberate runs in the main checkout.
+
 ## License
 
 MIT
