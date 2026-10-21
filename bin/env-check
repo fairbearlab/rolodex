@@ -1,34 +1,62 @@
 #!/usr/bin/env bash
 # bin/env-check: verify this worktree is ready for installs, edits and tests.
 #
-# One status line per check: "<id> <PASS|WARN|FAIL|SKIP> <reason>", followed by
-# indented detail lines. Exits 1 if any check FAILs, else 0.
-#
+# Checks (one section below per check, in this order):
 #   a  local tool pins match what CI reads (go.mod) and each other
 #   b  containers recreated after the last merge (SKIP: no container files)
 #   c  running in a linked worktree, not the shared main checkout
 #   d  test harness complete (tools run, required files present, module cache)
 #   e  per-worktree Compose project name (SKIP: no Compose project)
 #
-# Offline and side-effect free: no network, no installs, no downloads.
-# Set ENV_CHECK_ALLOW_MAIN=1 only for deliberate runs in the main checkout.
-# Bash 3.2 compatible.
+# Contract (tests depend on all of it):
+#   - one status line per check: "<id> <PASS|WARN|FAIL|SKIP> <reason>",
+#     followed by indented "  - STATUS message" and "  info: message" lines
+#   - last line: "env-check: N fail, M warn"; exit 1 iff any check FAILs
+#   - every check line (status and detail) is passed through redact(), so
+#     $HOME prints as ~
+#   - offline and side-effect free: no network, no installs, no downloads
+#   - set ENV_CHECK_ALLOW_MAIN=1 only for deliberate runs in the main checkout
+#   - bash 3.2 compatible (/bin/bash on macOS)
+#   - no `set -e` on purpose: every check runs even after one fails
+#   - no arguments are accepted; any given are ignored
 
 set -u
-export LC_ALL=C
-# Never let a go probe download a toolchain.
-export GOTOOLCHAIN=local
 
-NFAIL=0
-NWARN=0
-CUR_ID=
-CUR_RANK=0
-CUR_REASON=
-CUR_DETAIL=
-GO_STATE=unknown
-RO=
-RC=0
-ROT_CMD_RE='(^|[^[:alnum:]_./-])(docker|podman)[[:space:]]+(compose|run|build|buildx|exec|pull|push|up|ps|image|container|stop|rm)([^[:alnum:]_-]|$)|(^|[^[:alnum:]_./-])docker-compose([^[:alnum:]_-]|$)|uses:[[:space:]]*docker/(build-push|bake)-action'
+# ------------------------------------------------------------------ constants
+# Regexes. ROT_* find the container files and commands that make checks b and e
+# apply ("rot": containers that go stale after a merge).
+readonly VERSION_RE='^[0-9]+\.[0-9]+(\.[0-9]+)?$'
+readonly ROT_FILE_RE='(^|/)((docker-)?compose(\.[A-Za-z0-9_-]+)?\.ya?ml|Dockerfile(\.[A-Za-z0-9_-]+)?|Containerfile(\.[A-Za-z0-9_-]+)?|[^/]*\.Dockerfile)$'
+readonly ROT_DOC_EXT_RE='\.(md|markdown|txt|rst|adoc)$'
+readonly ROT_CLI_RE='(^|[^[:alnum:]_./-])(docker|podman)[[:space:]]+(compose|run|build|buildx|exec|pull|push|up|ps|image|container|stop|rm)([^[:alnum:]_-]|$)'
+readonly ROT_LEGACY_RE='(^|[^[:alnum:]_./-])docker-compose([^[:alnum:]_-]|$)'
+readonly ROT_ACTION_RE='uses:[[:space:]]*docker/(build-push|bake)-action'
+readonly ROT_CMD_RE="$ROT_CLI_RE|$ROT_LEGACY_RE|$ROT_ACTION_RE"
+# A failed probe whose message matches this looks like a missing/uninstalled tool.
+readonly ASDF_HINT_RE='asdf|no version|not installed|shim|command not found'
+# A failed `go list` whose message matches this means the module cache is cold.
+readonly COLD_CACHE_RE='GOPROXY=off|lookup disabled|cannot find module providing|missing go.sum entry'
+readonly LINT_LOCK_RE='allow-(serial|parallel)-runners'
+# Files check d requires to be present and non-empty.
+readonly REQUIRED_FILES='go.mod go.sum VERSION cmd/rolodex/version.txt .golangci.yml .tool-versions testdata/google.vcf testdata/icloud.vcf'
+
+# Shared state. Written by the step named in the comment, read by later steps.
+NFAIL=0          # finish: checks that FAILed
+NWARN=0          # finish: checks that WARNed
+CUR_ID=          # begin: id of the check being recorded
+CUR_RANK=0       # begin, sub: worst sub-result so far (1 PASS, 2 WARN, 3 FAIL)
+CUR_REASON=      # begin, sub: message of that worst sub-result
+CUR_DETAIL=      # begin, sub, note: detail lines to print under the status line
+RO=              # run_out: combined output of the last probe
+RC=0             # run_out: exit status of the last probe
+TOP=             # enter_checkout: repo root (also the cwd)
+ROT=             # detect_container_files: comma-separated container files, if any
+CI_PIN=          # derive_ci_pin: Go version CI reads from go.mod, empty if unparsed
+GO_STATE=unknown # verify_installed_go: ok, low (older than CI) or bad (not runnable)
+
+# ------------------------------------------------------------------ output
+# Only these functions know the line format. Checks call begin, then sub and
+# note as often as needed, then finish (or finish_skip).
 
 # redact TEXT: print TEXT with $HOME replaced by ~.
 redact() {
@@ -39,7 +67,7 @@ redact() {
 	printf '%s\n' "$s"
 }
 
-begin() {
+begin() { # ID: start recording the check ID
 	CUR_ID=$1
 	CUR_RANK=0
 	CUR_REASON=
@@ -53,8 +81,7 @@ sub() {
 	WARN) r=2 ;;
 	FAIL) r=3 ;;
 	esac
-	CUR_DETAIL="${CUR_DETAIL}  - $1 $2
-"
+	CUR_DETAIL="${CUR_DETAIL}  - $1 $2"$'\n'
 	if [ "$r" -gt "$CUR_RANK" ]; then
 		CUR_RANK=$r
 		CUR_REASON=$2
@@ -63,8 +90,14 @@ sub() {
 
 # note MESSAGE: informational detail line; never affects status.
 note() {
-	CUR_DETAIL="${CUR_DETAIL}  info: $1
-"
+	CUR_DETAIL="${CUR_DETAIL}  info: $1"$'\n'
+}
+
+# print_detail: print the recorded detail lines without the trailing newline.
+print_detail() {
+	if [ -n "$CUR_DETAIL" ]; then
+		redact "${CUR_DETAIL%?}"
+	fi
 }
 
 # finish PASS_REASON: print the status line and detail lines for the check.
@@ -83,26 +116,29 @@ finish() {
 		;;
 	esac
 	redact "$CUR_ID $st $reason"
-	if [ -n "$CUR_DETAIL" ]; then
-		redact "${CUR_DETAIL%?}"
-	fi
+	print_detail
 }
 
 # finish_skip REASON: the check does not apply.
 finish_skip() {
 	redact "$CUR_ID SKIP $1"
-	if [ -n "$CUR_DETAIL" ]; then
-		redact "${CUR_DETAIL%?}"
-	fi
+	print_detail
 }
 
+# finish_run: print the summary line; the status is 1 iff any check FAILed.
+finish_run() {
+	echo "env-check: $NFAIL fail, $NWARN warn"
+	[ "$NFAIL" -eq 0 ]
+}
+
+# ------------------------------------------------------------------ utilities
 # run_out CMD...: run CMD, capturing combined output in RO and status in RC.
 run_out() {
 	RO=$("$@" 2>&1)
 	RC=$?
 }
 
-first_line() {
+first_line() { # TEXT: print the first non-empty line of TEXT
 	printf '%s\n' "$1" | sed -n '/./{p;q;}'
 }
 
@@ -111,7 +147,7 @@ normver() {
 	local v=$1
 	v=${v#go}
 	v=${v#v}
-	if printf '%s\n' "$v" | grep -Eq '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+	if printf '%s\n' "$v" | grep -Eq "$VERSION_RE"; then
 		printf '%s' "$v"
 		return 0
 	fi
@@ -121,12 +157,8 @@ normver() {
 # vcmp A B: print -1, 0 or 1 comparing X.Y[.Z] versions (missing patch is 0).
 vcmp() {
 	local a1 a2 a3 b1 b2 b3
-	IFS=. read -r a1 a2 a3 <<EOV
-$1
-EOV
-	IFS=. read -r b1 b2 b3 <<EOV
-$2
-EOV
+	IFS=. read -r a1 a2 a3 <<< "$1"
+	IFS=. read -r b1 b2 b3 <<< "$2"
 	a3=${a3:-0}
 	b3=${b3:-0}
 	if [ "$a1" -lt "$b1" ]; then echo -1; return; fi
@@ -141,248 +173,397 @@ EOV
 # majmin VERSION: print X.Y.
 majmin() {
 	local a b
-	IFS=. read -r a b _ <<EOV
-$1
-EOV
+	IFS=. read -r a b _ <<< "$1"
 	printf '%s.%s' "$a" "$b"
 }
 
-has_patch() {
+has_patch() { # VERSION: succeed if VERSION is X.Y.Z
 	case $1 in
 	*.*.*) return 0 ;;
 	esac
 	return 1
 }
 
-# tv_field NAME: print the first version for NAME in .tool-versions.
-tv_field() {
-	awk -v n="$1" '$1 == n { print $2; exit }' .tool-versions 2>/dev/null
+physical_dir() { # DIR: print DIR's physical path, empty if it cannot be entered
+	(cd "$1" 2>/dev/null && pwd -P)
 }
 
-# pin_cmp LABEL VALUE CI: compare a normalized pin to the CI pin, setting
-# PC_ST and PC_MSG.
-pin_cmp() {
-	local label=$1 val=$2 ci=$3
-	PC_ST=PASS
-	PC_MSG="$label matches go.mod ($ci)"
-	if [ "$(majmin "$val")" != "$(majmin "$ci")" ]; then
-		PC_ST=FAIL
-		PC_MSG="tracked pins disagree: $label $val, go.mod $ci"
-	elif has_patch "$val" && has_patch "$ci" && [ "$val" != "$ci" ]; then
-		PC_ST=FAIL
-		PC_MSG="tracked pins disagree: $label $val, go.mod $ci"
-	elif ! has_patch "$ci"; then
-		PC_ST=WARN
-		PC_MSG="go.mod has no patch; CI setup-go resolves latest $(majmin "$ci").x"
-	elif ! has_patch "$val"; then
-		PC_ST=WARN
-		PC_MSG="$label has no patch; go.mod pins $ci"
+# file_field FILE NAME: print the second word of the first line of FILE whose
+# first word is NAME (go.mod "go 1.22.3", .tool-versions "golang 1.22.3").
+file_field() {
+	awk -v n="$2" '$1 == n { print $2; exit }' "$1" 2>/dev/null
+}
+
+# ------------------------------------------------------------------ setup
+# List the container-related files, comma-separated. File names must look like
+# real container files (not docs about them), and Makefile/workflow text must
+# use a container command, not merely the word.
+list_container_file_names() {
+	git ls-files --cached --others --exclude-standard 2>/dev/null |
+		grep -E "$ROT_FILE_RE" |
+		grep -vE "$ROT_DOC_EXT_RE"
+}
+
+list_container_command_files() {
+	local f
+	for f in Makefile .github/workflows/*.yml .github/workflows/*.yaml; do
+		if [ -f "$f" ] && grep -vE '^[[:space:]]*#' "$f" | grep -qE "$ROT_CMD_RE"; then
+			printf '%s\n' "$f"
+		fi
+	done
+}
+
+detect_container_files() { # sets ROT
+	ROT=$({
+		list_container_file_names
+		list_container_command_files
+	} | sort -u | paste -s -d, -)
+}
+
+enter_checkout() { # cd to the repo root, or FAIL c and stop
+	TOP=$(git rev-parse --show-toplevel 2>/dev/null)
+	if [ -z "$TOP" ] || ! cd "$TOP" 2>/dev/null; then
+		echo "c FAIL not inside a git repository"
+		echo "env-check: 1 fail, 0 warn"
+		exit 1
 	fi
 }
 
-# rot_scan: print a comma-separated list of container-related files, if any.
-# File names must look like real container files (not docs about them), and
-# Makefile/workflow text must use a container command, not merely the word.
-rot_scan() {
-	local f
-	{
-		git ls-files --cached --others --exclude-standard 2>/dev/null |
-			grep -E '(^|/)((docker-)?compose(\.[A-Za-z0-9_-]+)?\.ya?ml|Dockerfile(\.[A-Za-z0-9_-]+)?|Containerfile(\.[A-Za-z0-9_-]+)?|[^/]*\.Dockerfile)$' |
-			grep -vE '\.(md|markdown|txt|rst|adoc)$'
-		for f in Makefile .github/workflows/*.yml .github/workflows/*.yaml; do
-			if [ -f "$f" ] && grep -vE '^[[:space:]]*#' "$f" | grep -qE "$ROT_CMD_RE"; then
-				printf '%s\n' "$f"
+setup() {
+	export LC_ALL=C
+	# Never let a go probe download a toolchain.
+	export GOTOOLCHAIN=local
+	enter_checkout
+	detect_container_files
+}
+
+# ------------------------------------------------------------------ check a
+# derive_ci_pin sets CI_PIN; each verify_* below only records sub-results and
+# reads CI_PIN. verify_installed_go sets GO_STATE, which check d reads.
+
+# derive_ci_pin: the Go version CI reads is the go.mod toolchain, else its go
+# directive.
+derive_ci_pin() {
+	local tc gv
+	CI_PIN=
+	tc=$(file_field go.mod toolchain)
+	if [ -n "$tc" ]; then
+		if CI_PIN=$(normver "$tc"); then
+			sub PASS "CI Go pin $CI_PIN (go.mod toolchain)"
+		else
+			CI_PIN=
+			sub FAIL "could not parse toolchain from go.mod"
+		fi
+	else
+		gv=$(file_field go.mod go)
+		if CI_PIN=$(normver "$gv"); then
+			sub PASS "CI Go pin $CI_PIN (go.mod go directive)"
+		else
+			CI_PIN=
+			sub FAIL "could not parse go version from go.mod"
+		fi
+	fi
+}
+
+# compare_pin LABEL VALUE CI: compare a normalized pin to the CI pin.
+compare_pin() {
+	local label=$1 val=$2 ci=$3
+	if [ "$(majmin "$val")" != "$(majmin "$ci")" ]; then
+		sub FAIL "tracked pins disagree: $label $val, go.mod $ci"
+	elif has_patch "$val" && has_patch "$ci" && [ "$val" != "$ci" ]; then
+		sub FAIL "tracked pins disagree: $label $val, go.mod $ci"
+	elif ! has_patch "$ci"; then
+		sub WARN "go.mod has no patch; CI setup-go resolves latest $(majmin "$ci").x"
+	elif ! has_patch "$val"; then
+		sub WARN "$label has no patch; go.mod pins $ci"
+	else
+		sub PASS "$label matches go.mod ($ci)"
+	fi
+}
+
+# parse_workflow_go_versions FILE: print one "KEY VALUE" line per go-version or
+# go-version-file entry (the value is still raw YAML).
+#   "      - go-version: '1.22' # lts"  ->  "go-version '1.22' # lts"
+parse_workflow_go_versions() {
+	sed -nE 's/^[[:space:]-]*(go-version-file|go-version):[[:space:]]*(.*)$/\1 \2/p' "$1"
+}
+
+# clean_yaml_scalar VALUE: drop a trailing comment, quotes and trailing spaces.
+#   "'1.22.x'  # lts"  ->  "1.22.x"
+clean_yaml_scalar() {
+	printf '%s' "$1" | sed -E 's/[[:space:]]+#.*$//' | tr -d "\"'" | sed -E 's/[[:space:]]+$//'
+}
+
+verify_workflow_version_file() { # FILE VALUE
+	if [ "$2" != "go.mod" ] && [ "$2" != "./go.mod" ]; then
+		sub WARN "workflow $1 reads $2; env-check compares against go.mod"
+	fi
+}
+
+# verify_workflow_version FILE VALUE: setup-go accepts X.Y.x, stable, lists, ...
+# so only plain versions (and X.Y.x, compared as X.Y) are compared.
+verify_workflow_version() {
+	local f=$1 val=$2 nv
+	if [ -z "$val" ]; then
+		note "empty go-version in $f"
+	elif nv=$(normver "${val%.x}"); then
+		compare_pin "workflow $f" "$nv" "$CI_PIN"
+	else
+		sub WARN "workflow $f go-version '$val' is not a plain version; not compared"
+	fi
+}
+
+# classify_workflow_pin FILE KEY VALUE: route one workflow entry to its check.
+classify_workflow_pin() {
+	local f=$1 key=$2 val=$3
+	case $val in
+	*\$\{\{*)
+		note "unresolvable expression in $f"
+		return
+		;;
+	esac
+	if [ "$key" = "go-version-file" ]; then
+		verify_workflow_version_file "$f" "$val"
+	elif [ -n "$CI_PIN" ]; then
+		verify_workflow_version "$f" "$val"
+	fi
+}
+
+# verify_workflow_pins: cross-check the local workflows against the CI pin.
+verify_workflow_pins() {
+	local f lines ln hits=0
+	for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+		[ -f "$f" ] || continue
+		lines=$(parse_workflow_go_versions "$f")
+		[ -n "$lines" ] || continue
+		while IFS= read -r ln; do
+			hits=$((hits + 1))
+			classify_workflow_pin "$f" "${ln%% *}" "$(clean_yaml_scalar "${ln#* }")"
+		done <<< "$lines"
+	done
+	if [ "$hits" -eq 0 ]; then
+		note "no local go-version-file; CI go jobs read go.mod via the shared workflow"
+	fi
+}
+
+# verify_tool_versions_pin: .tool-versions golang vs the CI pin.
+verify_tool_versions_pin() {
+	local tvl tv
+	[ -n "$CI_PIN" ] || return 0
+	tvl=$(file_field .tool-versions golang)
+	if tv=$(normver "$tvl"); then
+		compare_pin ".tool-versions" "$tv" "$CI_PIN"
+	else
+		sub FAIL "could not parse golang from .tool-versions"
+	fi
+}
+
+# compare_installed_go VERSION: installed Go vs the CI pin.
+compare_installed_go() {
+	local gl=$1
+	if [ "$(vcmp "$gl" "$CI_PIN")" = "-1" ]; then
+		sub FAIL "local go $gl < go.mod $CI_PIN; run asdf install in this worktree"
+	elif [ "$(majmin "$gl")" != "$(majmin "$CI_PIN")" ]; then
+		sub FAIL "local go $gl has a different major.minor than go.mod $CI_PIN"
+	elif has_patch "$CI_PIN" && [ "$gl" != "$CI_PIN" ]; then
+		sub WARN "patch differs: local $gl, CI $CI_PIN"
+	else
+		sub PASS "local go $gl matches go.mod $CI_PIN"
+	fi
+}
+
+# parse_go_version TEXT: print the version word of the last line of `go version`.
+#   "go version go1.22.3 darwin/arm64"  ->  "go1.22.3"
+parse_go_version() {
+	printf '%s\n' "$1" | tail -1 | awk '{ print $3 }'
+}
+
+# verify_installed_go: sets GO_STATE. An unparseable version leaves it ok.
+verify_installed_go() {
+	local gl
+	run_out go version
+	if [ "$RC" -ne 0 ]; then
+		GO_STATE=bad
+		sub FAIL "go not runnable (see d)"
+		return
+	fi
+	GO_STATE=ok
+	gl=$(parse_go_version "$RO")
+	if ! gl=$(normver "$gl"); then
+		sub WARN "could not parse installed go version from go version"
+	elif [ -n "$CI_PIN" ]; then
+		if [ "$(vcmp "$gl" "$CI_PIN")" = "-1" ]; then
+			GO_STATE=low
+		fi
+		compare_installed_go "$gl"
+	fi
+}
+
+# append_bin_dir: read directories on stdin, print each non-empty one with
+# "/bin" appended.
+#   "/usr/local/go"  ->  "/usr/local/go/bin"   (an empty line prints nothing)
+append_bin_dir() {
+	awk 'NF { print $0 "/bin" }'
+}
+
+# go_bin_dirs: print the directories Go installs binaries into.
+go_bin_dirs() {
+	go env GOBIN 2>/dev/null
+	go env GOROOT 2>/dev/null | append_bin_dir
+	go env GOPATH 2>/dev/null | tr ':' '\n' | append_bin_dir
+}
+
+# unique_lines: read lines on stdin, print each non-empty line once, in order.
+#   "/a/x" "/a/x" "" "/b/x"  ->  "/a/x" "/b/x"
+unique_lines() {
+	awk 'NF && !seen[$0]++'
+}
+
+# lint_in_go_bin_dirs: print each golangci-lint executable in those directories.
+lint_in_go_bin_dirs() {
+	local d p
+	go_bin_dirs | while IFS= read -r d; do
+		[ -n "$d" ] || continue
+		p=$d/golangci-lint
+		if [ -f "$p" ] && [ -x "$p" ]; then
+			printf '%s\n' "$p"
+		fi
+	done
+}
+
+# dedupe_by_inode: read paths on stdin, print each file once even when it is
+# reached by two spellings (symlinked dir, trailing slash, repeated entry).
+dedupe_by_inode() {
+	local p q kept dup
+	kept=
+	while IFS= read -r p; do
+		dup=0
+		while IFS= read -r q; do
+			if [ -n "$q" ] && [ "$p" -ef "$q" ]; then
+				dup=1
+				break
 			fi
-		done
-	} | sort -u | paste -s -d, -
+		done <<< "$kept"
+		if [ "$dup" -eq 0 ]; then
+			kept="$kept$p"$'\n'
+			printf '%s\n' "$p"
+		fi
+	done
 }
 
 # lint_binaries: print every golangci-lint executable that could run as
 # "golangci-lint": all PATH entries plus the Go install dirs. A version-manager
 # shim can resolve to any of them, so a single probe proves nothing when there
-# is more than one. A file reached by two spellings (symlinked dir, trailing
-# slash, repeated PATH entry) is listed once.
+# is more than one.
 lint_binaries() {
-	local d p q kept dup
 	{
 		type -ap golangci-lint 2>/dev/null
-		{
-			go env GOBIN 2>/dev/null
-			go env GOROOT 2>/dev/null | awk 'NF { print $0 "/bin" }'
-			go env GOPATH 2>/dev/null | tr ':' '\n' | awk 'NF { print $0 "/bin" }'
-		} | while IFS= read -r d; do
-			[ -n "$d" ] || continue
-			p=$d/golangci-lint
-			if [ -f "$p" ] && [ -x "$p" ]; then
-				printf '%s\n' "$p"
-			fi
-		done
-	} | awk 'NF && !seen[$0]++' | {
-		kept=
-		while IFS= read -r p; do
-			dup=0
-			while IFS= read -r q; do
-				if [ -n "$q" ] && [ "$p" -ef "$q" ]; then
-					dup=1
-					break
-				fi
-			done <<EOV
-$kept
-EOV
-			if [ "$dup" -eq 0 ]; then
-				kept="$kept$p
-"
-				printf '%s\n' "$p"
-			fi
-		done
-	}
+		lint_in_go_bin_dirs
+	} | unique_lines | dedupe_by_inode
 }
 
-check_a() {
-	local tc gv ci tv f lines ln key val nv gl cmp lint lo lmaj ymaj tvl lb
-	begin a
-	ci=
-	tc=$(awk '$1 == "toolchain" { print $2; exit }' go.mod 2>/dev/null)
-	if [ -n "$tc" ]; then
-		if ci=$(normver "$tc"); then
-			sub PASS "CI Go pin $ci (go.mod toolchain)"
-		else
-			ci=
-			sub FAIL "could not parse toolchain from go.mod"
-		fi
+# verify_lint_shadowing: a version-manager shim may run any golangci-lint on
+# the PATH, so the single version probe is not trustworthy alone.
+verify_lint_shadowing() {
+	local lb
+	[ "$GO_STATE" != "bad" ] || return 0
+	lb=$(lint_binaries | paste -s -d, -)
+	case $lb in
+	*,*) sub WARN "multiple golangci-lint binaries can shadow the pinned one ($lb); delete the extras so make lint is deterministic" ;;
+	esac
+}
+
+# parse_lint_version TEXT: print X.Y.Z from the `golangci-lint version` output.
+#   "golangci-lint has version v2.1.6 built with go1.24 ..."  ->  "2.1.6"
+parse_lint_version() {
+	printf '%s\n' "$1" | sed -nE 's/.*has version v?([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -1
+}
+
+# golangci_yml_major: print the major version declared in .golangci.yml.
+#   'version: "2"'  ->  "2"
+golangci_yml_major() {
+	sed -nE 's/^version:[[:space:]]*"?([0-9]+)"?.*/\1/p' .golangci.yml 2>/dev/null | head -1
+}
+
+verify_lint_major() { # VERSION: major vs .golangci.yml
+	local lint=$1 lmaj ymaj
+	lmaj=${lint%%.*}
+	ymaj=$(golangci_yml_major)
+	if [ -z "$ymaj" ]; then
+		sub FAIL "could not parse version from .golangci.yml"
+	elif [ "$lmaj" != "$ymaj" ]; then
+		sub FAIL "golangci-lint major $lmaj != .golangci.yml version $ymaj"
 	else
-		gv=$(awk '$1 == "go" { print $2; exit }' go.mod 2>/dev/null)
-		if ci=$(normver "$gv"); then
-			sub PASS "CI Go pin $ci (go.mod go directive)"
-		else
-			ci=
-			sub FAIL "could not parse go version from go.mod"
-		fi
+		sub PASS "golangci-lint $lint matches .golangci.yml major $ymaj"
 	fi
+}
 
-	# Local workflow cross-check.
-	local wf_hits=0
-	for f in .github/workflows/*.yml .github/workflows/*.yaml; do
-		[ -f "$f" ] || continue
-		lines=$(sed -nE 's/^[[:space:]-]*(go-version-file|go-version):[[:space:]]*(.*)$/\1 \2/p' "$f")
-		[ -n "$lines" ] || continue
-		while IFS= read -r ln; do
-			key=${ln%% *}
-			val=${ln#* }
-			val=$(printf '%s' "$val" | sed -E 's/[[:space:]]+#.*$//' | tr -d "\"'" | sed -E 's/[[:space:]]+$//')
-			wf_hits=$((wf_hits + 1))
-			case $val in
-			*\$\{\{*)
-				note "unresolvable expression in $f"
-				continue
-				;;
-			esac
-			if [ "$key" = "go-version-file" ]; then
-				if [ "$val" != "go.mod" ] && [ "$val" != "./go.mod" ]; then
-					sub WARN "workflow $f reads $val; env-check compares against go.mod"
-				fi
-			elif [ -n "$ci" ]; then
-				# setup-go accepts X.Y.x, stable, lists, ...: only plain
-				# versions (and X.Y.x, compared as X.Y) are compared.
-				if [ -z "$val" ]; then
-					note "empty go-version in $f"
-				elif nv=$(normver "${val%.x}"); then
-					pin_cmp "workflow $f" "$nv" "$ci"
-					sub "$PC_ST" "$PC_MSG"
-				else
-					sub WARN "workflow $f go-version '$val' is not a plain version; not compared"
-				fi
-			fi
-		done <<EOV
-$lines
-EOV
-	done
-	if [ "$wf_hits" -eq 0 ]; then
-		note "no local go-version-file; CI go jobs read go.mod via the shared workflow"
+verify_lint_tool_versions() { # VERSION: vs .tool-versions
+	local lint=$1 lo
+	lo=$(file_field .tool-versions golangci-lint)
+	if [ -z "$lo" ]; then
+		sub FAIL "could not parse golangci-lint from .tool-versions"
+	elif [ "$lo" != "$lint" ]; then
+		sub WARN "lint differs: local $lint, .tool-versions $lo"
 	fi
+}
 
-	# .tool-versions golang vs CI pin.
-	if [ -n "$ci" ]; then
-		tvl=$(tv_field golang)
-		if tv=$(normver "$tvl"); then
-			pin_cmp ".tool-versions" "$tv" "$ci"
-			sub "$PC_ST" "$PC_MSG"
-		else
-			sub FAIL "could not parse golang from .tool-versions"
-		fi
-	fi
-
-	# Installed Go vs CI pin.
-	run_out go version
-	if [ "$RC" -ne 0 ]; then
-		GO_STATE=bad
-		sub FAIL "go not runnable (see d)"
-	else
-		gl=$(printf '%s\n' "$RO" | tail -1 | awk '{ print $3 }')
-		if ! gl=$(normver "$gl"); then
-			GO_STATE=ok
-			sub WARN "could not parse installed go version from go version"
-		elif [ -z "$ci" ]; then
-			GO_STATE=ok
-		else
-			GO_STATE=ok
-			cmp=$(vcmp "$gl" "$ci")
-			if [ "$cmp" = "-1" ]; then
-				GO_STATE=low
-				sub FAIL "local go $gl < go.mod $ci; run asdf install in this worktree"
-			elif [ "$(majmin "$gl")" != "$(majmin "$ci")" ]; then
-				sub FAIL "local go $gl has a different major.minor than go.mod $ci"
-			elif has_patch "$ci" && [ "$gl" != "$ci" ]; then
-				sub WARN "patch differs: local $gl, CI $ci"
-			else
-				sub PASS "local go $gl matches go.mod $ci"
-			fi
-		fi
-	fi
-
-	# golangci-lint. Check for shadowing binaries first: a version-manager shim
-	# may run any of them, so the single probe below is not trustworthy alone.
-	if [ "$GO_STATE" != "bad" ]; then
-		lb=$(lint_binaries | paste -s -d, -)
-		case $lb in
-		*,*) sub WARN "multiple golangci-lint binaries can shadow the pinned one ($lb); delete the extras so make lint is deterministic" ;;
-		esac
-	fi
+verify_lint_version() {
+	local lint
 	run_out golangci-lint version
 	if [ "$RC" -ne 0 ]; then
 		note "golangci-lint not runnable (see d)"
-	else
-		lint=$(printf '%s\n' "$RO" | sed -nE 's/.*has version v?([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -1)
-		if [ -z "$lint" ]; then
-			sub WARN "could not parse golangci-lint version"
-		else
-			lmaj=${lint%%.*}
-			ymaj=$(sed -nE 's/^version:[[:space:]]*"?([0-9]+)"?.*/\1/p' .golangci.yml 2>/dev/null | head -1)
-			if [ -z "$ymaj" ]; then
-				sub FAIL "could not parse version from .golangci.yml"
-			elif [ "$lmaj" != "$ymaj" ]; then
-				sub FAIL "golangci-lint major $lmaj != .golangci.yml version $ymaj"
-			else
-				sub PASS "golangci-lint $lint matches .golangci.yml major $ymaj"
-			fi
-			lo=$(tv_field golangci-lint)
-			if [ -z "$lo" ]; then
-				sub FAIL "could not parse golangci-lint from .tool-versions"
-			elif [ "$lo" != "$lint" ]; then
-				sub WARN "lint differs: local $lint, .tool-versions $lo"
-			fi
-		fi
+		return
 	fi
+	lint=$(parse_lint_version "$RO")
+	if [ -z "$lint" ]; then
+		sub WARN "could not parse golangci-lint version"
+	else
+		verify_lint_major "$lint"
+		verify_lint_tool_versions "$lint"
+	fi
+}
+
+note_static_info() {
 	note "CI lint version comes from the shared workflow, not this repo"
 	note "govulncheck is @latest in Makefile and CI by design"
+}
+
+check_tool_pins() {
+	begin a
+	derive_ci_pin
+	verify_workflow_pins
+	verify_tool_versions_pin
+	verify_installed_go
+	verify_lint_shadowing
+	verify_lint_version
+	note_static_info
 	finish "tool pins consistent"
 }
 
-check_c() {
+# ------------------------------------------------------------------ check b
+# run_container_stub ID SKIP_REASON: checks b and e only apply to repos with
+# container files; here, finding any is a FAIL that asks for the real check.
+run_container_stub() {
+	begin "$1"
+	if [ -n "$ROT" ]; then
+		sub FAIL "container files found ($ROT): add container-recreate and per-worktree COMPOSE_PROJECT_NAME checks to bin/env-check"
+		finish ""
+	else
+		finish_skip "$2"
+	fi
+}
+
+check_containers_recreated() {
+	run_container_stub b "no container files in repo"
+}
+
+# ------------------------------------------------------------------ check c
+check_not_shared_checkout() {
 	local gd gc
 	begin c
-	gd=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
-	gc=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+	gd=$(physical_dir "$(git rev-parse --git-dir)")
+	gc=$(physical_dir "$(git rev-parse --git-common-dir)")
 	if [ -z "$gd" ] || [ -z "$gc" ]; then
 		sub FAIL "could not resolve git directories"
 	elif [ "$gd" != "$gc" ]; then
@@ -395,6 +576,8 @@ check_c() {
 	finish "linked worktree"
 }
 
+# ------------------------------------------------------------------ check d
+# tool_probe NAME CMD...: FAIL unless CMD is on the PATH and runs.
 tool_probe() {
 	local name=$1 msg
 	shift
@@ -406,7 +589,7 @@ tool_probe() {
 	if [ "$RC" -ne 0 ]; then
 		msg=$(first_line "$RO")
 		# Only point at asdf when the error looks like a missing/uninstalled tool.
-		if printf '%s\n' "$RO" | grep -qiE 'asdf|no version|not installed|shim|command not found'; then
+		if printf '%s\n' "$RO" | grep -qiE "$ASDF_HINT_RE"; then
 			sub FAIL "$name not runnable: $msg; run asdf install in this worktree"
 		else
 			sub FAIL "$name not runnable: $msg"
@@ -416,13 +599,16 @@ tool_probe() {
 	fi
 }
 
-check_d() {
-	local f t msg gw cache_skipped
-	begin d
+probe_tools() {
 	tool_probe go go version
 	tool_probe make make --version
 	tool_probe git git --version
 	tool_probe golangci-lint golangci-lint version
+}
+
+# probe_bare_tools: tools the scripts use but that have no useful version probe.
+probe_bare_tools() {
+	local t
 	for t in awk tr; do
 		if command -v "$t" >/dev/null 2>&1; then
 			sub PASS "$t found"
@@ -430,72 +616,95 @@ check_d() {
 			sub FAIL "$t not found on PATH"
 		fi
 	done
-	for f in go.mod go.sum VERSION cmd/rolodex/version.txt .golangci.yml .tool-versions testdata/google.vcf testdata/icloud.vcf; do
+}
+
+verify_required_files() {
+	local f
+	for f in $REQUIRED_FILES; do
 		if [ -s "$f" ]; then
 			sub PASS "file $f present"
 		else
 			sub FAIL "file $f missing or empty"
 		fi
 	done
-	cache_skipped=0
-	if [ "$GO_STATE" = "low" ] || [ "$GO_STATE" = "bad" ]; then
-		cache_skipped=1
-		note "module cache not checked (see a)"
-	else
-		RO=$(GOPROXY=off GOFLAGS=-mod=readonly go list -deps -test ./... 2>&1 >/dev/null)
-		RC=$?
-		if [ "$RC" -eq 0 ]; then
-			sub PASS "module cache warm"
-		elif printf '%s\n' "$RO" | grep -qE 'GOPROXY=off|lookup disabled|cannot find module providing|missing go.sum entry'; then
-			sub WARN "module cache cold; run go mod download with network"
-		else
-			msg="go list failed: $(first_line "$RO")"
-			gw=$(go env GOWORK 2>/dev/null)
-			if [ -n "$gw" ] && [ "$gw" != "off" ]; then
-				msg="$msg (go.work: $gw)"
-			fi
-			sub WARN "$msg"
-		fi
+}
+
+# go_unusable: succeed when check a found Go missing or older than CI, so the
+# module cache cannot be probed meaningfully.
+go_unusable() {
+	[ "$GO_STATE" = "low" ] || [ "$GO_STATE" = "bad" ]
+}
+
+# describe_go_list_failure OUTPUT: the message for a `go list` failure that is
+# not a cold cache; names go.work when one is active.
+describe_go_list_failure() {
+	local msg gw
+	msg="go list failed: $(first_line "$1")"
+	gw=$(go env GOWORK 2>/dev/null)
+	if [ -n "$gw" ] && [ "$gw" != "off" ]; then
+		msg="$msg (go.work: $gw)"
 	fi
-	if ! grep -qE 'allow-(serial|parallel)-runners' .golangci.yml Makefile 2>/dev/null; then
+	printf '%s' "$msg"
+}
+
+verify_module_cache() {
+	if go_unusable; then
+		note "module cache not checked (see a)"
+		return
+	fi
+	RO=$(GOPROXY=off GOFLAGS=-mod=readonly go list -deps -test ./... 2>&1 >/dev/null)
+	RC=$?
+	if [ "$RC" -eq 0 ]; then
+		sub PASS "module cache warm"
+	elif printf '%s\n' "$RO" | grep -qE "$COLD_CACHE_RE"; then
+		sub WARN "module cache cold; run go mod download with network"
+	else
+		sub WARN "$(describe_go_list_failure "$RO")"
+	fi
+}
+
+note_lint_lock() {
+	if ! grep -qE "$LINT_LOCK_RE" .golangci.yml Makefile 2>/dev/null; then
 		note "golangci-lint uses a per-user lock; parallel make lint across worktrees can exit 3 (pending follow-up)"
 	fi
-	if [ "$cache_skipped" -eq 1 ]; then
+}
+
+check_test_harness() {
+	begin d
+	probe_tools
+	probe_bare_tools
+	verify_required_files
+	verify_module_cache
+	note_lint_lock
+	if go_unusable; then
 		finish "tools and files ok (module cache not checked)"
 	else
 		finish "tools, files and module cache ok"
 	fi
 }
 
-TOP=$(git rev-parse --show-toplevel 2>/dev/null)
-if [ -z "$TOP" ] || ! cd "$TOP" 2>/dev/null; then
-	echo "c FAIL not inside a git repository"
-	echo "env-check: 1 fail, 0 warn"
-	exit 1
-fi
+# ------------------------------------------------------------------ check e
+check_compose_project_name() {
+	run_container_stub e "no Compose project in repo"
+}
 
-ROT=$(rot_scan)
+# ------------------------------------------------------------------ CLI
+# env-check takes no arguments; any given are ignored.
+parse_args() {
+	:
+}
 
-check_a
+# ------------------------------------------------------------------ main
+# A table of contents: one call per step, no logic.
+main() {
+	parse_args "$@"
+	setup
+	check_tool_pins              # a
+	check_containers_recreated   # b
+	check_not_shared_checkout    # c
+	check_test_harness           # d
+	check_compose_project_name   # e
+	finish_run
+}
 
-begin b
-if [ -n "$ROT" ]; then
-	sub FAIL "container files found ($ROT): add container-recreate and per-worktree COMPOSE_PROJECT_NAME checks to bin/env-check"
-	finish ""
-else
-	finish_skip "no container files in repo"
-fi
-
-check_c
-check_d
-
-begin e
-if [ -n "$ROT" ]; then
-	sub FAIL "container files found ($ROT): add container-recreate and per-worktree COMPOSE_PROJECT_NAME checks to bin/env-check"
-	finish ""
-else
-	finish_skip "no Compose project in repo"
-fi
-
-echo "env-check: $NFAIL fail, $NWARN warn"
-[ "$NFAIL" -eq 0 ]
+main "$@"
