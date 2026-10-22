@@ -59,11 +59,25 @@ type ContactRef struct {
 	Index  int    `json:"index"`
 }
 
+// Conflict reports one single-value field where two or more members of a
+// merged cluster carried a differing value. mergeCluster keeps exactly one
+// (Kept, from Winner), and Discarded lists every other value that was lost —
+// including a second same-source value a purely-pairwise comparison would
+// never see.
 type Conflict struct {
-	Field       string `json:"field"`
-	ICloudValue string `json:"icloud_value"`
-	GoogleValue string `json:"google_value"`
-	Winner      string `json:"winner"` // which source won
+	Field     string          `json:"field"`
+	Winner    Source          `json:"winner"` // source of the value that was kept
+	Kept      string          `json:"kept"`
+	Discarded []ConflictValue `json:"discarded"`
+}
+
+// ConflictValue is one value findConflicts saw and did not keep, and the
+// contact it came from (Source and Index into the run's contact list, so
+// the report can point back at the original card).
+type ConflictValue struct {
+	Source Source `json:"source"`
+	Index  int    `json:"index"`
+	Value  string `json:"value"`
 }
 
 type Warning struct {

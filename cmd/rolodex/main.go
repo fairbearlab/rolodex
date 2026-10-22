@@ -87,7 +87,7 @@ func runRunCmd(args []string) error {
 	icloudPath := fs.String("icloud", "", "path to iCloud .vcf export")
 	googlePath := fs.String("google", "", "path to Google .vcf export")
 	outPath := fs.String("out", "final.vcf", "output path for final resolved contacts")
-	reportPath := fs.String("report", "", "save report.json to this path")
+	reportPath := fs.String("report", "", "save report.json to this path (default: report.json next to --out)")
 	keep := fs.Bool("keep", false, "keep intermediate files alongside output")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -134,7 +134,7 @@ func runMerge(args []string) error {
 	googlePath := fs.String("google", "", "path to Google .vcf export")
 	outPath := fs.String("out", "merged.vcf", "output path for merged contacts")
 	reviewPath := fs.String("review", "", "output path for review-tier contacts (default: review.vcf next to --out)")
-	reportPath := fs.String("report", "", "output path for JSON report")
+	reportPath := fs.String("report", "", "output path for JSON report (default: report.json next to --out)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -145,6 +145,13 @@ func runMerge(args []string) error {
 	reviewDerived := *reviewPath == ""
 	if reviewDerived {
 		*reviewPath = filepath.Join(filepath.Dir(*outPath), "review.vcf")
+	}
+	// A field conflict (two same-source cards disagreeing on NOTE, ORG,
+	// TITLE, BDAY, URL or PHOTO) is only visible in report.json — the merged
+	// .vcf can hold just one value. Writing it by default, like --review,
+	// means that loss is recorded somewhere even when nobody passed --report.
+	if *reportPath == "" {
+		*reportPath = filepath.Join(filepath.Dir(*outPath), "report.json")
 	}
 	inputs := []pathFlag{{"--icloud", *icloudPath}, {"--google", *googlePath}}
 	outputs := []pathFlag{{"--out", *outPath}, {"--review", *reviewPath}, {"--report", *reportPath}}
