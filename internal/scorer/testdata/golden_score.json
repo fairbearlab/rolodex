@@ -1,0 +1,7744 @@
+[
+  {
+    "A": 0,
+    "B": 1,
+    "Score": 1,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": true,
+      "shared_phone": true,
+      "shared_org": true,
+      "shared_birthday": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 2,
+    "Score": 0.5,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "shared_birthday": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 3,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 4,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 5,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 6,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 0,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 0,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 2,
+    "Score": 0.5,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "shared_birthday": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 3,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 4,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 5,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 6,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 1,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 1,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 3,
+    "Score": 0.5,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "shared_birthday": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 4,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 5,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 6,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 2,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 2,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 4,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 5,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 6,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 3,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 3,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 5,
+    "Score": 0.65,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 6,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 4,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 4,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 6,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_conflict": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 5,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 5,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 7,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 6,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 6,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 6,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 6,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 6,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 6,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 8,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 9,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 10,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 11,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 12,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 13,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 14,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 15,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 16,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 17,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 18,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 19,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 20,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 7,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 7,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 7,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 7,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 7,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 7,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 9,
+    "Score": 0.9,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": true,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 10,
+    "Score": 0.23407407407407407,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5851851851851851,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 11,
+    "Score": 0.23407407407407407,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5851851851851851,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 12,
+    "Score": 0.4635042735042735,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5337606837606838,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 13,
+    "Score": 0.20962962962962967,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5240740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 14,
+    "Score": 0.18683760683760683,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46709401709401704,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 15,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 16,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 17,
+    "Score": 0.2088888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5222222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 18,
+    "Score": 0.2088888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5222222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 19,
+    "Score": 0.2088888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5222222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 20,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 21,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 22,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 23,
+    "Score": 0.3303703703703704,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.825925925925926,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 24,
+    "Score": 0.24444444444444444,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.611111111111111,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 25,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 26,
+    "Score": 0.1962962962962963,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.49074074074074076,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 27,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 28,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 29,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 8,
+    "B": 30,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 8,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 8,
+    "B": 32,
+    "Score": 0.18000000000000002,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.45,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 33,
+    "Score": 0.18000000000000002,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.45,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 34,
+    "Score": 0.33650793650793653,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8412698412698413,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 8,
+    "B": 35,
+    "Score": 0.3222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8055555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 10,
+    "Score": 0.23407407407407407,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5851851851851851,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 11,
+    "Score": 0.23407407407407407,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5851851851851851,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 12,
+    "Score": 0.4635042735042735,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5337606837606838,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 13,
+    "Score": 0.2,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 14,
+    "Score": 0.18683760683760683,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46709401709401704,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 15,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 16,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 17,
+    "Score": 0.2088888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5222222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 18,
+    "Score": 0.2088888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5222222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 19,
+    "Score": 0.2088888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5222222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 20,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 21,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 22,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 23,
+    "Score": 0.26634920634920634,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6658730158730158,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 24,
+    "Score": 0.24444444444444444,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.611111111111111,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 25,
+    "Score": 0.18222222222222223,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.45555555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 26,
+    "Score": 0.17222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4305555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 27,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 28,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 29,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 9,
+    "B": 30,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 9,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 9,
+    "B": 32,
+    "Score": 0.18000000000000002,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.45,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 33,
+    "Score": 0.18000000000000002,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.45,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 34,
+    "Score": 0.2698412698412698,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6746031746031745,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 9,
+    "B": 35,
+    "Score": 0.25555555555555554,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6388888888888888,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 11,
+    "Score": 0.65,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 12,
+    "Score": 0.3706959706959707,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.9267399267399267,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 13,
+    "Score": 0.2488888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6222222222222222,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 14,
+    "Score": 0.2263817663817664,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.565954415954416,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 15,
+    "Score": 0.1761904761904762,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.44047619047619047,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 16,
+    "Score": 0.1761904761904762,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.44047619047619047,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 17,
+    "Score": 0.2774603174603174,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6936507936507935,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 18,
+    "Score": 0.2774603174603174,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6936507936507935,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 19,
+    "Score": 0.2774603174603174,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6936507936507935,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 20,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 21,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 22,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 23,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 24,
+    "Score": 0.23555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 25,
+    "Score": 0.19142857142857145,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4785714285714286,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 26,
+    "Score": 0.20476190476190476,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5119047619047619,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 27,
+    "Score": 0.18592592592592594,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4648148148148148,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 28,
+    "Score": 0.18592592592592594,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4648148148148148,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 10,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 10,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 10,
+    "B": 32,
+    "Score": 0.22888888888888892,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5722222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 33,
+    "Score": 0.22888888888888892,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5722222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 34,
+    "Score": 0.20285714285714285,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5071428571428571,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 10,
+    "B": 35,
+    "Score": 0.19666666666666668,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4916666666666667,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 12,
+    "Score": 0.3706959706959707,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.9267399267399267,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 13,
+    "Score": 0.2488888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6222222222222222,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 14,
+    "Score": 0.2263817663817664,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.565954415954416,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 15,
+    "Score": 0.1761904761904762,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.44047619047619047,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 16,
+    "Score": 0.1761904761904762,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.44047619047619047,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 17,
+    "Score": 0.2774603174603174,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6936507936507935,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 18,
+    "Score": 0.2774603174603174,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6936507936507935,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 19,
+    "Score": 0.2774603174603174,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6936507936507935,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 20,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 21,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 22,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 23,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 24,
+    "Score": 0.23555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 25,
+    "Score": 0.19142857142857145,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4785714285714286,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 26,
+    "Score": 0.20476190476190476,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5119047619047619,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 27,
+    "Score": 0.18592592592592594,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4648148148148148,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 28,
+    "Score": 0.18592592592592594,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4648148148148148,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 11,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 11,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 11,
+    "B": 32,
+    "Score": 0.22888888888888892,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5722222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 33,
+    "Score": 0.22888888888888892,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5722222222222223,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 34,
+    "Score": 0.20285714285714285,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5071428571428571,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 11,
+    "B": 35,
+    "Score": 0.19666666666666668,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4916666666666667,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 13,
+    "Score": 0.2188034188034188,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.547008547008547,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 14,
+    "Score": 0.2153846153846154,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5384615384615384,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 15,
+    "Score": 0.1834757834757835,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4586894586894587,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 16,
+    "Score": 0.1834757834757835,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4586894586894587,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 17,
+    "Score": 0.2364957264957265,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5912393162393162,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 18,
+    "Score": 0.2364957264957265,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5912393162393162,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 19,
+    "Score": 0.2364957264957265,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5912393162393162,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 20,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 21,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 22,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 23,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 24,
+    "Score": 0.18803418803418803,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47008547008547,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 25,
+    "Score": 0.15965811965811966,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3991452991452991,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 26,
+    "Score": 0.16965811965811967,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.42414529914529914,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 27,
+    "Score": 0.16410256410256413,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4102564102564103,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 28,
+    "Score": 0.16410256410256413,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4102564102564103,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 29,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 12,
+    "B": 30,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 12,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 12,
+    "B": 32,
+    "Score": 0.22925518925518928,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5731379731379732,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 33,
+    "Score": 0.22925518925518928,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5731379731379732,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 34,
+    "Score": 0.1768009768009768,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.442002442002442,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 12,
+    "B": 35,
+    "Score": 0.16965811965811967,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.42414529914529914,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 14,
+    "Score": 0.643846153846154,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 0.9846153846153847,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 15,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 16,
+    "Score": 0.1851851851851852,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46296296296296297,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 17,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 18,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 19,
+    "Score": 0.21619047619047618,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5404761904761904,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 20,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 21,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 22,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 23,
+    "Score": 0.24730158730158727,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6182539682539682,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 24,
+    "Score": 0.17777777777777778,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4444444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 25,
+    "Score": 0.23555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 26,
+    "Score": 0.25555555555555554,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6388888888888888,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 27,
+    "Score": 0.16666666666666669,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4166666666666667,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 28,
+    "Score": 0.16666666666666669,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4166666666666667,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 13,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 13,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 13,
+    "B": 32,
+    "Score": 0.21333333333333335,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5333333333333333,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 33,
+    "Score": 0.21333333333333335,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5333333333333333,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 34,
+    "Score": 0.22063492063492063,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5515873015873015,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 13,
+    "B": 35,
+    "Score": 0.21111111111111114,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5277777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 15,
+    "Score": 0.16410256410256413,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4102564102564103,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 16,
+    "Score": 0.16410256410256413,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4102564102564103,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 17,
+    "Score": 0.21020757020757022,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5255189255189255,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 18,
+    "Score": 0.21020757020757022,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5255189255189255,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 19,
+    "Score": 0.21020757020757022,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5255189255189255,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 20,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 21,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 22,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 23,
+    "Score": 0.16102564102564107,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.40256410256410263,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 24,
+    "Score": 0.18803418803418803,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47008547008547,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 25,
+    "Score": 0.18051282051282053,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4512820512820513,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 26,
+    "Score": 0.18717948717948718,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4679487179487179,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 27,
+    "Score": 0.16410256410256413,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4102564102564103,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 28,
+    "Score": 0.16410256410256413,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4102564102564103,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 14,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 14,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 14,
+    "B": 32,
+    "Score": 0.2023931623931624,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.505982905982906,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 33,
+    "Score": 0.2023931623931624,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.505982905982906,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 34,
+    "Score": 0.1768009768009768,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.442002442002442,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 14,
+    "B": 35,
+    "Score": 0.16965811965811967,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.42414529914529914,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 16,
+    "Score": 0.65,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 17,
+    "Score": 0.26,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.65,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 18,
+    "Score": 0.26,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.65,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 19,
+    "Score": 0.26,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.65,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 20,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 21,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 22,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 23,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 24,
+    "Score": 0.21111111111111114,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5277777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 25,
+    "Score": 0.21777777777777776,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5444444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 26,
+    "Score": 0.22777777777777777,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5694444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 27,
+    "Score": 0.2222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5555555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 28,
+    "Score": 0.2222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5555555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 15,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 15,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 15,
+    "B": 32,
+    "Score": 0.19851851851851854,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4962962962962963,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 33,
+    "Score": 0.19851851851851854,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4962962962962963,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 15,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 17,
+    "Score": 0.26,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.65,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 18,
+    "Score": 0.26,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.65,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 19,
+    "Score": 0.26,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.65,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 20,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 21,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 22,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 23,
+    "Score": 0.16148148148148148,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4037037037037037,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 24,
+    "Score": 0.21111111111111114,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5277777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 25,
+    "Score": 0.21777777777777776,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5444444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 26,
+    "Score": 0.22777777777777777,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5694444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 27,
+    "Score": 0.2222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5555555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 28,
+    "Score": 0.2222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5555555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 16,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 16,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 16,
+    "B": 32,
+    "Score": 0.19851851851851854,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4962962962962963,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 33,
+    "Score": 0.19851851851851854,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4962962962962963,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 16,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 18,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 19,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 20,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 21,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 22,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 23,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 24,
+    "Score": 0.18666666666666665,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 25,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.38888888888888884,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 26,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 27,
+    "Score": 0.16,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.39999999999999997,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 28,
+    "Score": 0.16,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.39999999999999997,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 17,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 17,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 17,
+    "B": 32,
+    "Score": 0.1955555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48888888888888893,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 33,
+    "Score": 0.1955555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48888888888888893,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 34,
+    "Score": 0.17269841269841268,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4317460317460317,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 17,
+    "B": 35,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 19,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 20,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 21,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 22,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 23,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 24,
+    "Score": 0.18666666666666665,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 25,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.38888888888888884,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 26,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 27,
+    "Score": 0.16,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.39999999999999997,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 28,
+    "Score": 0.16,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.39999999999999997,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 18,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 18,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 18,
+    "B": 32,
+    "Score": 0.1955555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48888888888888893,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 33,
+    "Score": 0.1955555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48888888888888893,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 34,
+    "Score": 0.17269841269841268,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4317460317460317,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 18,
+    "B": 35,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 20,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 21,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 22,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 23,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 24,
+    "Score": 0.18666666666666665,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 25,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.38888888888888884,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 26,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 27,
+    "Score": 0.16,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.39999999999999997,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 28,
+    "Score": 0.16,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.39999999999999997,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 19,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 19,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 19,
+    "B": 32,
+    "Score": 0.1955555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48888888888888893,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 33,
+    "Score": 0.1955555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48888888888888893,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 34,
+    "Score": 0.17269841269841268,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4317460317460317,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 19,
+    "B": 35,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 21,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 20,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 20,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 20,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 20,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 22,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 21,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 21,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 21,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 21,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 23,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 22,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 22,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 22,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 22,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 24,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 25,
+    "Score": 0.26666666666666666,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.6666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 26,
+    "Score": 0.33000000000000007,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8250000000000001,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 27,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 28,
+    "Score": 0.18962962962962965,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4740740740740741,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 23,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 23,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 23,
+    "B": 32,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 33,
+    "Score": 0.15555555555555556,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.3888888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 34,
+    "Score": 0.31257142857142856,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.7814285714285714,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 23,
+    "B": 35,
+    "Score": 0.34900000000000003,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.8725,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 25,
+    "Score": 0.19111111111111112,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4777777777777778,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 26,
+    "Score": 0.19444444444444445,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4861111111111111,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 27,
+    "Score": 0.1925925925925926,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48148148148148145,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 28,
+    "Score": 0.1925925925925926,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48148148148148145,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 24,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 24,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 24,
+    "B": 32,
+    "Score": 0.18666666666666665,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 33,
+    "Score": 0.18666666666666665,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4666666666666666,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 24,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 26,
+    "Score": 0.384,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 0.96,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 27,
+    "Score": 0.21777777777777776,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5444444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 28,
+    "Score": 0.21777777777777776,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5444444444444444,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 25,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 25,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 25,
+    "B": 32,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 33,
+    "Score": 0.1888888888888889,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.47222222222222227,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 34,
+    "Score": 0.18603174603174602,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.46507936507936504,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 25,
+    "B": 35,
+    "Score": 0.19333333333333336,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.48333333333333334,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 26,
+    "B": 27,
+    "Score": 0.18333333333333335,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4583333333333333,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 26,
+    "B": 28,
+    "Score": 0.18333333333333335,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4583333333333333,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 26,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 26,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 26,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 26,
+    "B": 32,
+    "Score": 0.20222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5055555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 26,
+    "B": 33,
+    "Score": 0.20222222222222222,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5055555555555555,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 26,
+    "B": 34,
+    "Score": 0.20476190476190476,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5119047619047619,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 26,
+    "B": 35,
+    "Score": 0.2,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.5,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 27,
+    "B": 28,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 27,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 27,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 27,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 27,
+    "B": 32,
+    "Score": 0.18074074074074076,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4518518518518519,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 27,
+    "B": 33,
+    "Score": 0.18074074074074076,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4518518518518519,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 27,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 27,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 28,
+    "B": 29,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 28,
+    "B": 30,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 28,
+    "B": 31,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 28,
+    "B": 32,
+    "Score": 0.18074074074074076,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4518518518518519,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 28,
+    "B": 33,
+    "Score": 0.18074074074074076,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4518518518518519,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 28,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 28,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 29,
+    "B": 30,
+    "Score": 0.9,
+    "Tier": "auto_merge",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": true,
+      "shared_phone": true,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 29,
+    "B": 31,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": true,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 29,
+    "B": 32,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 29,
+    "B": 33,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 29,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 29,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 30,
+    "B": 31,
+    "Score": 0.45,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": true,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 30,
+    "B": 32,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 30,
+    "B": 33,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 30,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 30,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 31,
+    "B": 32,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 31,
+    "B": 33,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 31,
+    "B": 34,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 31,
+    "B": 35,
+    "Score": 0,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "nameless": true
+    }
+  },
+  {
+    "A": 32,
+    "B": 33,
+    "Score": 0.4,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 1,
+      "name_exact": true,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false,
+      "birthday_unknown": true
+    }
+  },
+  {
+    "A": 32,
+    "B": 34,
+    "Score": 0.17269841269841268,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4317460317460317,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 32,
+    "B": 35,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 33,
+    "B": 34,
+    "Score": 0.17269841269841268,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4317460317460317,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 33,
+    "B": 35,
+    "Score": 0.16555555555555557,
+    "Tier": "distinct",
+    "Features": {
+      "name_similarity": 0.4138888888888889,
+      "shared_email": false,
+      "shared_phone": false,
+      "shared_org": false
+    }
+  },
+  {
+    "A": 34,
+    "B": 35,
+    "Score": 0.635,
+    "Tier": "review",
+    "Features": {
+      "name_similarity": 0.9625,
+      "shared_email": false,
+      "shared_phone": true,
+      "shared_org": false
+    }
+  }
+]

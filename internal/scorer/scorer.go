@@ -29,9 +29,23 @@ const (
 
 // Score computes candidate pair scores for all blocked pairs.
 func Score(contacts []model.NormalizedContact, pairs [][2]int) []model.ScoredPair {
+	// The parsed birthday and the given/middle name split each depend only on
+	// one contact, never on the pairing, so they are computed once per
+	// contact here rather than once per candidate pair in scorePair — a
+	// contact in a wide blocking bucket used to pay for that repeatedly,
+	// once for every partner it was compared against. normalize.MatchCache is
+	// a pure recompute from fields already on the contact, so calling it here
+	// is correct whether or not the caller's contacts came from
+	// normalize.Contact (which already calls it) — cheap to redo, and
+	// required for a model.NormalizedContact assembled without it.
+	cached := make([]model.NormalizedContact, len(contacts))
+	for i, c := range contacts {
+		cached[i] = normalize.MatchCache(c)
+	}
+
 	result := make([]model.ScoredPair, 0, len(pairs))
 	for _, p := range pairs {
-		score, features := scorePair(contacts[p[0]], contacts[p[1]])
+		score, features := scorePair(cached[p[0]], cached[p[1]])
 		tier := Classify(score, features)
 		result = append(result, model.ScoredPair{
 			A:        p[0],
@@ -203,12 +217,17 @@ func sharedOrg(a, b model.NormalizedContact) bool {
 	return orgA != "" && orgB != "" && orgA == orgB
 }
 
-// parseBirthday defers to normalize, which owns what a real date is. This
-// used to be a second implementation with its own month/day bounds, and it
-// drifted: normalize learned to reject February 31 and this copy did not, so
-// an impossible birthday two contacts shared still counted as evidence.
-func parseBirthday(s string) (year, monthDay string, ok bool) {
-	return normalize.ParseCanonicalBirthday(s)
+// birthdaysAgreeCached reports whether a and b carry the same canonical
+// birthday, reading each contact's cached BirthdayOK/BirthdayMonthDay/
+// BirthdayYear (see normalize.MatchCache) instead of reparsing
+// Parsed.Birthday. It answers exactly normalize.BirthdaysAgree(a.Parsed.
+// Birthday, b.Parsed.Birthday) would: equal month and day, and equal year
+// unless one side has none — iCloud may omit the year that Google keeps.
+func birthdaysAgreeCached(a, b model.NormalizedContact) bool {
+	if !a.BirthdayOK || !b.BirthdayOK || a.BirthdayMonthDay != b.BirthdayMonthDay {
+		return false
+	}
+	return a.BirthdayYear == "" || b.BirthdayYear == "" || a.BirthdayYear == b.BirthdayYear
 }
 
 // sharedBirthday reports whether both contacts carry the same well-formed,
@@ -218,11 +237,11 @@ func parseBirthday(s string) (year, monthDay string, ok bool) {
 // "unknown" == "unknown" is not a shared birthday, and neither is a shared
 // placeholder — 1970-01-01 on both sides is a default, not a person — since
 // this feature promotes an identical name to auto_merge on its own, the
-// way sharedPhone and sharedEmail refuse "000-000-0000". The comparison
-// lives in normalize so the merger and the report answer the same question.
+// way sharedPhone and sharedEmail refuse "000-000-0000". a.BirthdayPlausible
+// is checked rather than b's: birthdaysAgreeCached already requires the same
+// month-day, so the two sides agree on plausibility too.
 func sharedBirthday(a, b model.NormalizedContact) bool {
-	return normalize.BirthdaysAgree(a.Parsed.Birthday, b.Parsed.Birthday) &&
-		normalize.PlausibleBirthday(a.Parsed.Birthday)
+	return birthdaysAgreeCached(a, b) && a.BirthdayPlausible
 }
 
 // birthdayConflict reports whether both contacts carry a well-formed birthday
@@ -231,12 +250,10 @@ func sharedBirthday(a, b model.NormalizedContact) bool {
 // through sharedBirthday: two placeholders that agree are no evidence, but
 // they are not a disagreement either.
 func birthdayConflict(a, b model.NormalizedContact) bool {
-	_, _, okA := parseBirthday(a.Parsed.Birthday)
-	_, _, okB := parseBirthday(b.Parsed.Birthday)
-	if !okA || !okB {
+	if !a.BirthdayOK || !b.BirthdayOK {
 		return false
 	}
-	return !normalize.BirthdaysAgree(a.Parsed.Birthday, b.Parsed.Birthday)
+	return !birthdaysAgreeCached(a, b)
 }
 
 // birthdayUnknown reports whether both contacts carry a birthday but at
@@ -244,13 +261,10 @@ func birthdayConflict(a, b model.NormalizedContact) bool {
 // run, so Classify must not lean on it: an unreadable birthday is "unknown",
 // never "no conflict".
 func birthdayUnknown(a, b model.NormalizedContact) bool {
-	ba, bb := a.Parsed.Birthday, b.Parsed.Birthday
-	if ba == "" || bb == "" {
+	if a.Parsed.Birthday == "" || b.Parsed.Birthday == "" {
 		return false
 	}
-	_, _, okA := parseBirthday(ba)
-	_, _, okB := parseBirthday(bb)
-	return !okA || !okB
+	return !a.BirthdayOK || !b.BirthdayOK
 }
 
 // sameName reports whether two names identify the same person as far as the
@@ -294,39 +308,27 @@ func sameName(a, b model.NormalizedContact) bool {
 	// landline. Comparing the accent-preserving form too costs recall on one
 	// shape (an export that lost the accent), and that pair still reaches
 	// review through the near-name floor. It never costs precision.
-	return sameNameParts(a.NormalizedFamilyName, a.NormalizedGivenName, a.NormalizedMiddleName,
-		b.NormalizedFamilyName, b.NormalizedGivenName, b.NormalizedMiddleName) &&
-		sameNameParts(a.StrictFamilyName, a.StrictGivenName, a.StrictMiddleName,
-			b.StrictFamilyName, b.StrictGivenName, b.StrictMiddleName)
+	return sameNameParts(a.NormalizedFamilyName, a.SplitGivenName, a.SplitMiddleName,
+		b.NormalizedFamilyName, b.SplitGivenName, b.SplitMiddleName) &&
+		sameNameParts(a.StrictFamilyName, a.StrictSplitGivenName, a.StrictSplitMiddleName,
+			b.StrictFamilyName, b.StrictSplitGivenName, b.StrictSplitMiddleName)
 }
 
 // sameNameParts compares one normalization of two names. Both the folded and
 // the accent-preserving forms are run through it, so a signal that can confirm
-// identity is held to the same standard in both.
-func sameNameParts(familyA, givenA0, middleA0, familyB, givenB0, middleB0 string) bool {
+// identity is held to the same standard in both. given/middle are the
+// already-split forms cached on NormalizedContact by normalize.MatchCache:
+// Google folds the middle name into the given name (N:Doe;John V;;;) where
+// iCloud uses the middle slot (N:Doe;John;V;;), and the split reconciles the
+// two shapes of one person.
+func sameNameParts(familyA, givenA, middleA, familyB, givenB, middleB string) bool {
 	if familyA != familyB {
 		return false
 	}
-	// Google folds the middle name into the given name (N:Doe;John V;;;)
-	// where iCloud uses the middle slot (N:Doe;John;V;;). When the middle
-	// slot is empty, trailing given-name tokens are compared as the middle
-	// name so the two shapes of one person agree.
-	givenA, middleA := splitGiven(givenA0, middleA0)
-	givenB, middleB := splitGiven(givenB0, middleB0)
 	if !compatibleMiddle(middleA, middleB) {
 		return false
 	}
 	return sameGivenName(givenA, givenB)
-}
-
-// splitGiven moves trailing given-name tokens into the middle name when the
-// middle slot is empty; otherwise both are returned unchanged.
-func splitGiven(given, middle string) (string, string) {
-	words := strings.Fields(given)
-	if middle != "" || len(words) < 2 {
-		return given, middle
-	}
-	return words[0], strings.Join(words[1:], " ")
 }
 
 // sameGivenName is plain equality of the normalized given names. It once
