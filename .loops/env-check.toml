@@ -1,0 +1,41 @@
+# bin/env-check config, read by the shared `loops env-check` engine. See CONTRIBUTING.md.
+schema_version = 1
+engine = ">=0.6.0"
+
+[shared_checkout]
+hint = "git worktree add .claude/worktrees/<name> -b <branch> origin/main"
+
+# CI takes Go from go.mod (setup-go go-version-file); .tool-versions must agree.
+[[pins]]
+tool = "go"
+sources = ["go-mod:go.mod", "tool-versions", "setup-go:.github/workflows/*.yml"]
+compare = "exact"
+local = "fail"
+
+# CI's golangci-lint comes from the shared reusable workflow, so only .tool-versions pins it here.
+[[pins]]
+tool = "golangci-lint"
+sources = ["tool-versions"]
+compare = "exact"
+local = "warn"
+
+[harness]
+tools = ["git", "go", "make", "golangci-lint"]
+files = ["go.mod", "go.sum", "VERSION", "cmd/rolodex/version.txt", ".golangci.yml", ".tool-versions", "testdata/google.vcf", "testdata/icloud.vcf"]
+entrypoints = "auto"
+tracked = true
+sparse = "warn"
+
+[compose]
+mode = "none"
+
+[[local]]
+id = "d.modcache"
+run = ".loops/checks/modcache.sh"
+timeout_s = 60
+
+[[local]]
+id = "d.lint-lock"
+run = ".loops/checks/lint-lock.sh"
+static = true
+timeout_s = 5
