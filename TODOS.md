@@ -14,18 +14,6 @@
 **Priority:** P0
 **Depends on:** Nothing
 
-### `[s] skip` destroys both contacts with no warning
-
-**What:** `internal/resolve/resolve.go` excludes a skipped cluster from `output` entirely. Review-cluster members are not in `merged.vcf` (`merger.go` routes them exclusively to `result.Review`), so `skip` is the only decision that deletes data — `pending` and `q` both keep everything. Either rename the key to `[s] discard both` with a confirmation, or change the semantics to emit both contacts separately.
-
-**Why:** On a card asking "are these the same person?", `[s] skip` reads as "no" or "not now" — which is exactly when a reviewer wants **both** kept. A reviewer working 200 near-name pairs and pressing `s` on the genuinely-different ones deletes 400 people from their address book.
-
-**Context:** Documented in ARCHITECTURE.md and asserted in `resolve_test.go`, so the behaviour is intentional; the problem is that the label does not match it. Needs a product decision, not a bug fix.
-
-**Effort:** S
-**Priority:** P1
-**Depends on:** Nothing
-
 ### Bind cluster ids to reviewed contact content
 
 **What:** `merger.ClusterID` hashes `source:index:family:given` per member. Add the decision-relevant field values (or a per-run identifier) to the hash, so a `review.vcf` from a different run cannot satisfy the id check.
@@ -210,3 +198,8 @@
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
 **Completed:** v0.2.0 (2026-04-07)
+
+### `[s] skip` destroys both contacts with no warning
+
+**What:** `resolve` now keeps every contact of a skipped cluster, unmerged and without its review tags, instead of excluding the cluster from `final.vcf`. `skip` means "not the same person", which is what the calibration log already assumed; no review decision deletes a contact.
+**Completed:** Unreleased (2026-09-25)
