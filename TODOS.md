@@ -2,18 +2,6 @@
 
 ## Merge Safety
 
-### Cap the email and phone blocking buckets
-
-**What:** `internal/blocker/blocker.go` caps the last-name bucket at `maxLastNameBlockSize = 50` and falls back to `addFilteredPairs`, but the email and phone buckets have no cap. Apply the same cap-and-filter path to both, and warn when a bucket is truncated. Independently, cap cluster size in `merger.Merge` (or refuse to auto-apply a `merge` decision above N members).
-
-**Why:** One shared identifier produces an O(k^2) pair explosion **and** a single unbounded review cluster. Measured on a real build: 500 contacts sharing one `TEL` collapse into ONE review cluster of 501 members — the TUI shows it as a single card and `resolve.mergeReviewCluster` fuses all 501 into one contact on a single `m` keystroke. 4,000 such contacts produce 7,998,000 candidate pairs, 9.1s and 3.99 GB RSS; ~8,000 is an OOM kill. This is the same hazard `isNearNameOnly` was written for, on the path that guard does not cover.
-
-**Context:** Found independently by the security specialist and the adversarial pass during the v0.4.0 pre-landing review. Entirely reachable without malice: a company switchboard, a family landline, or a placeholder like `000-000-0000` that some exports emit. `.vcf` input is untrusted, so it is also a trivial DoS. This is the single worst remaining bug in the tool.
-
-**Effort:** M
-**Priority:** P0
-**Depends on:** Nothing
-
 ### `[s] skip` destroys both contacts with no warning
 
 **What:** `internal/resolve/resolve.go` excludes a skipped cluster from `output` entirely. Review-cluster members are not in `merged.vcf` (`merger.go` routes them exclusively to `result.Review`), so `skip` is the only decision that deletes data — `pending` and `q` both keep everything. Either rename the key to `[s] discard both` with a confirmation, or change the semantics to emit both contacts separately.
@@ -210,3 +198,8 @@
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
 **Completed:** v0.2.0 (2026-04-07)
+
+### Cap the email and phone blocking buckets
+
+**What:** Every blocking bucket (email, phone, last name) over 50 contacts is sub-blocked by first initial and org in linear time, a sub-block still over 50 is dropped, and each truncated bucket is warned about. `merger.Merge` keeps a cluster over `MaxClusterSize` (10) as separate contacts, never one merge or review card, and warns. 4,000 contacts on one `TEL`: 7,998,000 pairs / 3.99 GB before, 0 pairs / 21 MB after.
+**Completed:** Unreleased (2026-09-25)

@@ -1,5 +1,11 @@
 # Changelog
 
+## \[Unreleased]
+
+### Fixed
+
+* **One shared email or phone can no longer exhaust memory or fuse hundreds of contacts into one.** Only last-name blocks were capped: 4,000 contacts on one `TEL` (a switchboard, a family landline, a placeholder `000-000-0000`) produced 7,998,000 candidate pairs and 3.99 GB, ~8,000 was an OOM kill, and 500 of them came out as one 501-member review card whose single `m` merged them all. Every blocking bucket over 50 contacts is now compared only within the same first initial or organization — sub-blocked in linear time, with a sub-block still over 50 dropped — and warned about on stderr (4,000 on one `TEL`: 0 pairs, 21 MB). Independently, a cluster of more than 10 contacts is never merged or put in front of a reviewer as one card; its members are kept as separate people, with a warning naming them.
+
 ## \[0.5.0] - 2026-08-29
 
 ### Added
