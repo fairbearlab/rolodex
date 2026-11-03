@@ -1,5 +1,11 @@
 # Changelog
 
+## \[Unreleased]
+
+### Fixed
+
+* **Apple's custom labels stay attached to their values.** go-vcard strips a property's group (`item1.EMAIL` / `item1.X-ABLabel:School`) and the model had nowhere to keep it, so every card written by `merge`, `resolve` or `prune` came out with a bare `EMAIL` and a detached `X-ABLABEL` that labelled nothing. Groups on `EMAIL`, `TEL`, `ADR`, `URL` and unmodeled properties are now kept and written back. Two merged Apple cards both number from `item1`, so the second card's groups are renumbered rather than piling both labels onto one value, and a label whose value was deduplicated away is dropped instead of written orphaned.
+
 ## \[0.5.0] - 2026-08-29
 
 ### Added

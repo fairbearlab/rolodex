@@ -142,6 +142,7 @@ func Write(w io.Writer, contacts []model.MergedContact) error {
 // property is one content line: a name, ordered parameters, and a value
 // already in wire form.
 type property struct {
+	group  string // vCard property group, "item1" in "item1.EMAIL"; may be empty
 	name   string
 	params [][2]string
 	value  string
@@ -151,6 +152,9 @@ func formatCard(buf *bytes.Buffer, props []property) {
 	sort.SliceStable(props, func(i, j int) bool { return props[i].name < props[j].name })
 	buf.WriteString("BEGIN:VCARD\r\nVERSION:3.0\r\n")
 	for _, p := range props {
+		if p.group != "" {
+			buf.WriteString(p.group + ".")
+		}
 		buf.WriteString(p.name)
 		for _, kv := range p.params {
 			buf.WriteString(";" + kv[0] + "=" + escapeParam(kv[1]))
@@ -177,11 +181,18 @@ func structured(components ...string) string {
 	return strings.Join(escaped, ";")
 }
 
+// annotation names the Apple properties that only describe another property
+// in their group.
+var annotation = map[string]bool{"X-ABLABEL": true, "X-ABADR": true}
+
 func contactProperties(mc model.MergedContact) []property {
 	c := mc.Contact
 	var props []property
 	add := func(name, value string, params ...[2]string) {
 		props = append(props, property{name: name, params: params, value: value})
+	}
+	addGrouped := func(group, name, value string, params ...[2]string) {
+		props = append(props, property{group: group, name: name, params: params, value: value})
 	}
 	typed := func(t string) [][2]string {
 		if t == "" {
@@ -205,12 +216,12 @@ func contactProperties(mc model.MergedContact) []property {
 
 	// EMAIL
 	for _, e := range c.Emails {
-		add("EMAIL", normalize.Escape(e.Address), typed(e.Type)...)
+		addGrouped(e.Group, "EMAIL", normalize.Escape(e.Address), typed(e.Type)...)
 	}
 
 	// TEL
 	for _, p := range c.Phones {
-		add("TEL", normalize.Escape(p.Number), typed(p.Type)...)
+		addGrouped(p.Group, "TEL", normalize.Escape(p.Number), typed(p.Type)...)
 	}
 
 	// ORG is kept in wire form by the parser and written back as is.
@@ -230,7 +241,7 @@ func contactProperties(mc model.MergedContact) []property {
 
 	// ADR
 	for _, a := range c.Addresses {
-		add("ADR", structured(a.POBox, a.Extended, a.Street, a.City, a.Region, a.PostCode, a.Country), typed(a.Type)...)
+		addGrouped(a.Group, "ADR", structured(a.POBox, a.Extended, a.Street, a.City, a.Region, a.PostCode, a.Country), typed(a.Type)...)
 	}
 
 	// NOTE
@@ -240,7 +251,7 @@ func contactProperties(mc model.MergedContact) []property {
 
 	// URL
 	if c.URL != "" {
-		add("URL", normalize.Escape(c.URL))
+		addGrouped(c.URLGroup, "URL", normalize.Escape(c.URL))
 	}
 
 	// PHOTO
@@ -272,17 +283,31 @@ func contactProperties(mc model.MergedContact) []property {
 		"X-ROLODEX-SCORE":  mc.Score > 0,
 		"X-ROLODEX-REVIEW": mc.ReviewFlag,
 	}
+	// An annotation (Apple's label, or its country code for an address)
+	// whose group has no other property left — a merge deduplicated the
+	// value it named — labels nothing and is dropped.
+	valued := make(map[string]bool)
+	for _, p := range props {
+		valued[strings.ToLower(p.group)] = true
+	}
+	for key := range c.Extra {
+		if g, name := model.SplitGroup(key); !annotation[strings.ToUpper(name)] {
+			valued[strings.ToLower(g)] = true
+		}
+	}
 	extraKeys := make([]string, 0, len(c.Extra))
 	for key := range c.Extra {
-		if skip[strings.ToUpper(key)] {
+		g, name := model.SplitGroup(key)
+		if skip[strings.ToUpper(key)] || (g != "" && annotation[strings.ToUpper(name)] && !valued[strings.ToLower(g)]) {
 			continue
 		}
 		extraKeys = append(extraKeys, key)
 	}
 	sort.Strings(extraKeys)
 	for _, key := range extraKeys {
+		g, name := model.SplitGroup(key)
 		for _, v := range c.Extra[key] {
-			add(key, v)
+			addGrouped(g, name, v)
 		}
 	}
 

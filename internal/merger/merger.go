@@ -264,12 +264,11 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 	}
 
 	// Start with priority source, or first contact if no iCloud
-	var base model.ParsedContact
+	baseIdx := indices[0]
 	if icloudIdx >= 0 {
-		base = contacts[icloudIdx].Parsed
-	} else {
-		base = contacts[indices[0]].Parsed
+		baseIdx = icloudIdx
 	}
+	base := contacts[baseIdx].Parsed
 
 	// Collect all sources
 	var sources []model.Source
@@ -281,6 +280,12 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 			sources = append(sources, s)
 		}
 	}
+
+	// Property groups: every other member's are renumbered past the ones
+	// already taken, so a label stays with the value it names.
+	usedGroups := make(map[string]bool)
+	base = model.Regroup(base, usedGroups)
+	base.Extra = copyExtra(base.Extra)
 
 	// Union multi-value fields from all contacts
 	emailSet := make(map[string]model.Email)
@@ -304,10 +309,12 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 
 	// Union from other contacts
 	for _, idx := range indices {
-		c := contacts[idx].Parsed
-		if c.Source == base.Source && idx == icloudIdx {
+		if idx == baseIdx {
+			// Not unioned with itself: Regroup would renumber every one of
+			// its groups and duplicate its grouped properties.
 			continue
 		}
+		c := model.Regroup(contacts[idx].Parsed, usedGroups)
 		for _, e := range c.Emails {
 			key := normalize.Email(e.Address)
 			if _, exists := emailSet[key]; !exists {
@@ -348,6 +355,7 @@ func mergeCluster(contacts []model.NormalizedContact, indices []int, score float
 		}
 		if base.URL == "" && c.URL != "" {
 			base.URL = c.URL
+			base.URLGroup = c.URLGroup
 		}
 		// Image bytes beat a reference (a link can 404); a reference fills
 		// an empty slot.
@@ -428,4 +436,14 @@ func addrContentKey(a model.Address) string {
 	return strings.ToLower(strings.Join([]string{
 		a.Street, a.City, a.Region, a.PostCode, a.Country,
 	}, "|"))
+}
+
+// copyExtra returns a copy of an Extra map, so that unioning into a merged
+// contact does not write through to the member it was taken from.
+func copyExtra(extra map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(extra))
+	for k, v := range extra {
+		out[k] = append([]string(nil), v...)
+	}
+	return out
 }
