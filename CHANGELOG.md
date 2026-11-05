@@ -1,5 +1,11 @@
 # Changelog
 
+## \[Unreleased]
+
+### Changed
+
+* **Per-contact scoring work is computed once per contact, not once per candidate pair.** `scorePair` used to reparse each contact's birthday (up to eight `ParseCanonicalBirthday`/`BirthdaysAgree` calls) and re-split each given name into given/middle on every comparison, even though both depend only on the one contact. `normalize.Contact` now caches the parsed birthday and the given/middle split on `NormalizedContact` (`normalize.MatchCache`, called once per contact by `scorer.Score` before scoring any pairs); `sharedBirthday`, `birthdayConflict`, `birthdayUnknown`, `sameName` and `sameGivenName` read the cache instead of recomputing it. Output is unchanged (pinned by `TestScoreHoistIsEquivalent`); on a synthetic 2,000-contact benchmark with a six-wide blocking bucket, `Score` is ~50% faster and allocates ~58% less (`internal/scorer.BenchmarkScore`).
+
 ## \[0.5.0] - 2026-08-29
 
 ### Added

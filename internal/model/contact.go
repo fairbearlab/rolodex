@@ -93,6 +93,31 @@ type NormalizedContact struct {
 
 	NormalizedEmails []string // lowercased, trimmed
 	NormalizedPhones []string // digits only
+
+	// Birthday* cache normalize.ParseCanonicalBirthday(Parsed.Birthday) and
+	// normalize.PlausibleBirthday(Parsed.Birthday): BirthdayYear ("" when the
+	// year is unknown) and BirthdayMonthDay are the parsed date, BirthdayOK is
+	// whether Parsed.Birthday is a real canonical date at all, and
+	// BirthdayPlausible is BirthdayOK with the January-1st placeholder date
+	// excluded. scorer.scorePair used to run this parse up to eight times per
+	// candidate pair even though it depends only on the one contact; these
+	// fields are filled once by normalize.Contact (or normalize.MatchCache
+	// for a NormalizedContact built by hand) instead.
+	BirthdayYear      string
+	BirthdayMonthDay  string
+	BirthdayOK        bool
+	BirthdayPlausible bool
+
+	// SplitGivenName/SplitMiddleName (and the Strict, accent-preserving
+	// variants) cache the given/middle name split scorer.sameName needs:
+	// Google folds the middle name into the given name (N:Doe;John V;;;)
+	// where iCloud keeps it in the middle slot (N:Doe;John;V;;), so trailing
+	// given-name tokens move into the middle name here, once, instead of on
+	// every pairwise comparison that reaches sameName.
+	SplitGivenName        string
+	SplitMiddleName       string
+	StrictSplitGivenName  string
+	StrictSplitMiddleName string
 }
 
 // ScoreFeatures holds per-feature scores for a scored pair.

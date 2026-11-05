@@ -477,3 +477,51 @@ func TestPlausibleBirthday(t *testing.T) {
 		}
 	}
 }
+
+// TestMatchCache pins the per-contact fields the scorer reads instead of
+// reparsing: they must agree with ParseCanonicalBirthday/PlausibleBirthday
+// and with the Google-folds-middle-into-given split, whether they were set by
+// Contact or by MatchCache on a NormalizedContact whose Parsed.Birthday
+// changed afterwards.
+func TestMatchCache(t *testing.T) {
+	for _, bday := range []string{"", "1989-06-29", "--06-29", "1970-01-01", "--01-01", "circa 1950", "1989-02-31"} {
+		nc := Contact(model.ParsedContact{GivenName: "John", FamilyName: "Doe", Birthday: bday})
+		year, md, ok := ParseCanonicalBirthday(bday)
+		if nc.BirthdayYear != year || nc.BirthdayMonthDay != md || nc.BirthdayOK != ok {
+			t.Errorf("Contact(%q) birthday cache = (%q, %q, %v), want (%q, %q, %v)",
+				bday, nc.BirthdayYear, nc.BirthdayMonthDay, nc.BirthdayOK, year, md, ok)
+		}
+		if nc.BirthdayPlausible != PlausibleBirthday(bday) {
+			t.Errorf("Contact(%q).BirthdayPlausible = %v, want %v", bday, nc.BirthdayPlausible, PlausibleBirthday(bday))
+		}
+	}
+
+	stale := Contact(model.ParsedContact{GivenName: "John", FamilyName: "Doe", Birthday: "1989-06-29"})
+	stale.Parsed.Birthday = "circa 1950"
+	if got := MatchCache(stale); got.BirthdayOK || got.BirthdayMonthDay != "" {
+		t.Errorf("MatchCache after changing Parsed.Birthday kept the old parse: %+v", got)
+	}
+
+	names := []struct {
+		given, middle         string
+		wantGiven, wantMiddle string
+	}{
+		{"John V", "", "john", "v"},
+		{"John", "V", "john", "v"},
+		{"John Victor", "Q", "john victor", "q"},
+		{"José María", "", "jose", "maria"},
+		{"John", "", "john", ""},
+	}
+	for _, tc := range names {
+		nc := Contact(model.ParsedContact{GivenName: tc.given, MiddleName: tc.middle, FamilyName: "Doe"})
+		if nc.SplitGivenName != tc.wantGiven || nc.SplitMiddleName != tc.wantMiddle {
+			t.Errorf("Contact(%q, %q) split = (%q, %q), want (%q, %q)",
+				tc.given, tc.middle, nc.SplitGivenName, nc.SplitMiddleName, tc.wantGiven, tc.wantMiddle)
+		}
+		wantSG, wantSM := splitGiven(nc.StrictGivenName, nc.StrictMiddleName)
+		if nc.StrictSplitGivenName != wantSG || nc.StrictSplitMiddleName != wantSM {
+			t.Errorf("Contact(%q, %q) strict split = (%q, %q), want (%q, %q)",
+				tc.given, tc.middle, nc.StrictSplitGivenName, nc.StrictSplitMiddleName, wantSG, wantSM)
+		}
+	}
+}
