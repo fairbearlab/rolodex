@@ -1,6 +1,8 @@
 package reporter
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -256,48 +258,182 @@ func describeDeferred(contacts []model.NormalizedContact, d model.DeferredEdge) 
 		side(d.Sides[0]), side(d.Sides[1]))
 }
 
+// conflictField describes one single-value field mergeCluster keeps exactly
+// one value of, so every other value is lost. value extracts the field's
+// display text (empty means absent). Two present values are the same value,
+// and not a conflict, when their key matches (defaults to value — PHOTO
+// instead keys on a content hash, since two different-length-but-
+// coincidentally-same-summary photos must not compare equal, and identical
+// bytes must). equal overrides that identity check to run on the raw values
+// instead, for BDAY alone: iCloud's "--10-22" and Google's "1989-10-22" are
+// the same birthday even though neither their display text nor a naive key
+// would agree.
+//
+// Most fields are "first non-empty wins" in mergeCluster, but two are not,
+// and prefer mirrors that: given the value kept so far and a later member's
+// value (both present), it reports whether mergeCluster would replace the
+// kept one. BDAY upgrades a year-less birthday to the first agreeing full
+// date (normalize.PreferBirthday); PHOTO lets inline image bytes replace a
+// URI-only reference. Without this, Kept/Winner would name a value the
+// merger did not actually keep, and — worse for BDAY — a later value that
+// agrees with the partial base but not with the full date the merger kept
+// would never be reported as lost.
+type conflictField struct {
+	name   string
+	value  func(model.ParsedContact) string
+	key    func(model.ParsedContact) string
+	equal  func(a, b string) bool
+	prefer func(kept, candidate model.ParsedContact) bool
+}
+
+var conflictFields = []conflictField{
+	{name: "FN", value: func(c model.ParsedContact) string { return c.FormattedName }},
+	{name: "ORG", value: func(c model.ParsedContact) string { return c.Org }},
+	{name: "TITLE", value: func(c model.ParsedContact) string { return c.Title }},
+	{
+		name:  "BDAY",
+		value: func(c model.ParsedContact) string { return c.Birthday },
+		equal: normalize.BirthdaysAgree,
+		prefer: func(kept, candidate model.ParsedContact) bool {
+			return normalize.PreferBirthday(kept.Birthday, candidate.Birthday) != kept.Birthday
+		},
+	},
+	{name: "NOTE", value: func(c model.ParsedContact) string { return c.Note }},
+	{name: "URL", value: func(c model.ParsedContact) string { return c.URL }},
+	{
+		name:  "PHOTO",
+		value: photoDisplay,
+		key:   photoKey,
+		prefer: func(kept, candidate model.ParsedContact) bool {
+			return len(kept.Photo) == 0 && len(candidate.Photo) > 0
+		},
+	},
+}
+
+// photoDisplay is PHOTO's report value: a reference URI stays readable, but
+// raw image bytes are not valid JSON text and are not worth inlining, so
+// they are summarized instead.
+func photoDisplay(c model.ParsedContact) string {
+	if c.PhotoURI != "" {
+		return c.PhotoURI
+	}
+	if len(c.Photo) > 0 {
+		return fmt.Sprintf("<inline photo, %d bytes>", len(c.Photo))
+	}
+	return ""
+}
+
+// photoKey is what two PHOTO values are deduplicated on: a URI compares
+// literally, and inline bytes compare by content hash so two contacts that
+// happen to carry the identical photo are not reported as conflicting.
+func photoKey(c model.ParsedContact) string {
+	if c.PhotoURI != "" {
+		return "uri:" + c.PhotoURI
+	}
+	if len(c.Photo) > 0 {
+		sum := sha256.Sum256(c.Photo)
+		return "sha256:" + hex.EncodeToString(sum[:])
+	}
+	return ""
+}
+
+// findConflicts reports every single-value field where two or more members
+// of the cluster carry a differing value. Every member is compared against
+// the value mergeCluster kept, not just one iCloud card against one Google
+// card, so a same-source conflict — a second iCloud NOTE in a 3+-member
+// cluster, a pair the merger's pairwise scoring never even forms — is
+// caught the same as a cross-source one.
 func findConflicts(contacts []model.NormalizedContact, indices []int) []model.Conflict {
 	if len(indices) < 2 {
 		return nil
 	}
 
-	var conflicts []model.Conflict
-	// Compare first iCloud contact with first non-iCloud
-	var icloud, other *model.ParsedContact
+	// baseIdx mirrors merger.mergeCluster's choice of base contact: the
+	// first iCloud member if there is one, else the cluster's first member
+	// in the same index order mergeCluster iterates in.
+	baseIdx := indices[0]
 	for _, idx := range indices {
-		c := &contacts[idx].Parsed
-		if c.Source == model.SourceICloud && icloud == nil {
-			icloud = c
-		} else if c.Source != model.SourceICloud && other == nil {
-			other = c
+		if contacts[idx].Parsed.Source == model.SourceICloud {
+			baseIdx = idx
+			break
+		}
+	}
+	// order lists baseIdx first, then the rest in cluster order — the same
+	// fill order mergeCluster uses, so "first non-empty value" here and
+	// there picks the same winner.
+	order := make([]int, 0, len(indices))
+	order = append(order, baseIdx)
+	for _, idx := range indices {
+		if idx != baseIdx {
+			order = append(order, idx)
 		}
 	}
 
-	if icloud == nil || other == nil {
-		return nil
-	}
+	var conflicts []model.Conflict
+	for _, f := range conflictFields {
+		key := f.key
+		if key == nil {
+			key = f.value
+		}
 
-	check := func(field, a, b string) {
-		if a != b && a != "" && b != "" {
+		// Pass 1: replay mergeCluster's fold over the members in its order
+		// to find the value it kept — the first non-empty one, unless the
+		// field's prefer says a later member's value displaces it.
+		winIdx := -1
+		var keptContact model.ParsedContact
+		for _, idx := range order {
+			c := contacts[idx].Parsed
+			if f.value(c) == "" {
+				continue
+			}
+			if winIdx < 0 || (f.prefer != nil && f.prefer(keptContact, c)) {
+				winIdx, keptContact = idx, c
+			}
+		}
+		if winIdx < 0 {
+			continue
+		}
+		kept, keptKey := f.value(keptContact), key(keptContact)
+
+		// Pass 2: every other present value that is not the kept one was
+		// lost. equal, when set (BDAY), compares the raw values canonically
+		// instead of the key.
+		var discarded []model.ConflictValue
+		seenKeys := map[string]bool{keptKey: true}
+		for _, idx := range order {
+			if idx == winIdx {
+				continue
+			}
+			c := contacts[idx].Parsed
+			v := f.value(c)
+			if v == "" {
+				continue
+			}
+			k := key(c)
+			same := k == keptKey
+			if f.equal != nil {
+				same = f.equal(kept, v)
+			}
+			if same || seenKeys[k] {
+				continue
+			}
+			seenKeys[k] = true
+			discarded = append(discarded, model.ConflictValue{
+				Source: c.Source,
+				Index:  idx,
+				Value:  v,
+			})
+		}
+
+		if len(discarded) > 0 {
 			conflicts = append(conflicts, model.Conflict{
-				Field:       field,
-				ICloudValue: a,
-				GoogleValue: b,
-				Winner:      "icloud",
+				Field:     f.name,
+				Winner:    keptContact.Source,
+				Kept:      kept,
+				Discarded: discarded,
 			})
 		}
 	}
-
-	check("FN", icloud.FormattedName, other.FormattedName)
-	check("ORG", icloud.Org, other.Org)
-	check("TITLE", icloud.Title, other.Title)
-	// Birthdays are compared as dates, not strings: iCloud's "--10-22" and
-	// Google's "1989-10-22" are the same birthday, and the scorer has just
-	// counted them as one. Free text still conflicts by inequality.
-	if !normalize.BirthdaysAgree(icloud.Birthday, other.Birthday) {
-		check("BDAY", icloud.Birthday, other.Birthday)
-	}
-	check("NOTE", icloud.Note, other.Note)
 
 	return conflicts
 }

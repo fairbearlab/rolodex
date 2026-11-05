@@ -30,7 +30,7 @@ rolodex run --icloud icloud.vcf --google google.vcf
 
 This merges your contacts, drops you into a terminal UI for uncertain matches, then resolves your decisions and writes a clean `final.vcf` once every pair has been decided. Quit with pending decisions and the workspace is preserved so you can resume instead of losing progress.
 
-Use `--report report.json` to save the full merge report, or `--keep` to preserve intermediate files alongside the output.
+`report.json` is saved next to `--out` by default (use `--report` to save it elsewhere); use `--keep` to preserve intermediate files alongside the output too.
 
 ### Prune
 
@@ -72,7 +72,7 @@ rolodex review --report report.json --review review.vcf
 rolodex resolve --report report.json --review review.vcf --merged merged.vcf --out final.vcf
 ```
 
-`merge` rejects any two of `--icloud`, `--google`, `--out`, `--review` and `--report` that point at the same file — case-insensitively, through symlinks, and including a `<path>.tmp` staging sibling — instead of silently overwriting one with the other. `--review` defaults to `review.vcf` next to `--out` rather than the current directory. Malformed entries in either input are skipped and reported on stderr, by both `merge` and `run`.
+`merge` rejects any two of `--icloud`, `--google`, `--out`, `--review` and `--report` that point at the same file — case-insensitively, through symlinks, and including a `<path>.tmp` staging sibling — instead of silently overwriting one with the other. `--review` and `--report` default to `review.vcf` and `report.json` next to `--out` rather than the current directory. Malformed entries in either input are skipped and reported on stderr, by both `merge` and `run`.
 
 The **review** TUI walks through each uncertain pair one at a time. High-confidence pairs get a compact card, ambiguous pairs get a full field-by-field diff with score breakdown. Press `m` to merge, `s` to skip, `u` to undo, `d` to toggle detail level. Decisions are saved after every keypress.
 

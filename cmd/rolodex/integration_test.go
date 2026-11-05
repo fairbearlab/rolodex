@@ -237,6 +237,45 @@ END:VCARD
 	}
 }
 
+// TestRunDefaultsReportPathNextToOut: a field conflict (two same-source
+// cards disagreeing on NOTE, ORG, TITLE, BDAY, URL or PHOTO) is only visible
+// in report.json. Before, run's temp workspace holding it was deleted on
+// success unless --report was passed, so the default flow recorded the loss
+// nowhere. --report left empty must still save report.json, beside --out,
+// like merge's own default.
+func TestRunDefaultsReportPathNextToOut(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	icloudVCF := filepath.Join(tmpDir, "icloud.vcf")
+	googleVCF := filepath.Join(tmpDir, "google.vcf")
+	writeTestVCF(t, icloudVCF, "Han", "han@falcon.com")
+	writeTestVCF(t, googleVCF, "Luke", "luke@jedi.com")
+
+	outDir := filepath.Join(tmpDir, "nested")
+	if err := os.MkdirAll(outDir, 0750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	outPath := filepath.Join(outDir, "final.vcf")
+
+	// --report deliberately left empty.
+	if err := run(icloudVCF, googleVCF, outPath, "", false); err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+
+	wantReport := filepath.Join(outDir, "report.json")
+	data, err := os.ReadFile(filepath.Clean(wantReport))
+	if err != nil {
+		t.Fatalf("expected report.json beside --out at %s: %v", wantReport, err)
+	}
+	var report model.Report
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatalf("report.json invalid: %v", err)
+	}
+	if report.Summary.ICloudTotal != 1 {
+		t.Errorf("icloud_total = %d, want 1", report.Summary.ICloudTotal)
+	}
+}
+
 func TestRunTempDirCleanup(t *testing.T) {
 	// Capture pre-existing temp dirs to avoid flaky matches from
 	// other tests or prior runs.

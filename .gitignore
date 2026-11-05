@@ -11,6 +11,7 @@ coverage.out
 
 # Local runs against real exports in the repo root (contact data)
 /*.vcf
+/report.json
 /calibration.jsonl
 
 # IDE

@@ -38,16 +38,6 @@
 **Priority:** P2
 **Depends on:** Nothing
 
-### Same-source field conflicts are dropped and unreportable
-
-**What:** `merger.mergeCluster` fills a single-value field only when the base's is empty, so on a 3-member cluster the second same-source contact's `NOTE`, `ORG`, `TITLE`, `BDAY`, `URL` and `PHOTO` are discarded. `reporter.findConflicts` compares only the first iCloud contact against the first non-iCloud one, so it structurally cannot report a same-source conflict. Compare every member pairwise, and write a report by default.
-
-**Why:** Two iCloud "John Smith" cards with `NOTE:Met at conf` and `NOTE:Owes me $500`, plus a Google card sharing a phone: one note survives, silently. `merge --report` defaults to `""` and `run` deletes the temp report on success unless `--report` is passed, so in the default flows the loss is recorded nowhere.
-
-**Effort:** M
-**Priority:** P2
-**Depends on:** Nothing
-
 ### Validate vCard TYPE parameters
 
 **What:** `writer.contactToCard` copies attacker-controlled `TYPE` parameter values straight into `vcard.Params`, and go-vcard's encoder escapes only backslash, LF and comma — never `;` or `:`. Validate against the known type tokens in `parser.fieldType`, or reject any parsed param value containing `;`, `:`, `"`, CR or LF. Same for `PhotoType`.
@@ -210,3 +200,8 @@
 
 **What:** `rolodex review --report report.json --review review.vcf` — BubbleTea TUI with adaptive pacing, undo stack, calibration logging, and end-of-session threshold suggestions.
 **Completed:** v0.2.0 (2026-04-07)
+
+### Same-source field conflicts are dropped and unreportable
+
+**What:** `reporter.findConflicts` now compares every cluster member against the value `mergeCluster` kept, not just one iCloud card against one Google card, so a same-source conflict — a second iCloud `NOTE` in a 3+-member cluster, a pair the merger's pairwise scoring never even forms — is caught the same as a cross-source one. Each `Conflict` carries `Kept`/`Winner` plus every `Discarded` value with its source and contact index. `merge` and `run` also derive `--report` next to `--out` (`report.json`, alongside `--review`'s existing default) when the flag is left unset, so the loss is recorded in the default flow instead of only when `--report` is passed explicitly.
+**Completed:** Unreleased (2026-09-26)
