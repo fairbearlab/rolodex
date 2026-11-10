@@ -363,3 +363,27 @@ func TestParseStripsBidiAndZeroWidth(t *testing.T) {
 		t.Errorf("Note = %q, want ZWJ and ZWNJ preserved", c.Note)
 	}
 }
+
+func TestParseStripsControlCharactersFromGroup(t *testing.T) {
+	// go-vcard takes everything before the first "." as the group, so a
+	// crafted card can put ESC, BEL, a lone CR or a bidi override there.
+	// The writer re-emits the group, so it is sanitized like a value.
+	in := "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Ann\r\n" +
+		"item1\x1b\r\u202e.EMAIL:ann@example.com\r\n" +
+		"item1\x1b\r\u202e.X-ABLabel:School\r\n" +
+		"END:VCARD\r\n"
+
+	contacts, _, err := Parse(strings.NewReader(in), model.SourceICloud)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(contacts) != 1 || len(contacts[0].Emails) != 1 {
+		t.Fatalf("got %d contacts, want 1 with one email", len(contacts))
+	}
+	if g := contacts[0].Emails[0].Group; g != "item1" {
+		t.Errorf("email group = %q, want %q", g, "item1")
+	}
+	if v := contacts[0].Extra["item1.X-ABLABEL"]; len(v) != 1 || v[0] != "School" {
+		t.Errorf("Extra = %v, want the label keyed under the sanitized group", contacts[0].Extra)
+	}
+}
