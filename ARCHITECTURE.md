@@ -141,7 +141,7 @@ Interactive terminal UI built on BubbleTea. Loads review clusters from `report.j
 
 ### resolve
 
-Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if the decision is "merge", merges the cluster contacts; if "skip", excludes them; if "pending", keeps all contacts as-is. Combines with the auto-merged contacts and writes `final.vcf`.
+Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if the decision is "merge", merges the cluster contacts; if "skip" (not the same person), keeps every contact separately and drops their review tags; if "pending", keeps all contacts as-is, tags included. No decision removes a contact. Combines with the auto-merged contacts and writes `final.vcf`.
 
 ### calibration
 

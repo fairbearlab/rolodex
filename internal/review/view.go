@@ -491,7 +491,7 @@ func renderHelp(width int) string {
 	help := `Keyboard shortcuts:
 
   m       Merge this cluster
-  s       Skip this cluster
+  s       Skip: not the same person, keep all
   d       Toggle compact/detailed view
   u       Undo last decision
   j/down  Scroll down (detailed view)
