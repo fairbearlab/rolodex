@@ -1,5 +1,12 @@
 # Changelog
 
+## \[Unreleased]
+
+### Fixed
+
+* **`resolve` and `review` refuse a damaged intermediate file.** A malformed entry in `merged.vcf` (a truncated write, a full disk) was skipped by the decoder and the contact was missing from `final.vcf` with no message; the cluster-id check cannot catch it, because the card is simply absent. `resolve`, and the loader `review` shares, now stop and name each malformed entry in `merged.vcf` or `review.vcf`; re-run `merge` to regenerate it.
+* **A crafted `TYPE` parameter can no longer corrupt an address.** The parameter escaper does not touch `:` or `;`, so `EMAIL;TYPE="X:evil@attacker.test,":real@good.test` was written back unquoted and read as the address `EVIL@ATTACKER.TEST:real@good.test`. A `TYPE` or photo type containing `;`, `:`, `"`, `,` or a control character is now dropped, and the property is written without it.
+
 ## \[0.5.0] - 2026-08-29
 
 ### Added

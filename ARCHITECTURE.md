@@ -124,7 +124,7 @@ Merge logic for auto-merge clusters uses **iCloud priority**: single-value field
 
 ### writer
 
-Encodes `MergedContact` slices as vCard 3.0 using `emersion/go-vcard`. Adds provenance extension fields: `X-ROLODEX-SOURCE`, `X-ROLODEX-SCORE`, `X-ROLODEX-REVIEW`. File writes are staged: `Stage` writes to an exclusively created, randomly named dot-file beside the destination and fsyncs it, `Commit` renames it into place, `Abort` discards it — so a crash never leaves a partial output, a symlink planted at a predictable staging path is never written through, and a command that writes several files (`prune`) commits all of them or none. A destination that is a directory is refused. `X-ROLODEX-SOURCE` is stamped only for `icloud`/`google` provenance (the read-back labels `merged`/`review` and `unknown` are not provenance), and a stale copy read back in `Extra` is dropped rather than doubled.
+Encodes `MergedContact` slices as vCard 3.0 using `emersion/go-vcard`. Adds provenance extension fields: `X-ROLODEX-SOURCE`, `X-ROLODEX-SCORE`, `X-ROLODEX-REVIEW`. File writes are staged: `Stage` writes to an exclusively created, randomly named dot-file beside the destination and fsyncs it, `Commit` renames it into place, `Abort` discards it — so a crash never leaves a partial output, a symlink planted at a predictable staging path is never written through, and a command that writes several files (`prune`) commits all of them or none. A destination that is a directory is refused. `X-ROLODEX-SOURCE` is stamped only for `icloud`/`google` provenance (the read-back labels `merged`/`review` and `unknown` are not provenance), and a stale copy read back in `Extra` is dropped rather than doubled. A `TYPE` or photo-type parameter value containing `;`, `:`, `"`, `,` or a control character is dropped, and the property written without it, since an unquoted `:` would end the parameter list and corrupt the value.
 
 ### reporter
 
@@ -141,7 +141,7 @@ Interactive terminal UI built on BubbleTea. Loads review clusters from `report.j
 
 ### resolve
 
-Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if the decision is "merge", merges the cluster contacts; if "skip", excludes them; if "pending", keeps all contacts as-is. Combines with the auto-merged contacts and writes `final.vcf`.
+Reads `report.json`, `review.vcf`, and `merged.vcf`. For each review cluster: if the decision is "merge", merges the cluster contacts; if "skip", excludes them; if "pending", keeps all contacts as-is. Combines with the auto-merged contacts and writes `final.vcf`. A `merged.vcf` or `review.vcf` with malformed entries is refused (the loader is shared with `review`), naming each entry and pointing at re-running `merge`, because a card the decoder skipped would otherwise be missing from `final.vcf` with no message.
 
 ### calibration
 

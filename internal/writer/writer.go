@@ -168,6 +168,23 @@ func escapeParam(v string) string {
 	return paramEscaper.Replace(v)
 }
 
+// isSafeParam reports whether a parameter value can be written unquoted. A
+// TYPE comes from the input file, where a quoted value may hold ':' or ';',
+// and escapeParam touches neither: EMAIL;TYPE="X:evil@attacker.test,":
+// real@good.test was written back as EMAIL;TYPE=X:EVIL@ATTACKER.TEST:
+// real@good.test, and readers took everything after the first ':' as the
+// address. A value that could end the parameter list, start another, or
+// split into two is dropped, and the property is written without it.
+func isSafeParam(v string) bool {
+	return !strings.ContainsFunc(v, func(r rune) bool {
+		switch r {
+		case ';', ':', '"', ',':
+			return true
+		}
+		return r < 0x20 || r == 0x7f
+	})
+}
+
 // structured joins decoded components into a wire-form structured value.
 func structured(components ...string) string {
 	escaped := make([]string, len(components))
@@ -184,7 +201,7 @@ func contactProperties(mc model.MergedContact) []property {
 		props = append(props, property{name: name, params: params, value: value})
 	}
 	typed := func(t string) [][2]string {
-		if t == "" {
+		if t == "" || !isSafeParam(t) {
 			return nil
 		}
 		return [][2]string{{"TYPE", t}}
@@ -246,13 +263,13 @@ func contactProperties(mc model.MergedContact) []property {
 	// PHOTO
 	if len(c.Photo) > 0 {
 		params := [][2]string{{"ENCODING", "b"}}
-		if c.PhotoType != "" {
+		if c.PhotoType != "" && isSafeParam(c.PhotoType) {
 			params = append(params, [2]string{"TYPE", c.PhotoType})
 		}
 		add("PHOTO", base64.StdEncoding.EncodeToString(c.Photo), params...)
 	} else if c.PhotoURI != "" {
 		params := [][2]string{{"VALUE", "uri"}}
-		if c.PhotoType != "" {
+		if c.PhotoType != "" && isSafeParam(c.PhotoType) {
 			params = append(params, [2]string{"TYPE", c.PhotoType})
 		}
 		// A URI value is not text: RFC 2426/6350 do not escape it, Apple and
