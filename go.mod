@@ -1,6 +1,6 @@
 module github.com/fairbearlab/rolodex
 
-go 1.26.1
+go 1.26.10
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
