@@ -1,6 +1,6 @@
 # bin/env-check config, read by the shared `loops env-check` engine. See CONTRIBUTING.md.
 schema_version = 1
-engine = ">=0.7.0"
+engine = ">=0.8.0"
 
 [shared_checkout]
 hint = "git worktree add .claude/worktrees/<name> -b <branch> origin/main"
