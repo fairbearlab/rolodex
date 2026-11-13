@@ -14,8 +14,9 @@ thin wrapper around the shared `loops env-check` engine (the `loops` plugin in
 
 - Exit 0: no FAIL. Exit 1: at least one FAIL; every FAIL and WARN line ends with a fix. Exit 2: a usage
   or config error, for example an engine older than the config needs; update the engine.
-- **Exit 3 (`env-check: not run`) means the engine (or node) is not installed. You can ignore it**;
-  `make ci` stays the gate.
+- **Exit 3 (`env-check: not run`) means no engine is installed. You can ignore it**;
+  `make ci` stays the gate. If the engine is installed but node cannot run, it exits 1 with a
+  `FAIL d.tools` row instead.
 - `bin/env-check --static` reads repo files only. `ENV_CHECK_ALLOW_MAIN=1` allows a deliberate run in
   the main checkout.
 
